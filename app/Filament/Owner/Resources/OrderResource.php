@@ -48,6 +48,11 @@ class OrderResource extends Resource
             ->bulkActions([]);
     }
 
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::count();
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->whereIn('shop_id', auth()->user()->shops()->pluck('id'));
