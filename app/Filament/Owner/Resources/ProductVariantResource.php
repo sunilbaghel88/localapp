@@ -67,7 +67,20 @@ class ProductVariantResource extends Resource
                 Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable(),
             ])
             ->filters([
-                //
+                Tables\Filters\TernaryFilter::make('is_active')
+                    ->label('Active')
+                    ->placeholder('All')
+                    ->trueLabel('Active only')
+                    ->falseLabel('Inactive only'),
+                Tables\Filters\SelectFilter::make('product_id')
+                    ->label('Product')
+                    ->relationship(
+                        'product',
+                        'name',
+                        fn (Builder $query) => $query->whereHas('shop', fn ($q) => $q->where('user_id', auth()->id()))
+                    )
+                    ->searchable()
+                    ->preload(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -84,6 +97,12 @@ class ProductVariantResource extends Resource
         return [
             //
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->whereHas('product.shop', fn ($q) => $q->where('user_id', auth()->id()));
     }
 
     public static function getPages(): array

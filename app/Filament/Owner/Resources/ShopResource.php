@@ -84,7 +84,12 @@ class ShopResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'active' => 'Active',
+                        'inactive' => 'Inactive',
+                        'suspended' => 'Suspended',
+                    ]),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
