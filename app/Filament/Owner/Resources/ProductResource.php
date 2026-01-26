@@ -74,7 +74,22 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable(),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'draft' => 'Draft',
+                        'published' => 'Published',
+                        'archived' => 'Archived',
+                    ]),
+                Tables\Filters\SelectFilter::make('shop_id')
+                    ->label('Shop')
+                    ->relationship('shop', 'name', fn (Builder $query) => $query->where('user_id', auth()->id()))
+                    ->searchable()
+                    ->preload(),
+                Tables\Filters\SelectFilter::make('category_id')
+                    ->label('Category')
+                    ->relationship('category', 'name')
+                    ->searchable()
+                    ->preload(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -86,9 +101,16 @@ class ProductResource extends Resource
             ]);
     }
 
+    public static function getRelations(): array
+    {
+        return [
+            RelationManagers\ImagesRelationManager::class,
+        ];
+    }
+
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::count();
+        return static::getEloquentQuery()->count();
     }
 
     public static function getEloquentQuery(): Builder
