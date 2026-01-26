@@ -37,8 +37,8 @@ class ShopPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Owner/Widgets'), for: 'App\\Filament\\Owner\\Widgets')
             ->widgets([
-                Widgets\AccountWidget::class,
-                Widgets\FilamentInfoWidget::class,
+                \App\Filament\Owner\Widgets\StatsOverview::class,
+                \App\Filament\Owner\Widgets\RecentOrdersWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
