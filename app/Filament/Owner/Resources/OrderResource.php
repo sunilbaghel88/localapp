@@ -75,9 +75,146 @@ class OrderResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\Action::make('mark_processing')
+                        ->label('Mark as Processing')
+                        ->icon('heroicon-m-arrow-path')
+                        ->color('info')
+                        ->action(function ($record) {
+                            $record->update(['status' => 'processing']);
+                            \Filament\Notifications\Notification::make()
+                                ->title('Order marked as processing')
+                                ->success()
+                                ->send();
+                        })
+                        ->visible(fn ($record) => $record->status === 'pending'),
+                    Tables\Actions\Action::make('mark_shipped')
+                        ->label('Mark as Shipped')
+                        ->icon('heroicon-m-truck')
+                        ->color('success')
+                        ->action(function ($record) {
+                            $record->update(['status' => 'shipped']);
+                            \Filament\Notifications\Notification::make()
+                                ->title('Order marked as shipped')
+                                ->success()
+                                ->send();
+                        })
+                        ->visible(fn ($record) => in_array($record->status, ['pending', 'processing'])),
+                    Tables\Actions\Action::make('mark_delivered')
+                        ->label('Mark as Delivered')
+                        ->icon('heroicon-m-check-badge')
+                        ->color('success')
+                        ->action(function ($record) {
+                            $record->update(['status' => 'delivered']);
+                            \Filament\Notifications\Notification::make()
+                                ->title('Order marked as delivered')
+                                ->success()
+                                ->send();
+                        })
+                        ->visible(fn ($record) => in_array($record->status, ['pending', 'processing', 'shipped'])),
+                    Tables\Actions\Action::make('mark_cancelled')
+                        ->label('Cancel Order')
+                        ->icon('heroicon-m-x-circle')
+                        ->color('danger')
+                        ->action(function ($record) {
+                            $record->update(['status' => 'cancelled']);
+                            \Filament\Notifications\Notification::make()
+                                ->title('Order cancelled')
+                                ->success()
+                                ->send();
+                        })
+                        ->visible(fn ($record) => $record->status !== 'cancelled' && $record->status !== 'delivered')
+                        ->requiresConfirmation(),
+                    Tables\Actions\Action::make('mark_paid')
+                        ->label('Mark as Paid')
+                        ->icon('heroicon-m-currency-dollar')
+                        ->color('success')
+                        ->action(function ($record) {
+                            $record->update(['payment_status' => 'paid']);
+                            \Filament\Notifications\Notification::make()
+                                ->title('Payment status updated')
+                                ->success()
+                                ->send();
+                        })
+                        ->visible(fn ($record) => $record->payment_status !== 'paid'),
+                ]),
             ])
-            ->bulkActions([]);
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('update_status')
+                        ->label('Update Order Status')
+                        ->icon('heroicon-m-arrow-path')
+                        ->form([
+                            Forms\Components\Select::make('status')
+                                ->label('Order Status')
+                                ->options([
+                                    'pending' => 'Pending',
+                                    'processing' => 'Processing',
+                                    'shipped' => 'Shipped',
+                                    'delivered' => 'Delivered',
+                                    'cancelled' => 'Cancelled',
+                                ])
+                                ->required(),
+                        ])
+                        ->action(function ($records, array $data) {
+                            $records->each(function ($record) use ($data) {
+                                $record->update(['status' => $data['status']]);
+                            });
+                            \Filament\Notifications\Notification::make()
+                                ->title('Order status updated for ' . $records->count() . ' order(s)')
+                                ->success()
+                                ->send();
+                        }),
+                    Tables\Actions\BulkAction::make('update_payment_status')
+                        ->label('Update Payment Status')
+                        ->icon('heroicon-m-currency-dollar')
+                        ->form([
+                            Forms\Components\Select::make('payment_status')
+                                ->label('Payment Status')
+                                ->options([
+                                    'pending' => 'Pending',
+                                    'paid' => 'Paid',
+                                    'failed' => 'Failed',
+                                    'refunded' => 'Refunded',
+                                ])
+                                ->required(),
+                        ])
+                        ->action(function ($records, array $data) {
+                            $records->each(function ($record) use ($data) {
+                                $record->update(['payment_status' => $data['payment_status']]);
+                            });
+                            \Filament\Notifications\Notification::make()
+                                ->title('Payment status updated for ' . $records->count() . ' order(s)')
+                                ->success()
+                                ->send();
+                        }),
+                    Tables\Actions\BulkAction::make('mark_shipped')
+                        ->label('Mark as Shipped')
+                        ->icon('heroicon-m-truck')
+                        ->color('success')
+                        ->action(function ($records) {
+                            $records->each->update(['status' => 'shipped']);
+                            \Filament\Notifications\Notification::make()
+                                ->title('Marked ' . $records->count() . ' order(s) as shipped')
+                                ->success()
+                                ->send();
+                        })
+                        ->requiresConfirmation(),
+                    Tables\Actions\BulkAction::make('mark_delivered')
+                        ->label('Mark as Delivered')
+                        ->icon('heroicon-m-check-badge')
+                        ->color('success')
+                        ->action(function ($records) {
+                            $records->each->update(['status' => 'delivered']);
+                            \Filament\Notifications\Notification::make()
+                                ->title('Marked ' . $records->count() . ' order(s) as delivered')
+                                ->success()
+                                ->send();
+                        })
+                        ->requiresConfirmation(),
+                ]),
+            ]);
     }
 
     public static function getNavigationBadge(): ?string
