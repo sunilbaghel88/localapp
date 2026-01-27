@@ -96,6 +96,52 @@ class ProductResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('update_status')
+                        ->label('Update Status')
+                        ->icon('heroicon-m-arrow-path')
+                        ->form([
+                            Forms\Components\Select::make('status')
+                                ->label('Status')
+                                ->options([
+                                    'draft' => 'Draft',
+                                    'published' => 'Published',
+                                    'archived' => 'Archived',
+                                ])
+                                ->required(),
+                        ])
+                        ->action(function ($records, array $data) {
+                            $records->each(function ($record) use ($data) {
+                                $record->update(['status' => $data['status']]);
+                            });
+                            \Filament\Notifications\Notification::make()
+                                ->title('Status updated for ' . $records->count() . ' product(s)')
+                                ->success()
+                                ->send();
+                        }),
+                    Tables\Actions\BulkAction::make('publish')
+                        ->label('Publish Selected')
+                        ->icon('heroicon-m-check-circle')
+                        ->color('success')
+                        ->action(function ($records) {
+                            $records->each->update(['status' => 'published']);
+                            \Filament\Notifications\Notification::make()
+                                ->title('Published ' . $records->count() . ' product(s)')
+                                ->success()
+                                ->send();
+                        })
+                        ->requiresConfirmation(),
+                    Tables\Actions\BulkAction::make('archive')
+                        ->label('Archive Selected')
+                        ->icon('heroicon-m-archive-box')
+                        ->color('warning')
+                        ->action(function ($records) {
+                            $records->each->update(['status' => 'archived']);
+                            \Filament\Notifications\Notification::make()
+                                ->title('Archived ' . $records->count() . ' product(s)')
+                                ->success()
+                                ->send();
+                        })
+                        ->requiresConfirmation(),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
@@ -104,6 +150,7 @@ class ProductResource extends Resource
     public static function getRelations(): array
     {
         return [
+            RelationManagers\VariantsRelationManager::class,
             RelationManagers\ImagesRelationManager::class,
         ];
     }
