@@ -76,7 +76,7 @@ class ProductController extends Controller
                 $query->latest();
         }
 
-        $products = $query->paginate(12);
+        $products = $query->paginate(12)->withQueryString();
         $categories = Category::where('is_active', true)->withCount('products')->get();
 
         return view('shop.products.index', compact('products', 'categories'));

@@ -15,11 +15,11 @@
                     <div class="mb-6">
                         <h4 class="text-sm font-medium text-gray-700 mb-3">Categories</h4>
                         <div class="space-y-2">
-                            <a href="{{ route('products.index', request()->except('category')) }}" class="block text-sm {{ !request('category') ? 'text-amber-600 font-medium' : 'text-gray-600' }}">
+                            <a href="{{ route('products.index', request()->except(['category', 'page'])) }}" class="block text-sm {{ !request('category') ? 'text-amber-600 font-medium' : 'text-gray-600' }}">
                                 All Categories
                             </a>
                             @foreach($categories as $category)
-                            <a href="{{ route('products.index', array_merge(request()->all(), ['category' => $category->slug])) }}" class="block text-sm {{ request('category') === $category->slug ? 'text-amber-600 font-medium' : 'text-gray-600' }}">
+                            <a href="{{ route('products.index', array_merge(request()->except(['page']), ['category' => $category->slug])) }}" class="block text-sm {{ request('category') === $category->slug ? 'text-amber-600 font-medium' : 'text-gray-600' }}">
                                 {{ $category->name }} ({{ $category->products_count }})
                             </a>
                             @endforeach
