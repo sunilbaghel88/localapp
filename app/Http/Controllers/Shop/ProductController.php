@@ -60,16 +60,14 @@ class ProductController extends Controller
         $sort = $request->get('sort', 'latest');
         switch ($sort) {
             case 'price_low':
-                $query->join('product_variants', 'products.id', '=', 'product_variants.product_id')
-                      ->select('products.*')
-                      ->orderBy('product_variants.price', 'asc')
-                      ->groupBy('products.id');
+                $query->orderByRaw(
+                    '(select min(pv.price) from product_variants pv where pv.product_id = products.id and pv.is_active = true) asc nulls last'
+                );
                 break;
             case 'price_high':
-                $query->join('product_variants', 'products.id', '=', 'product_variants.product_id')
-                      ->select('products.*')
-                      ->orderBy('product_variants.price', 'desc')
-                      ->groupBy('products.id');
+                $query->orderByRaw(
+                    '(select max(pv.price) from product_variants pv where pv.product_id = products.id and pv.is_active = true) desc nulls last'
+                );
                 break;
             case 'name':
                 $query->orderBy('name', 'asc');

@@ -8,7 +8,7 @@
         <div class="flex flex-col lg:flex-row gap-8">
             <!-- Sidebar Filters -->
             <aside class="lg:w-64 flex-shrink-0">
-                <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="bg-white rounded-lg shadow-sm p-6 sticky top-4">
                     <h3 class="font-semibold text-gray-900 mb-4">Filters</h3>
                     
                     <!-- Categories -->
