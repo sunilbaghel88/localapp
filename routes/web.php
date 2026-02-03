@@ -6,12 +6,17 @@ use App\Http\Controllers\Shop\ProductController;
 use App\Http\Controllers\Shop\CartController;
 use App\Http\Controllers\Shop\CheckoutController;
 use App\Http\Controllers\Shop\OrderController;
+use App\Http\Controllers\MediaController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
+
+Route::get('/media/{path}', [MediaController::class, 'show'])
+    ->where('path', '.*')
+    ->name('media.show');
 
 Route::view('/dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
