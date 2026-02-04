@@ -62,9 +62,15 @@ class ProductResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('shop.name')->label('Shop')->sortable(),
-                Tables\Columns\TextColumn::make('category.name')->label('Category')->sortable(),
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('shop.name')
+                    ->label('Shop')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('category.name')
+                    ->label('Category')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('variants_count')
                     ->label('Variants')
                     ->counts('variants')
@@ -75,7 +81,9 @@ class ProductResource extends Resource
                         'success' => 'published',
                         'warning' => 'archived',
                     ]),
-                Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable(),
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->dateTime()
+                    ->sortable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
