@@ -50,6 +50,5 @@ class ProductVariant {
     );
   }
 
-  bool get hasDiscount =>
-      compareAtPrice != null && compareAtPrice! > price && compareAtPrice! > 0;
+  bool get hasDiscount => compareAtPrice != null && compareAtPrice! > price && compareAtPrice! > 0;
 }

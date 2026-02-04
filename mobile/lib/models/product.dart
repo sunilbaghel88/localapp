@@ -42,20 +42,10 @@ class Product {
       description: json['description'] as String?,
       brand: json['brand'] as String?,
       status: json['status'] as String? ?? 'published',
-      images: (json['images'] as List<dynamic>?)
-              ?.map((e) => ProductImage.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      variants: (json['variants'] as List<dynamic>?)
-              ?.map((e) => ProductVariant.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      category: json['category'] != null
-          ? Category.fromJson(json['category'] as Map<String, dynamic>)
-          : null,
-      shop: json['shop'] != null
-          ? Shop.fromJson(json['shop'] as Map<String, dynamic>)
-          : null,
+      images: (json['images'] as List<dynamic>?) ?.map((e) => ProductImage.fromJson(e as Map<String, dynamic>)).toList() ?? [],
+      variants: (json['variants'] as List<dynamic>?) ?.map((e) => ProductVariant.fromJson(e as Map<String, dynamic>)).toList() ?? [],
+      category: json['category'] != null ? Category.fromJson(json['category'] as Map<String, dynamic>) : null,
+      shop: json['shop'] != null ? Shop.fromJson(json['shop'] as Map<String, dynamic>) : null,
     );
   }
 
@@ -65,8 +55,7 @@ class Product {
     return images.isNotEmpty ? images.first : null;
   }
 
-  ProductVariant? get lowestPriceVariant =>
-      variants.isNotEmpty ? variants.first : null;
+  ProductVariant? get lowestPriceVariant => variants.isNotEmpty ? variants.first : null;
 
   String? get imageUrl => primaryImage?.fullUrl;
 }
