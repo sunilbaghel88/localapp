@@ -65,6 +65,10 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('shop.name')->label('Shop')->sortable(),
                 Tables\Columns\TextColumn::make('category.name')->label('Category')->sortable(),
+                Tables\Columns\TextColumn::make('variants_count')
+                    ->label('Variants')
+                    ->counts('variants')
+                    ->sortable(),
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([
                         'secondary' => 'draft',
