@@ -52,7 +52,6 @@ class ShopPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-                EnsureShopOwner::class,
             ]);
     }
 }
