@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Http\Middleware\EnsureShopOwner;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -27,6 +26,9 @@ class ShopPanelProvider extends PanelProvider
             ->id('owner')
             ->path('owner')
             ->login()
+            ->passwordReset()
+            ->registration()
+            ->emailVerification()
             ->colors([
                 'primary' => Color::Amber,
             ])
