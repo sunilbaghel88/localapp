@@ -28,7 +28,15 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('orders.index', absolute: false));
+        $user = $request->user();
+
+        if ($user->role === 'admin') {
+            return redirect(route('filament.admin.pages.dashboard', absolute: false));
+        } elseif ($user->role === 'owner') {
+            return redirect(route('filament.owner.pages.dashboard', absolute: false));
+        } else {
+            return redirect()->intended(route('orders.index', absolute: false));
+        }
     }
 
     /**

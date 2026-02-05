@@ -224,7 +224,11 @@ class OrderResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->whereIn('shop_id', auth()->user()->shops()->pluck('id'));
+        $user = auth()->user();
+        if (!$user) {
+            return parent::getEloquentQuery()->whereRaw('1 = 0');
+        }
+        return parent::getEloquentQuery()->whereIn('shop_id', $user->shops()->pluck('id'));
     }
 
     public static function getPages(): array
