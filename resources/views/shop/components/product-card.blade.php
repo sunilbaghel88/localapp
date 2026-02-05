@@ -1,7 +1,7 @@
 @php
     $primaryImage = $product->images->first();
     $lowestPriceVariant = $product->variants->first();
-    $imageUrl = $primaryImage ? asset('storage/' . $primaryImage->url) : asset('storage/placeholder.png');
+    $imageUrl = $primaryImage ? asset('storage/' . $primaryImage->url) : asset('images/placeholder.png');
 @endphp
 
 <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition">
