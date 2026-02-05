@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     use HasFactory, Notifiable, HasApiTokens;
     
