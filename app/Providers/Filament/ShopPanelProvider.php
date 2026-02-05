@@ -25,10 +25,6 @@ class ShopPanelProvider extends PanelProvider
         return $panel
             ->id('owner')
             ->path('owner')
-            ->login()
-            ->passwordReset()
-            ->registration()
-            ->emailVerification()
             ->colors([
                 'primary' => Color::Amber,
             ])
