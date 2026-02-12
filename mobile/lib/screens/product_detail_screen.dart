@@ -24,6 +24,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   String? _error;
   int _selectedVariantIndex = 0;
   int _quantity = 1;
+  int _currentImageIndex = 0;
 
   @override
   void initState() {
@@ -91,6 +92,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final product = _product!;
     final variant = product.variants.isEmpty ? null : product.variants[_selectedVariantIndex.clamp(0, product.variants.length - 1)];
     final currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
+    final images = product.images;
     return Scaffold(
       appBar: AppBar(
         title: Text(product.name),
@@ -102,7 +104,48 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (product.imageUrl != null)
+            if (images.isNotEmpty && images.length >= 2)
+              Column(
+                children: [
+                  SizedBox(
+                    height: 300,
+                    child: PageView.builder(
+                      itemCount: images.length,
+                      onPageChanged: (index) => setState(() => _currentImageIndex = index),
+                      itemBuilder: (context, index) {
+                        final img = images[index];
+                        return CachedNetworkImage(
+                          imageUrl: img.fullUrl,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) => const Center(child: CircularProgressIndicator()),
+                          errorWidget: (_, _, _) => const Center(child: Icon(Icons.image_not_supported, size: 64)),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (images.length > 1)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(images.length, (index) {
+                        final isActive = index == _currentImageIndex;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: isActive ? 10 : 6,
+                          height: isActive ? 10 : 6,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isActive
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                          ),
+                        );
+                      }),
+                    ),
+                ],
+              )
+            else if (product.imageUrl != null)
               CachedNetworkImage(
                 imageUrl: product.imageUrl!,
                 height: 300,
