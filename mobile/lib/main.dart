@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
       child: Builder(
         builder: (context) {
           return MaterialApp.router(
-            title: 'Local App',
+            title: 'LocalApp',
             theme: ThemeData(
               colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber, brightness: Brightness.light),
               useMaterial3: true,

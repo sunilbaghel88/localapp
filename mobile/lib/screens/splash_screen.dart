@@ -30,7 +30,7 @@ class _SplashScreenState extends State<SplashScreen> {
             Icon(Icons.shopping_bag, size: 80, color: Theme.of(context).colorScheme.primary),
             const SizedBox(height: 24),
             Text(
-              'Local App',
+              'LocalApp',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),

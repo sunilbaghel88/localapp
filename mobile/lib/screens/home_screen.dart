@@ -58,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final auth = context.watch<AuthProvider>();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Local App'),
+        title: const Text('LocalApp'),
         actions: [
           IconButton(icon: const Icon(Icons.search), onPressed: () => context.push('/products')),
           IconButton(
@@ -143,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         children: [
           Text(
-            'Welcome to Local App',
+            'Welcome to LocalApp',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -151,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Discover products from trusted sellers',
+            'Discover amazing products from trusted sellers',
             style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
           ),
           const SizedBox(height: 20),
