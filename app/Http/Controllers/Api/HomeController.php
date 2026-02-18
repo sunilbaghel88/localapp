@@ -12,6 +12,7 @@ class HomeController extends Controller
     public function index(): JsonResponse
     {
         $featuredProducts = Product::where('status', 'published')
+            ->whereHas('shop', fn ($q) => $q->on())
             ->with(['images' => function ($query) {
                 $query->where('is_primary', true)->orWhereNull('is_primary')->orderBy('sort_order');
             }, 'variants' => function ($query) {
@@ -22,7 +23,10 @@ class HomeController extends Controller
             ->get();
 
         $categories = Category::where('is_active', true)
-            ->withCount('products')
+            ->withCount(['products' => function ($query) {
+                $query->where('status', 'published')
+                    ->whereHas('shop', fn ($q) => $q->on());
+            }])
             ->take(6)
             ->get();
 

@@ -12,6 +12,7 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $query = Product::where('status', 'published')
+            ->whereHas('shop', fn ($q) => $q->on())
             ->with(['images' => function ($q) {
                 $q->where('is_primary', true)->orWhereNull('is_primary')->orderBy('sort_order')->limit(1);
             }, 'variants' => function ($q) {
@@ -77,14 +78,19 @@ class ProductController extends Controller
         }
 
         $products = $query->paginate(12)->withQueryString();
-        $categories = Category::where('is_active', true)->withCount('products')->get();
+        $categories = Category::where('is_active', true)
+            ->withCount(['products' => function ($query) {
+                $query->where('status', 'published')
+                    ->whereHas('shop', fn ($q) => $q->on());
+            }])
+            ->get();
 
         return view('shop.products.index', compact('products', 'categories'));
     }
 
     public function show(Product $product)
     {
-        if ($product->status !== 'published') {
+        if ($product->status !== 'published' || ! $product->shop || $product->shop->status !== 'on') {
             abort(404);
         }
 
@@ -99,8 +105,9 @@ class ProductController extends Controller
             'shop'
         ]);
 
-        // Related products
+        // Related products (only from shops that are On)
         $relatedProducts = Product::where('status', 'published')
+            ->whereHas('shop', fn ($q) => $q->on())
             ->where('id', '!=', $product->id)
             ->where(function ($q) use ($product) {
                 $q->where('category_id', $product->category_id)

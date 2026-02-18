@@ -61,11 +61,11 @@ class ShopResource extends Resource
                     ->numeric(),
                 Forms\Components\Select::make('status')
                     ->options([
-                        'active' => 'Active',
-                        'inactive' => 'Inactive',
-                        'suspended' => 'Suspended',
+                        'on' => 'On',
+                        'off' => 'Off',
                     ])
-                    ->default('active'),
+                    ->default('on')
+                    ->helperText('Only products from shops set to "On" are visible on the Dashboard.'),
             ]);
     }
 
@@ -78,7 +78,10 @@ class ShopResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('city')
                     ->sortable(),
-                Tables\Columns\BadgeColumn::make('status'),
+                Tables\Columns\TextColumn::make('status')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => $state === 'on' ? 'On' : 'Off')
+                    ->color(fn (string $state): string => $state === 'on' ? 'success' : 'gray'),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable(),
@@ -86,9 +89,8 @@ class ShopResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
-                        'active' => 'Active',
-                        'inactive' => 'Inactive',
-                        'suspended' => 'Suspended',
+                        'on' => 'On',
+                        'off' => 'Off',
                     ]),
             ])
             ->actions([

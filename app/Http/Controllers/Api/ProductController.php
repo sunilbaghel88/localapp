@@ -13,6 +13,7 @@ class ProductController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Product::where('status', 'published')
+            ->whereHas('shop', fn ($q) => $q->on())
             ->with(['images' => function ($q) {
                 $q->where('is_primary', true)->orWhereNull('is_primary')->orderBy('sort_order')->limit(1);
             }, 'variants' => function ($q) {
@@ -70,7 +71,12 @@ class ProductController extends Controller
 
         $perPage = min((int) $request->get('per_page', 12), 50);
         $products = $query->paginate($perPage)->withQueryString();
-        $categories = Category::where('is_active', true)->withCount('products')->get();
+        $categories = Category::where('is_active', true)
+            ->withCount(['products' => function ($query) {
+                $query->where('status', 'published')
+                    ->whereHas('shop', fn ($q) => $q->on());
+            }])
+            ->get();
 
         return response()->json([
             'products' => $products,
@@ -80,7 +86,7 @@ class ProductController extends Controller
 
     public function show(Product $product): JsonResponse
     {
-        if ($product->status !== 'published') {
+        if ($product->status !== 'published' || ! $product->shop || $product->shop->status !== 'on') {
             return response()->json(['message' => 'Product not found.'], 404);
         }
 
@@ -96,6 +102,7 @@ class ProductController extends Controller
         ]);
 
         $relatedProducts = Product::where('status', 'published')
+            ->whereHas('shop', fn ($q) => $q->on())
             ->where('id', '!=', $product->id)
             ->where(function ($q) use ($product) {
                 $q->where('category_id', $product->category_id)
