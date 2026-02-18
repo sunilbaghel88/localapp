@@ -27,6 +27,11 @@ class CartController extends Controller
 
     public function add(Request $request)
     {
+        if (!Auth::check()) {
+            $request->session()->put('url.intended', url()->previous());
+            return redirect()->route('login')->with('error', 'Please log in to add items to your cart.');
+        }
+
         $request->validate([
             'product_variant_id' => 'required|exists:product_variants,id',
             'quantity' => 'required|integer|min:1',
@@ -71,12 +76,21 @@ class CartController extends Controller
 
     public function update(Request $request, CartItem $cartItem)
     {
+        if (!Auth::check()) {
+            $request->session()->put('url.intended', url()->previous());
+            return redirect()->route('login')->with('error', 'Please log in to manage your cart.');
+        }
+
         $request->validate([
             'quantity' => 'required|integer|min:1',
         ]);
 
         // Verify cart ownership
         $cart = $this->getOrCreateCart();
+        if (!$cart) {
+            $request->session()->put('url.intended', url()->previous());
+            return redirect()->route('login')->with('error', 'Please log in to manage your cart.');
+        }
         if ($cartItem->cart_id !== $cart->id) {
             abort(403);
         }
@@ -93,8 +107,17 @@ class CartController extends Controller
 
     public function remove(CartItem $cartItem)
     {
+        if (!Auth::check()) {
+            session()->put('url.intended', url()->previous());
+            return redirect()->route('login')->with('error', 'Please log in to manage your cart.');
+        }
+
         // Verify cart ownership
         $cart = $this->getOrCreateCart();
+        if (!$cart) {
+            session()->put('url.intended', url()->previous());
+            return redirect()->route('login')->with('error', 'Please log in to manage your cart.');
+        }
         if ($cartItem->cart_id !== $cart->id) {
             abort(403);
         }
@@ -109,18 +132,7 @@ class CartController extends Controller
         if (Auth::check()) {
             return Cart::firstOrCreate(['user_id' => Auth::id()]);
         }
-
-        // For guest users, use session-based cart
-        $cartId = session('cart_id');
-        if ($cartId) {
-            $cart = Cart::find($cartId);
-            if ($cart && !$cart->user_id) {
-                return $cart;
-            }
-        }
-
-        $cart = Cart::create();
-        session(['cart_id' => $cart->id]);
-        return $cart;
+        
+        return null;
     }
 }
