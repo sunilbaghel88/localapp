@@ -9,6 +9,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Database\Eloquent\Model;
 
 class VariantsRelationManager extends RelationManager
 {
@@ -33,17 +34,19 @@ class VariantsRelationManager extends RelationManager
                     ->label('Compare at Price')
                     ->numeric()
                     ->prefix('₹'),
+                Forms\Components\Toggle::make('is_active')
+                    ->label('Active')
+                    ->inline(false)
+                    ->default(true),
                 Forms\Components\TextInput::make('stock')
                     ->numeric()
                     ->required()
                     ->default(0),
                 Forms\Components\KeyValue::make('attributes')
+                    ->columnSpanFull()
                     ->keyLabel('Attribute')
                     ->valueLabel('Value')
                     ->addButtonLabel('Add attribute'),
-                Forms\Components\Toggle::make('is_active')
-                    ->label('Active')
-                    ->default(true),
             ]);
     }
 
@@ -133,5 +136,10 @@ class VariantsRelationManager extends RelationManager
                 ]),
             ])
             ->defaultSort('sku');
+    }
+
+    public static function getBadge(Model $ownerRecord, string $pageClass): ?string
+    {
+        return (string) $ownerRecord->{static::$relationship}()->count();
     }
 }
