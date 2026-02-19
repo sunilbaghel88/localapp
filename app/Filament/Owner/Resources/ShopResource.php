@@ -37,6 +37,10 @@ class ShopResource extends Resource
                 Forms\Components\TextInput::make('phone')
                     ->tel()
                     ->maxLength(20),
+                Forms\Components\TextInput::make('alternate_phone')
+                    ->label('Alternate number')
+                    ->tel()
+                    ->maxLength(20),
                 Forms\Components\TextInput::make('email')
                     ->email()
                     ->maxLength(255),
@@ -55,10 +59,6 @@ class ShopResource extends Resource
                 Forms\Components\TextInput::make('postal_code')
                     ->label('Postal code')
                     ->maxLength(20),
-                Forms\Components\TextInput::make('latitude')
-                    ->numeric(),
-                Forms\Components\TextInput::make('longitude')
-                    ->numeric(),
                 Forms\Components\Select::make('status')
                     ->options([
                         'on' => 'On',
@@ -66,6 +66,58 @@ class ShopResource extends Resource
                     ])
                     ->default('on')
                     ->helperText('Only products from shops set to "On" are visible on the Dashboard.'),
+                Forms\Components\Section::make('Shop front photo')
+                    ->schema([
+                        Forms\Components\FileUpload::make('shop_front_photo')
+                            ->label('Front photo of the shop')
+                            ->image()
+                            ->disk('public')
+                            ->directory('shop-documents/shop-front')
+                            ->visibility('public')
+                            ->imageEditor()
+                            ->helperText('Upload or capture via camera. On mobile, choose "Take photo" when uploading.'),
+                    ])
+                    ->collapsible(),
+                Forms\Components\Section::make('Documents')
+                    ->schema([
+                        Forms\Components\FileUpload::make('owner_photo')
+                            ->label("Owner's photo")
+                            ->image()
+                            ->disk('public')
+                            ->directory('shop-documents/owner-photos')
+                            ->visibility('public')
+                            ->imageEditor()
+                            ->helperText('Upload or capture via camera. On mobile, choose "Take photo" when uploading.'),
+                        Forms\Components\FileUpload::make('aadhar_card')
+                            ->label('Aadhar Card')
+                            ->disk('public')
+                            ->directory('shop-documents/aadhar')
+                            ->visibility('public')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                            ->maxSize(10240),
+                        Forms\Components\FileUpload::make('shop_license')
+                            ->label('Shop License')
+                            ->disk('public')
+                            ->directory('shop-documents/shop-license')
+                            ->visibility('public')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                            ->maxSize(10240),
+                        Forms\Components\FileUpload::make('gst_certificate')
+                            ->label('GST Certificate')
+                            ->disk('public')
+                            ->directory('shop-documents/gst-certificate')
+                            ->visibility('public')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                            ->maxSize(10240),
+                        Forms\Components\FileUpload::make('electricity_bill')
+                            ->label('Electricity Bill')
+                            ->disk('public')
+                            ->directory('shop-documents/electricity-bill')
+                            ->visibility('public')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                            ->maxSize(10240),
+                    ])
+                    ->collapsible(),
             ]);
     }
 
@@ -76,6 +128,11 @@ class ShopResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\ImageColumn::make('shop_front_photo')
+                    ->label('Front photo')
+                    ->disk('public')
+                    ->visibility('public')
+                    ->circular(),
                 Tables\Columns\TextColumn::make('city')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
@@ -98,7 +155,7 @@ class ShopResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    
                 ]),
             ]);
     }

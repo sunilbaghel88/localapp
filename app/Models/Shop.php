@@ -18,6 +18,7 @@ class Shop extends Model
         'slug',
         'description',
         'phone',
+        'alternate_phone',
         'email',
         'address_line1',
         'address_line2',
@@ -28,6 +29,12 @@ class Shop extends Model
         'latitude',
         'longitude',
         'status',
+        'owner_photo',
+        'aadhar_card',
+        'shop_license',
+        'gst_certificate',
+        'electricity_bill',
+        'shop_front_photo',
     ];
 
     protected $casts = [
