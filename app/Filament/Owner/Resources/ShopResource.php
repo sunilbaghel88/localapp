@@ -5,6 +5,7 @@ namespace App\Filament\Owner\Resources;
 use App\Filament\Owner\Resources\ShopResource\Pages;
 use App\Filament\Owner\Resources\ShopResource\RelationManagers;
 use App\Models\Shop;
+use App\Models\State;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -52,8 +53,11 @@ class ShopResource extends Resource
                     ->maxLength(255),
                 Forms\Components\TextInput::make('city')
                     ->maxLength(255),
-                Forms\Components\TextInput::make('state')
-                    ->maxLength(255),
+                Forms\Components\Select::make('state')
+                    ->label('State')
+                    ->options(fn () => State::query()->orderBy('sort_order')->pluck('name', 'name'))
+                    ->searchable()
+                    ->preload(),
                 Forms\Components\TextInput::make('country')
                     ->maxLength(255),
                 Forms\Components\TextInput::make('postal_code')
