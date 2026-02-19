@@ -22,6 +22,7 @@ class User extends Authenticatable implements FilamentUser
         'phone',
         'role',
         'is_active',
+        'owner_permissions',
     ];
     
     protected $hidden = [
@@ -35,7 +36,23 @@ class User extends Authenticatable implements FilamentUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'owner_permissions' => 'array',
         ];
+    }
+    
+    public function canAccessOwnerTab(string $permission): bool
+    {
+        if ($this->role === 'admin') {
+            return true;
+        }
+
+        if ($this->role !== 'owner') {
+            return false;
+        }
+
+        $permissions = $this->owner_permissions ?? [];
+
+        return in_array($permission, $permissions, true);
     }
 
     public function canAccessPanel(Panel $panel): bool

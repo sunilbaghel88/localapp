@@ -45,6 +45,7 @@ class UserResource extends Resource
                                 'customer' => 'Customer',
                             ])
                             ->required()
+                            ->live()
                             ->native(false),
                         Forms\Components\TextInput::make('password')
                             ->password()
@@ -67,6 +68,12 @@ class UserResource extends Resource
                         Forms\Components\Toggle::make('is_active')
                             ->label('Active')
                             ->default(true),
+                        Forms\Components\CheckboxList::make('owner_permissions')
+                            ->label('Owner panel permissions')
+                            ->helperText('Allow this user to access these tabs in the Owner panel. Admins have access to all.')
+                            ->options(config('owner_permissions.tabs', []))
+                            ->columns(1)
+                            ->visible(fn (Get $get): bool => in_array($get('role'), ['owner'], true)),
                     ])
                     ->columns(2),
             ]);
@@ -108,6 +115,22 @@ class UserResource extends Resource
                     ->label('Active')
                     ->boolean()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('owner_permissions')
+                    ->label('Owner panel access')
+                    ->formatStateUsing(function ($state, User $record): string {
+                        if ($record->role === 'admin') {
+                            return 'All';
+                        }
+                        if ($record->role !== 'owner' || empty($state)) {
+                            return '—';
+                        }
+                        $labels = array_intersect_key(
+                            config('owner_permissions.tabs', []),
+                            array_fill_keys($state, true)
+                        );
+                        return implode(', ', $labels) ?: '—';
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
