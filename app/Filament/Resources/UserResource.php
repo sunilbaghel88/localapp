@@ -105,9 +105,8 @@ class UserResource extends Resource
                         default => $state,
                     })
                     ->color(fn (string $state): string => match ($state) {
-                        'admin' => 'danger',
-                        'owner' => 'warning',
-                        'customer' => 'success',
+                        'admin' => 'success',
+                        'owner' => 'primary',
                         default => 'gray',
                     })
                     ->sortable(),
