@@ -2,27 +2,24 @@
 
 namespace App\Filament\Owner\Resources;
 
-use App\Filament\Owner\Resources\CategoryResource\Pages;
-use App\Filament\Owner\Resources\CategoryResource\RelationManagers;
-use App\Models\Category;
+use App\Filament\Owner\Resources\BrandResource\Pages;
+use App\Models\Brand;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Str;
 
-class CategoryResource extends Resource
+class BrandResource extends Resource
 {
-    protected static ?string $model = Category::class;
+    protected static ?string $model = Brand::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-tag';
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->canAccessOwnerTab('category') ?? false;
+        return auth()->user()?->canAccessOwnerTab('brand') ?? false;
     }
 
     public static function shouldRegisterNavigation(): bool
@@ -47,7 +44,7 @@ class CategoryResource extends Resource
                         $slug = $baseSlug;
                         $counter = 2;
 
-                        while (Category::where('slug', $slug)->exists()) {
+                        while (Brand::where('slug', $slug)->exists()) {
                             $slug = $baseSlug . '-' . $counter;
                             $counter++;
                         }
@@ -59,15 +56,8 @@ class CategoryResource extends Resource
                     ->unique(ignoreRecord: true)
                     ->maxLength(255)
                     ->readOnly(),
-                Forms\Components\Select::make('parent_id')
-                    ->label('Parent')
-                    ->relationship('parent', 'name')
-                    ->searchable()
-                    ->preload(),
-                Forms\Components\Textarea::make('description')
-                    ->columnSpanFull(),
-                Forms\Components\Toggle::make('is_active')
-                    ->default(true),
+                Forms\Components\Toggle::make('is_approved')
+                    ->label('Approved'),
             ]);
     }
 
@@ -75,17 +65,23 @@ class CategoryResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('slug')->searchable(),
-                Tables\Columns\TextColumn::make('parent.name')->label('Parent'),
-                Tables\Columns\IconColumn::make('is_active')->boolean(),
-                Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable(),
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('slug')
+                    ->searchable(),
+                Tables\Columns\IconColumn::make('is_approved')
+                    ->boolean(),
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->dateTime()
+                    ->sortable(),
             ])
             ->filters([
                 //
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -94,19 +90,11 @@ class CategoryResource extends Resource
             ]);
     }
 
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
-    }
-
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListCategories::route('/'),
-            'create' => Pages\CreateCategory::route('/create'),
-            'edit' => Pages\EditCategory::route('/{record}/edit'),
+            'index' => Pages\ManageBrands::route('/'),
         ];
     }
 }
+

@@ -4,6 +4,7 @@ namespace App\Filament\Owner\Resources;
 
 use App\Filament\Owner\Resources\ProductResource\Pages;
 use App\Filament\Owner\Resources\ProductResource\RelationManagers;
+use App\Models\Brand;
 use App\Models\Product;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -70,8 +71,33 @@ class ProductResource extends Resource
                     ->relationship('category', 'name')
                     ->searchable()
                     ->preload(),
-                Forms\Components\TextInput::make('brand')
-                    ->maxLength(255),
+                Forms\Components\Select::make('brand_id')
+                    ->label('Brand')
+                    ->relationship(
+                        name: 'brand',
+                        titleAttribute: 'name',
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->createOptionForm([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Brand name')
+                            ->required()
+                            ->maxLength(255),
+                    ])
+                    ->createOptionUsing(function (array $data) {
+                        $user = auth()->user();
+
+                        $brand = Brand::create([
+                            'name'        => $data['name'],
+                            'slug'        => \Illuminate\Support\Str::slug($data['name']),
+                            'is_approved' => $user?->canAccessOwnerTab('brand') ?? false,
+                            'created_by'  => $user?->id,
+                        ]);
+
+                        return $brand->getKey();
+                    })
+                    ->helperText('If you cannot find a brand add it manually by clicking + button. New brands require approval before they appear in the storefront.'),
                 Forms\Components\Textarea::make('description')
                     ->columnSpanFull(),
             ]);

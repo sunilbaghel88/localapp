@@ -13,6 +13,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Str;
 
 class ShopResource extends Resource
 {
@@ -28,11 +29,29 @@ class ShopResource extends Resource
                     ->default(fn () => auth()->id()),
                 Forms\Components\TextInput::make('name')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function (string $operation, $state, callable $set) {
+                        if ($operation !== 'create' || blank($state)) {
+                            return;
+                        }
+
+                        $baseSlug = Str::slug($state);
+                        $slug = $baseSlug;
+                        $counter = 2;
+
+                        while (Shop::where('slug', $slug)->exists()) {
+                            $slug = $baseSlug . '-' . $counter;
+                            $counter++;
+                        }
+
+                        $set('slug', $slug);
+                    }),
                 Forms\Components\TextInput::make('slug')
                     ->required()
                     ->unique(ignoreRecord: true)
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->readOnly(),
                 Forms\Components\Textarea::make('description')
                     ->columnSpanFull(),
                 Forms\Components\TextInput::make('phone')

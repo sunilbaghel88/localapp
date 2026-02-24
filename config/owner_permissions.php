@@ -10,5 +10,6 @@ return [
     */
     'tabs' => [
         'category' => 'Manage Categories',
+        'brand' => 'Manage Brands',
     ],
 ];
