@@ -5,6 +5,7 @@ namespace App\Filament\Owner\Resources;
 use App\Filament\Owner\Resources\ShopResource\Pages;
 use App\Filament\Owner\Resources\ShopResource\RelationManagers;
 use App\Models\Shop;
+use App\Models\ShopType;
 use App\Models\State;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -12,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Str;
 
@@ -27,6 +29,19 @@ class ShopResource extends Resource
             ->schema([
                 Forms\Components\Hidden::make('user_id')
                     ->default(fn () => auth()->id()),
+                Forms\Components\Select::make('shop_type_id')
+                    ->label('Shop Type')
+                    ->relationship(
+                        name: 'shopType',
+                        titleAttribute: 'name',
+                        modifyQueryUsing: fn (Builder $query) => $query->where('is_active', true)->orderBy('sort_order'),
+                    )
+                    ->required()
+                    ->searchable()
+                    ->preload()
+                    ->disabled(fn (?Model $record): bool => $record?->shop_type_id !== null)
+                    ->dehydrated()
+                    ->helperText('Once a shop type is selected for a shop, it cannot be changed. Existing shops without a type can set it once.'),
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255)
