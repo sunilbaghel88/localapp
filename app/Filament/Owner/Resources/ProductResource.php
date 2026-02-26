@@ -34,7 +34,8 @@ class ProductResource extends Resource
                     )
                     ->required()
                     ->preload()
-                    ->searchable(),
+                    ->searchable()
+                    ->live(),
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255)
@@ -100,6 +101,30 @@ class ProductResource extends Resource
                     ->helperText('If you cannot find a brand add it manually by clicking + button. New brands require approval before they appear in the storefront.'),
                 Forms\Components\Textarea::make('description')
                     ->columnSpanFull(),
+                Forms\Components\Section::make('Shop type attributes')
+                    ->description('These attributes are defined for your shop type. Fill their values in each variant (Variants tab). They will be shown on the storefront product page.')
+                    ->schema([
+                        Forms\Components\Placeholder::make('shop_type_attributes_info')
+                            ->label('')
+                            ->content(function (Forms\Get $get): string {
+                                $shopId = $get('shop_id');
+                                if (! $shopId) {
+                                    return 'Select a shop to see its shop type attributes.';
+                                }
+                                $shop = \App\Models\Shop::with('shopType.fields')->find($shopId);
+                                if (! $shop?->shopType) {
+                                    return 'This shop has no shop type set, or the shop type has no attribute fields.';
+                                }
+                                $fields = $shop->shopType->fields;
+                                if ($fields->isEmpty()) {
+                                    return 'No attribute fields defined for this shop type. Add them in Shop Types → edit "' . e($shop->shopType->name) . '" → Attribute fields.';
+                                }
+                                return 'Attribute keys for variants: ' . $fields->pluck('label')->join(', ') . '.';
+                            })
+                            ->visible(fn (Forms\Get $get): bool => (bool) $get('shop_id')),
+                    ])
+                    ->collapsible()
+                    ->visible(fn (Forms\Get $get): bool => (bool) $get('shop_id')),
             ]);
     }
 

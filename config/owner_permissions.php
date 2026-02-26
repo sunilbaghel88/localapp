@@ -11,5 +11,6 @@ return [
     'tabs' => [
         'category' => 'Manage Categories',
         'brand' => 'Manage Brands',
+        'shop_type' => 'Manage Shop Types',
     ],
 ];

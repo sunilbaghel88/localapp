@@ -15,6 +15,21 @@ class VariantsRelationManager extends RelationManager
 {
     protected static string $relationship = 'variants';
 
+    public function getDefaultAttributesForVariant(): array
+    {
+        $product = $this->getOwnerRecord();
+        $product->loadMissing('shop.shopType.fields');
+        $shopType = $product->shop?->shopType;
+        if (! $shopType) {
+            return [];
+        }
+        $defaults = [];
+        foreach ($shopType->fields as $field) {
+            $defaults[$field->key] = '';
+        }
+        return $defaults;
+    }
+
     public function form(Form $form): Form
     {
         return $form
@@ -46,7 +61,32 @@ class VariantsRelationManager extends RelationManager
                     ->columnSpanFull()
                     ->keyLabel('Attribute')
                     ->valueLabel('Value')
-                    ->addButtonLabel('Add attribute'),
+                    ->addButtonLabel('Add attribute')
+                    ->default(fn () => $this->getDefaultAttributesForVariant())
+                    ->afterStateHydrated(function (Forms\Components\KeyValue $component, $state): void {
+                        $livewire = $component->getContainer()->getLivewire();
+
+                        if (! method_exists($livewire, 'getDefaultAttributesForVariant')) {
+                            return;
+                        }
+
+                        $defaults = $livewire->getDefaultAttributesForVariant();
+
+                        if (empty($defaults)) {
+                            return;
+                        }
+
+                        $current = is_array($state) ? $state : [];
+
+                        foreach ($defaults as $key => $defaultValue) {
+                            if (! array_key_exists($key, $current)) {
+                                $current[$key] = $defaultValue;
+                            }
+                        }
+
+                        $component->state($current);
+                    })
+                    ->helperText('Attributes from your shop type are listed above. Fill in values per variant; they will be shown on the storefront product page.'),
             ]);
     }
 
