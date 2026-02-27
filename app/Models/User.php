@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Spatie\Permission\Traits\HasRoles;
+use BezhanSalleh\FilamentShield\Traits\HasPanelShield;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -13,16 +15,14 @@ use Filament\Panel;
 
 class User extends Authenticatable implements FilamentUser
 {
-    use HasFactory, Notifiable, HasApiTokens;
+    use HasFactory, Notifiable, HasApiTokens, HasRoles, HasPanelShield;
     
     protected $fillable = [
         'name',
         'email',
         'password',
         'phone',
-        'role',
         'is_active',
-        'owner_permissions',
     ];
     
     protected $hidden = [
@@ -36,36 +36,7 @@ class User extends Authenticatable implements FilamentUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
-            'owner_permissions' => 'array',
         ];
-    }
-    
-    public function canAccessOwnerTab(string $permission): bool
-    {
-        if ($this->role === 'admin') {
-            return true;
-        }
-
-        if ($this->role !== 'owner') {
-            return false;
-        }
-
-        $permissions = $this->owner_permissions ?? [];
-
-        return in_array($permission, $permissions, true);
-    }
-
-    public function canAccessPanel(Panel $panel): bool
-    {
-        if ($panel->getId() === 'admin') {
-            return $this->role === 'admin';
-        }
-
-        if ($panel->getId() === 'owner') {
-            return $this->role === 'admin' || $this->role === 'owner';
-        }
-
-        return false;
     }
 
     public function shops(): HasMany

@@ -30,13 +30,11 @@ class AuthenticatedSessionController extends Controller
 
         $user = $request->user();
 
-        if ($user->role === 'admin') {
-            return redirect(route('filament.admin.pages.dashboard', absolute: false));
-        } elseif ($user->role === 'owner') {
-            return redirect(route('filament.owner.pages.dashboard', absolute: false));
-        } else {
-            return redirect()->intended(route('orders.index', absolute: false));
+        if ($user->hasRole('super_admin')) {
+            return redirect()->intended(route('filament.admin.pages.dashboard', absolute: false));
         }
+
+        return redirect()->intended(route('orders.index', absolute: false));
     }
 
     /**

@@ -12,12 +12,15 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
+
+    protected static ?string $navigationGroup = 'Settings';
 
     protected static ?int $navigationSort = 1;
 
@@ -38,15 +41,6 @@ class UserResource extends Resource
                         Forms\Components\TextInput::make('phone')
                             ->tel()
                             ->maxLength(255),
-                        Forms\Components\Select::make('role')
-                            ->options([
-                                'admin' => 'Admin',
-                                'owner' => 'Shop Owner',
-                                'customer' => 'Customer',
-                            ])
-                            ->required()
-                            ->live()
-                            ->native(false),
                         Forms\Components\TextInput::make('password')
                             ->password()
                             ->dehydrateStateUsing(fn ($state) => filled($state) ? Hash::make($state) : null)
@@ -65,15 +59,15 @@ class UserResource extends Resource
                             ->maxLength(255)
                             ->minLength(8)
                             ->revealable(),
+                        Forms\Components\Select::make('roles')
+                            ->label('Role')
+                            ->relationship('roles', 'name')
+                            ->multiple()
+                            ->preload()
+                            ->options(Role::pluck('name', 'id')->toArray()),
                         Forms\Components\Toggle::make('is_active')
                             ->label('Active')
                             ->default(true),
-                        Forms\Components\CheckboxList::make('owner_permissions')
-                            ->label('Owner panel permissions')
-                            ->helperText('Allow this user to access these tabs in the Owner panel. Admins have access to all.')
-                            ->options(config('owner_permissions.tabs', []))
-                            ->columns(1)
-                            ->visible(fn (Get $get): bool => in_array($get('role'), ['owner'], true)),
                     ])
                     ->columns(2),
             ]);
@@ -92,43 +86,16 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('email')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('phone')
-                    ->searchable()
-                    ->sortable()
-                    ->toggleable(),
-                Tables\Columns\TextColumn::make('role')
+                Tables\Columns\TextColumn::make('roles.name')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'admin' => 'Admin',
-                        'owner' => 'Shop Owner',
-                        'customer' => 'Customer',
-                        default => $state,
-                    })
-                    ->color(fn (string $state): string => match ($state) {
-                        'admin' => 'success',
-                        'owner' => 'primary',
-                        default => 'gray',
-                    })
-                    ->sortable(),
+                    ->formatStateUsing(fn ($state) => str($state)->headline()),
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Active')
                     ->boolean()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('owner_permissions')
-                    ->label('Owner panel access')
-                    ->formatStateUsing(function ($state, User $record): string {
-                        if ($record->role === 'admin') {
-                            return 'All';
-                        }
-                        if ($record->role !== 'owner' || empty($state)) {
-                            return '—';
-                        }
-                        $labels = array_intersect_key(
-                            config('owner_permissions.tabs', []),
-                            array_fill_keys($state, true)
-                        );
-                        return implode(', ', $labels) ?: '—';
-                    })
+                Tables\Columns\TextColumn::make('phone')
+                    ->searchable()
+                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
@@ -140,13 +107,6 @@ class UserResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('role')
-                    ->options([
-                        'admin' => 'Admin',
-                        'owner' => 'Shop Owner',
-                        'customer' => 'Customer',
-                    ])
-                    ->native(false),
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Active')
                     ->placeholder('All')
