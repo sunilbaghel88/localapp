@@ -66,6 +66,16 @@
                 </div>
                 @endif
 
+                <!-- Additional info (variant attributes) - shown when variant is selected via JS -->
+                <div id="variantAttributesSection" class="mb-6 hidden">
+                    <h3 class="font-semibold text-gray-900 mb-2">Additional information</h3>
+                    <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                        <table class="min-w-full divide-y divide-gray-200 text-sm">
+                            <tbody id="variantAttributesBody" class="divide-y divide-gray-200 bg-white"></tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- Variants -->
                 @if($product->variants->count() > 0)
                 <form action="{{ route('cart.add') }}" method="POST" class="space-y-4">
@@ -75,11 +85,12 @@
                         <select name="product_variant_id" id="variantSelect" required class="w-full border border-gray-300 rounded-lg px-4 py-2">
                             <option value="">Choose a variant</option>
                             @foreach($product->variants as $variant)
-                            <option value="{{ $variant->id }}" 
+                            <option value="{{ $variant->id }}"
                                     data-price="{{ $variant->price }}"
                                     data-stock="{{ $variant->stock }}"
-                                    data-compare-price="{{ $variant->compare_at_price }}">
-                                {{ $variant->name ?: $variant->sku }} 
+                                    data-compare-price="{{ $variant->compare_at_price }}"
+                                    data-attributes="{{ base64_encode(json_encode($variant->attributes ?? [])) }}">
+                                {{ $variant->name ?: $variant->sku }}
                                 - ₹{{ number_format($variant->price, 2) }}
                                 @if($variant->stock <= 0) (Out of Stock) @endif
                             </option>
@@ -118,12 +129,37 @@
                         if (this.value) {
                             variantInfo.classList.remove('hidden');
                             document.getElementById('variantPrice').textContent = '₹' + parseFloat(price).toFixed(2);
-                            
+
                             if (comparePrice && parseFloat(comparePrice) > parseFloat(price)) {
                                 document.getElementById('variantComparePrice').textContent = '₹' + parseFloat(comparePrice).toFixed(2);
                                 document.getElementById('variantComparePrice').classList.remove('hidden');
                             } else {
                                 document.getElementById('variantComparePrice').classList.add('hidden');
+                            }
+
+                            var attrsSection = document.getElementById('variantAttributesSection');
+                            var attrsBody = document.getElementById('variantAttributesBody');
+                            var attrsEncoded = option.dataset.attributes || '';
+                            try {
+                                var attrs = {};
+                                if (attrsEncoded) {
+                                    attrs = JSON.parse(atob(attrsEncoded));
+                                }
+                                var filled = Object.keys(attrs).filter(function(k) { return attrs[k] !== '' && attrs[k] != null; });
+                                if (filled.length > 0) {
+                                    attrsBody.innerHTML = filled.map(function(k) {
+                                        var label = k.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+                                        return '<tr>' +
+                                            '<th class="px-4 py-2 text-left font-medium text-gray-700 w-1/3 bg-gray-50">' + label + '</th>' +
+                                            '<td class="px-4 py-2 text-gray-900">' + (attrs[k] || '') + '</td>' +
+                                        '</tr>';
+                                    }).join('');
+                                    attrsSection.classList.remove('hidden');
+                                } else {
+                                    attrsSection.classList.add('hidden');
+                                }
+                            } catch (e) {
+                                attrsSection.classList.add('hidden');
                             }
 
                             if (stock > 0) {
@@ -140,6 +176,7 @@
                             }
                         } else {
                             variantInfo.classList.add('hidden');
+                            document.getElementById('variantAttributesSection').classList.add('hidden');
                         }
                     });
                 </script>
