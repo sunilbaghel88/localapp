@@ -45,10 +45,10 @@ class _RegisterFormState extends State<_RegisterForm> {
   Future<void> _loadUserTypes() async {
     try {
       final types = await _api.getUserTypes();
-      if (mounted) setState(() {
+      if (mounted) { setState(() {
         _userTypes = types;
         _loadingTypes = false;
-      });
+      });}
     } catch (_) {
       if (mounted) setState(() => _loadingTypes = false);
     }
@@ -120,7 +120,7 @@ class _RegisterFormState extends State<_RegisterForm> {
                   const SizedBox(height: 56, child: Center(child: CircularProgressIndicator()))
                 else if (_userTypes.isNotEmpty)
                   DropdownButtonFormField<int?>(
-                    value: _selectedUserTypeId,
+                    initialValue: _selectedUserTypeId,
                     decoration: const InputDecoration(
                       labelText: 'Type',
                       border: OutlineInputBorder(),

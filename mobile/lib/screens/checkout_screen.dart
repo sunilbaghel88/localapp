@@ -221,7 +221,7 @@ class _ElectricianSelector extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: DropdownButtonFormField<int?>(
-        value: selectedId,
+        initialValue: selectedId,
         decoration: InputDecoration(
           labelText: '${shop.name} — electrician (optional)',
           border: const OutlineInputBorder(),
