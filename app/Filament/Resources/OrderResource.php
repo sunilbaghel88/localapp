@@ -22,7 +22,77 @@ class OrderResource extends Resource
     {
         return $form
             ->schema([
-                //
+                Forms\Components\Section::make('Order Details')
+                    ->schema([
+                        Forms\Components\Select::make('user_id')
+                            ->label('Customer')
+                            ->relationship('user', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                        Forms\Components\Select::make('shop_id')
+                            ->label('Shop')
+                            ->options(fn () => auth()->user()
+                                ? auth()->user()->shops()->pluck('name', 'id')
+                                : [])
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                        Forms\Components\Select::make('electrician_user_id')
+                            ->label('Electrician')
+                            ->relationship('electricianUser', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
+                        Forms\Components\Select::make('status')
+                            ->label('Order Status')
+                            ->options([
+                                'pending' => 'Pending',
+                                'processing' => 'Processing',
+                                'shipped' => 'Shipped',
+                                'delivered' => 'Delivered',
+                                'cancelled' => 'Cancelled',
+                            ])
+                            ->default('pending')
+                            ->required(),
+                        Forms\Components\Select::make('payment_status')
+                            ->label('Payment Status')
+                            ->options([
+                                'pending' => 'Pending',
+                                'paid' => 'Paid',
+                                'failed' => 'Failed',
+                                'refunded' => 'Refunded',
+                            ])
+                            ->default('pending')
+                            ->required(),
+                        Forms\Components\Select::make('address_id')
+                            ->label('Shipping Address')
+                            ->relationship('address', 'address_line1')
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
+                    ])
+                    ->columns(2),
+                Forms\Components\Section::make('Totals')
+                    ->schema([
+                        Forms\Components\TextInput::make('subtotal')
+                            ->numeric()
+                            ->default(0)
+                            ->required(),
+                        Forms\Components\TextInput::make('discount_total')
+                            ->numeric()
+                            ->default(0),
+                        Forms\Components\TextInput::make('shipping_total')
+                            ->numeric()
+                            ->default(0),
+                        Forms\Components\TextInput::make('tax_total')
+                            ->numeric()
+                            ->default(0),
+                        Forms\Components\TextInput::make('grand_total')
+                            ->numeric()
+                            ->required(),
+                    ])
+                    ->columns(3),
             ]);
     }
 
@@ -274,6 +344,7 @@ class OrderResource extends Resource
     {
         return [
             'index' => Pages\ListOrders::route('/'),
+            'create' => Pages\CreateOrder::route('/create'),
             'view' => Pages\ViewOrder::route('/{record}'),
         ];
     }
