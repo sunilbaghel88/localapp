@@ -141,8 +141,33 @@
                         </form>
                     </div>
 
+                    @if($shopsWithElectricianSupport->isNotEmpty())
+                    <!-- Electrician (optional, for shops that support it) -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 mt-6">
+                        <h2 class="text-xl font-bold text-gray-900 mb-4">Electrician (Optional)</h2>
+                        <p class="text-sm text-gray-600 mb-4">If an electrician helped you with this purchase, you can select them below. The shop owner may choose to reward them with points.</p>
+                        @foreach($shopsWithElectricianSupport as $shop)
+                        <div class="mb-4">
+                            <label for="electrician_{{ $shop->id }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                Electrician for {{ $shop->name }}
+                            </label>
+                            <div class="relative">
+                                <select name="electrician[{{ $shop->id }}]" id="electrician_{{ $shop->id }}" form="checkout-form" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                    <option value="">— None (I ordered directly) —</option>
+                                    @foreach($shop->electricians as $electrician)
+                                    <option value="{{ $electrician->id }}" data-search="{{ strtolower($electrician->name . ' ' . ($electrician->email ?? '') . ' ' . ($electrician->phone ?? '')) }}">
+                                        {{ $electrician->name }}{{ $electrician->phone ? ' (' . $electrician->phone . ')' : '' }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                    @endif
+
                     <!-- Payment Method -->
-                    <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="bg-white rounded-lg shadow-sm p-6 mt-6">
                         <h2 class="text-xl font-bold text-gray-900 mb-4">Payment Method</h2>
                         <div class="space-y-3">
                             <label class="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-amber-500 transition">
@@ -207,6 +232,26 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Electrician search filter
+    document.querySelectorAll('.electrician-search').forEach(function(input) {
+        const shopId = input.dataset.shopId;
+        const select = document.getElementById('electrician_' + shopId);
+        if (!select) return;
+
+        input.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            Array.from(select.options).forEach(function(opt) {
+                if (opt.value === '') {
+                    opt.style.display = '';
+                    return;
+                }
+                const searchText = opt.dataset.search || '';
+                opt.style.display = (!query || searchText.indexOf(query) !== -1) ? '' : 'none';
+            });
+        });
+        input.addEventListener('focus', function() { select.style.display = 'block'; });
+    });
+
     const toggleBtn = document.getElementById('toggle-address-form');
     const addressForm = document.getElementById('address-form');
     const cancelBtn = document.getElementById('cancel-address-form');

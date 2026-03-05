@@ -34,6 +34,17 @@ class CheckoutController extends Controller
         }
 
         $addresses = Auth::user()->addresses()->orderBy('is_default', 'desc')->get();
+
+        $shopsWithElectricianSupport = $cart->items
+            ->groupBy(fn ($item) => $item->variant->product->shop_id)
+            ->keys()
+            ->map(fn ($shopId) => \App\Models\Shop::with(['shopType', 'electricians'])->find($shopId))
+            ->filter(fn ($shop) => $shop
+                && $shop->shopType
+                && $shop->shopType->supports_electrician_rewards
+                && $shop->shopType->electrician_user_type_id)
+            ->values();
+
         $subtotal = $cart->items->sum(fn ($item) => $item->quantity * (float) $item->price);
         $shippingTotal = 0;
         $taxTotal = 0;
@@ -43,6 +54,7 @@ class CheckoutController extends Controller
         return response()->json([
             'cart' => $cart,
             'addresses' => $addresses,
+            'shops_with_electrician_support' => $shopsWithElectricianSupport,
             'subtotal' => round($subtotal, 2),
             'shipping_total' => $shippingTotal,
             'tax_total' => $taxTotal,
@@ -99,6 +111,8 @@ class CheckoutController extends Controller
     {
         $request->validate([
             'address_id' => 'required|exists:addresses,id',
+            'electrician' => 'nullable|array',
+            'electrician.*' => 'nullable|exists:users,id',
         ], [
             'address_id.required' => 'Please select a shipping address.',
             'address_id.exists' => 'The selected address is invalid.',
@@ -128,10 +142,13 @@ class CheckoutController extends Controller
                 $discountTotal = 0;
                 $grandTotal = $subtotal + $shippingTotal + $taxTotal - $discountTotal;
 
+                $electricianUserId = ($request->electrician ?? [])[$shopId] ?? null;
+
                 $order = Order::create([
                     'user_id' => Auth::id(),
                     'shop_id' => $shopId,
                     'address_id' => $address->id,
+                    'electrician_user_id' => $electricianUserId,
                     'status' => 'pending',
                     'payment_status' => 'pending',
                     'subtotal' => $subtotal,

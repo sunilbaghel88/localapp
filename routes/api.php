@@ -9,12 +9,14 @@ use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\UserTypeController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login'])->name('api.login');
 Route::post('/register', [AuthController::class, 'register'])->name('api.register');
 
 Route::get('/home', [HomeController::class, 'index'])->name('api.home');
+Route::get('/user-types', [UserTypeController::class, 'index'])->name('api.user-types.index');
 Route::get('/products', [ProductController::class, 'index'])->name('api.products.index');
 Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('api.products.show');
 

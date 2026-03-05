@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
+use App\Models\UserType;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -41,6 +42,11 @@ class UserResource extends Resource
                         Forms\Components\TextInput::make('phone')
                             ->tel()
                             ->maxLength(255),
+                        Forms\Components\Select::make('user_type_id')
+                            ->label('User Type')
+                            ->relationship('userType', 'name', fn ($query) => $query->where('is_active', true)->orderBy('sort_order'))
+                            ->searchable()
+                            ->preload(),
                         Forms\Components\TextInput::make('password')
                             ->password()
                             ->dehydrateStateUsing(fn ($state) => filled($state) ? Hash::make($state) : null)
@@ -86,9 +92,18 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('email')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('userType.name')
+                    ->label('User Type')
+                    ->badge()
+                    ->placeholder('—')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('roles.name')
                     ->badge()
                     ->formatStateUsing(fn ($state) => str($state)->headline()),
+                Tables\Columns\TextColumn::make('reward_points')
+                    ->label('Reward pts')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Active')
                     ->boolean()

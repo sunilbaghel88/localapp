@@ -8,6 +8,8 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Filament\Models\Contracts\FilamentUser;
@@ -22,7 +24,9 @@ class User extends Authenticatable implements FilamentUser
         'email',
         'password',
         'phone',
+        'user_type_id',
         'is_active',
+        'reward_points',
     ];
     
     protected $hidden = [
@@ -57,5 +61,20 @@ class User extends Authenticatable implements FilamentUser
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function userType(): BelongsTo
+    {
+        return $this->belongsTo(UserType::class);
+    }
+
+    public function rewardGrants(): HasMany
+    {
+        return $this->hasMany(UserRewardGrant::class);
+    }
+
+    public function electricianShops(): BelongsToMany
+    {
+        return $this->belongsToMany(Shop::class, 'shop_user')->withTimestamps();
     }
 }

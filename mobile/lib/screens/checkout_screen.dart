@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../models/address.dart';
 import '../models/cart.dart';
+import '../models/shop_with_electricians.dart';
 import '../services/api_service.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -16,6 +17,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final ApiService _api = ApiService();
   Cart? _cart;
   List<Address> _addresses = [];
+  List<ShopWithElectricians> _shopsWithElectricianSupport = [];
+  Map<int, int?> _selectedElectricians = {};
   double _grandTotal = 0;
   bool _loading = true;
   bool _placing = false;
@@ -48,6 +51,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ?.map((e) => Address.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [];
+      _shopsWithElectricianSupport = ShopWithElectricians.fromJsonList(
+          data['shops_with_electrician_support'] as List<dynamic>?);
       _grandTotal = (data['grand_total'] as num?)?.toDouble() ?? 0;
       final defaultAddr = _addresses.where((a) => a.isDefault).toList();
       _selectedAddressId = (defaultAddr.isNotEmpty ? defaultAddr.first : _addresses.isNotEmpty ? _addresses.first : null)?.id;
@@ -67,7 +72,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
     setState(() => _placing = true);
     try {
-      await _api.placeOrder(_selectedAddressId!);
+      final electricianMap = _selectedElectricians.isNotEmpty
+          ? _selectedElectricians
+          : null;
+      await _api.placeOrder(_selectedAddressId!,
+          electrician: electricianMap);
       if (mounted) {
         context.go('/orders');
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order placed successfully')));
@@ -146,6 +155,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
                 if (_addresses.isNotEmpty)
                   TextButton.icon(icon: const Icon(Icons.add), label: const Text('Add new address'), onPressed: _addNewAddress),
+                if (_shopsWithElectricianSupport.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  Text('Electrician (optional)', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  ..._shopsWithElectricianSupport.map((shop) => _ElectricianSelector(
+                    shop: shop,
+                    selectedId: _selectedElectricians[shop.id],
+                    onChanged: (id) => setState(() {
+                      _selectedElectricians = {..._selectedElectricians, shop.id: id};
+                    }),
+                  )),
+                ],
                 const SizedBox(height: 24),
                 Text('Order summary', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
@@ -179,6 +200,40 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ElectricianSelector extends StatelessWidget {
+  final ShopWithElectricians shop;
+  final int? selectedId;
+  final ValueChanged<int?> onChanged;
+
+  const _ElectricianSelector({
+    required this.shop,
+    required this.selectedId,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DropdownButtonFormField<int?>(
+        value: selectedId,
+        decoration: InputDecoration(
+          labelText: '${shop.name} — electrician (optional)',
+          border: const OutlineInputBorder(),
+        ),
+        items: [
+          const DropdownMenuItem<int?>(value: null, child: Text('None')),
+          ...shop.electricians.map((e) => DropdownMenuItem<int?>(
+                value: e.id,
+                child: Text(e.displayName),
+              )),
+        ],
+        onChanged: onChanged,
       ),
     );
   }

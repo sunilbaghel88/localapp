@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 
 class RegisterScreen extends StatelessWidget {
   const RegisterScreen({super.key});
@@ -24,12 +25,34 @@ class _RegisterForm extends StatefulWidget {
 
 class _RegisterFormState extends State<_RegisterForm> {
   final _formKey = GlobalKey<FormState>();
+  final _api = ApiService();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _passwordConfirmController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+  List<Map<String, dynamic>> _userTypes = [];
+  int? _selectedUserTypeId;
+  bool _loadingTypes = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserTypes();
+  }
+
+  Future<void> _loadUserTypes() async {
+    try {
+      final types = await _api.getUserTypes();
+      if (mounted) setState(() {
+        _userTypes = types;
+        _loadingTypes = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingTypes = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -49,6 +72,7 @@ class _RegisterFormState extends State<_RegisterForm> {
       _emailController.text.trim(),
       _passwordController.text,
       _passwordConfirmController.text,
+      userTypeId: _selectedUserTypeId,
     );
     if (!mounted) return;
     if (ok) context.go('/home');
@@ -92,6 +116,26 @@ class _RegisterFormState extends State<_RegisterForm> {
                   },
                 ),
                 const SizedBox(height: 16),
+                if (_loadingTypes)
+                  const SizedBox(height: 56, child: Center(child: CircularProgressIndicator()))
+                else if (_userTypes.isNotEmpty)
+                  DropdownButtonFormField<int?>(
+                    value: _selectedUserTypeId,
+                    decoration: const InputDecoration(
+                      labelText: 'Type',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.badge_outlined),
+                    ),
+                    items: [
+                      const DropdownMenuItem<int?>(value: null, child: Text('Select type')),
+                      ..._userTypes.map((t) => DropdownMenuItem<int?>(
+                            value: t['id'] as int?,
+                            child: Text(t['name'] as String? ?? ''),
+                          )),
+                    ],
+                    onChanged: (v) => setState(() => _selectedUserTypeId = v),
+                  ),
+                if (_userTypes.isNotEmpty) const SizedBox(height: 16),
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,

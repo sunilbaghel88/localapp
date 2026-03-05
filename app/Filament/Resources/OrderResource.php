@@ -33,6 +33,10 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('id')->label('Order #')->sortable(),
                 Tables\Columns\TextColumn::make('shop.name')->label('Shop'),
                 Tables\Columns\TextColumn::make('user.name')->label('Customer'),
+                Tables\Columns\TextColumn::make('electricianUser.name')
+                    ->label('Electrician')
+                    ->placeholder('—')
+                    ->toggleable(),
                 Tables\Columns\BadgeColumn::make('status'),
                 Tables\Columns\BadgeColumn::make('payment_status'),
                 Tables\Columns\TextColumn::make('grand_total')->money('inr', divideBy: 1),
@@ -137,6 +141,42 @@ class OrderResource extends Resource
                                 ->send();
                         })
                         ->visible(fn ($record) => $record->payment_status !== 'paid'),
+                    Tables\Actions\Action::make('grant_reward')
+                        ->label('Grant Reward Points')
+                        ->icon('heroicon-m-star')
+                        ->color('warning')
+                        ->form([
+                            Forms\Components\TextInput::make('points')
+                                ->label('Points to grant')
+                                ->numeric()
+                                ->required()
+                                ->minValue(1),
+                            Forms\Components\Textarea::make('notes')
+                                ->label('Notes (optional)')
+                                ->rows(2),
+                        ])
+                        ->action(function (array $data, $record) {
+                            if (! $record->electrician_user_id) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('This order has no electrician associated.')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+                            \App\Models\UserRewardGrant::create([
+                                'user_id' => $record->electrician_user_id,
+                                'order_id' => $record->id,
+                                'points' => $data['points'],
+                                'granted_by' => auth()->id(),
+                                'notes' => $data['notes'] ?? null,
+                            ]);
+                            $record->electricianUser->increment('reward_points', $data['points']);
+                            \Filament\Notifications\Notification::make()
+                                ->title('Granted ' . $data['points'] . ' reward points to ' . $record->electricianUser->name)
+                                ->success()
+                                ->send();
+                        })
+                        ->visible(fn ($record) => $record->electrician_user_id !== null),
                 ]),
             ])
             ->bulkActions([

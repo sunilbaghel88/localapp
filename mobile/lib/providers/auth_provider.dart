@@ -58,12 +58,24 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> register(String name, String email, String password, String passwordConfirmation) async {
+  Future<bool> register(
+    String name,
+    String email,
+    String password,
+    String passwordConfirmation, {
+    int? userTypeId,
+  }) async {
     _error = null;
     _isLoading = true;
     notifyListeners();
     try {
-      final data = await _api.register(name, email, password, passwordConfirmation);
+      final data = await _api.register(
+        name,
+        email,
+        password,
+        passwordConfirmation,
+        userTypeId: userTypeId,
+      );
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(tokenKey, data['token'] as String);
       _user = User.fromJson(data['user'] as Map<String, dynamic>);

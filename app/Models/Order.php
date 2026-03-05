@@ -15,6 +15,7 @@ class Order extends Model
         'user_id',
         'shop_id',
         'address_id',
+        'electrician_user_id',
         'status',
         'payment_status',
         'subtotal',
@@ -57,5 +58,15 @@ class Order extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function electricianUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'electrician_user_id');
+    }
+
+    public function rewardGrants(): HasMany
+    {
+        return $this->hasMany(UserRewardGrant::class);
     }
 }

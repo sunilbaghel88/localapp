@@ -30,6 +30,17 @@ class CheckoutController extends Controller
 
         $addresses = Auth::user()->addresses()->orderBy('is_default', 'desc')->get();
 
+        // Shops in cart that support electrician rewards (for optional electrician select per shop)
+        $shopsWithElectricianSupport = $cart->items
+            ->groupBy(fn ($item) => $item->variant->product->shop_id)
+            ->keys()
+            ->map(fn ($shopId) => \App\Models\Shop::with(['shopType', 'electricians'])->find($shopId))
+            ->filter(fn ($shop) => $shop
+                && $shop->shopType
+                && $shop->shopType->supports_electrician_rewards
+                && $shop->shopType->electrician_user_type_id)
+            ->values();
+
         // Calculate totals
         $subtotal = $cart->items->sum(function ($item) {
             return $item->quantity * $item->price;
@@ -40,7 +51,7 @@ class CheckoutController extends Controller
         $discountTotal = 0; // Can be applied from coupons
         $grandTotal = $subtotal + $shippingTotal + $taxTotal - $discountTotal;
 
-        return view('shop.checkout.index', compact('cart', 'addresses', 'subtotal', 'shippingTotal', 'taxTotal', 'discountTotal', 'grandTotal'));
+        return view('shop.checkout.index', compact('cart', 'addresses', 'shopsWithElectricianSupport', 'subtotal', 'shippingTotal', 'taxTotal', 'discountTotal', 'grandTotal'));
     }
 
     public function storeAddress(Request $request)
@@ -98,6 +109,8 @@ class CheckoutController extends Controller
     {
         $request->validate([
             'address_id' => 'required|exists:addresses,id',
+            'electrician' => 'nullable|array',
+            'electrician.*' => 'nullable|exists:users,id',
         ], [
             'address_id.required' => 'Please select a shipping address.',
             'address_id.exists' => 'The selected address is invalid.',
@@ -134,11 +147,15 @@ class CheckoutController extends Controller
                 $discountTotal = 0;
                 $grandTotal = $subtotal + $shippingTotal + $taxTotal - $discountTotal;
 
+                // Electrician for this shop (optional)
+                $electricianUserId = ($request->electrician ?? [])[$shopId] ?? null;
+
                 // Create order
                 $order = Order::create([
                     'user_id' => Auth::id(),
                     'shop_id' => $shopId,
                     'address_id' => $address->id,
+                    'electrician_user_id' => $electricianUserId,
                     'status' => 'pending',
                     'payment_status' => 'pending',
                     'subtotal' => $subtotal,

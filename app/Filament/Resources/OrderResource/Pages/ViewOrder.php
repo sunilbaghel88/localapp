@@ -15,6 +15,42 @@ class ViewOrder extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('grant_reward')
+                ->label('Grant Reward Points')
+                ->icon('heroicon-m-star')
+                ->color('warning')
+                ->form([
+                    \Filament\Forms\Components\TextInput::make('points')
+                        ->label('Points to grant')
+                        ->numeric()
+                        ->required()
+                        ->minValue(1),
+                    \Filament\Forms\Components\Textarea::make('notes')
+                        ->label('Notes (optional)')
+                        ->rows(2),
+                ])
+                ->action(function (array $data, $record) {
+                    if (! $record->electrician_user_id) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('This order has no electrician associated.')
+                            ->danger()
+                            ->send();
+                        return;
+                    }
+                    \App\Models\UserRewardGrant::create([
+                        'user_id' => $record->electrician_user_id,
+                        'order_id' => $record->id,
+                        'points' => $data['points'],
+                        'granted_by' => auth()->id(),
+                        'notes' => $data['notes'] ?? null,
+                    ]);
+                    $record->electricianUser->increment('reward_points', $data['points']);
+                    \Filament\Notifications\Notification::make()
+                        ->title('Granted ' . $data['points'] . ' reward points to ' . $record->electricianUser->name)
+                        ->success()
+                        ->send();
+                })
+                ->visible(fn ($record) => $record->electrician_user_id !== null),
             Actions\Action::make('update_status')
                 ->label('Update Status')
                 ->icon('heroicon-m-arrow-path')
@@ -93,6 +129,31 @@ class ViewOrder extends ViewRecord
                                     ->dateTime(),
                             ]),
                     ]),
+                Infolists\Components\Section::make('Electrician')
+                    ->schema([
+                        Infolists\Components\Grid::make(2)
+                            ->schema([
+                                Infolists\Components\TextEntry::make('electricianUser.name')
+                                    ->label('Name'),
+                                Infolists\Components\TextEntry::make('electricianUser.email')
+                                    ->label('Email'),
+                                Infolists\Components\TextEntry::make('electricianUser.phone')
+                                    ->label('Phone'),
+                                Infolists\Components\TextEntry::make('electricianUser.reward_points')
+                                    ->label('Total reward points'),
+                            ]),
+                        Infolists\Components\TextEntry::make('reward_grants_summary')
+                            ->label('Grants for this order')
+                            ->state(function ($record) {
+                                $grants = $record->rewardGrants;
+                                if ($grants->isEmpty()) {
+                                    return 'None yet';
+                                }
+                                return $grants->map(fn ($g) => $g->points . ' pts by ' . $g->grantedBy->name)->join(', ');
+                            })
+                            ->visible(fn ($record) => $record->electrician_user_id && $record->rewardGrants->isNotEmpty()),
+                    ])
+                    ->visible(fn ($record) => $record->electrician_user_id !== null),
                 Infolists\Components\Section::make('Customer Information')
                     ->schema([
                         Infolists\Components\Grid::make(2)

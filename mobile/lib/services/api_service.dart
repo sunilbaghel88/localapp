@@ -17,15 +17,28 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> register(
-      String name, String email, String password, String passwordConfirmation) async {
-    final r = await _dio.post('/register', data: {
+    String name,
+    String email,
+    String password,
+    String passwordConfirmation, {
+    int? userTypeId,
+  }) async {
+    final data = <String, dynamic>{
       'name': name,
       'email': email,
       'password': password,
       'password_confirmation': passwordConfirmation,
       'device_name': 'flutter-mobile',
-    });
+    };
+    if (userTypeId != null) data['user_type_id'] = userTypeId;
+    final r = await _dio.post('/register', data: data);
     return r.data as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> getUserTypes() async {
+    final r = await _dio.get('/user-types');
+    final list = r.data['user_types'] as List<dynamic>? ?? [];
+    return list.map((e) => e as Map<String, dynamic>).toList();
   }
 
   Future<void> logout() async {
@@ -103,8 +116,15 @@ class ApiService {
     return r.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> placeOrder(int addressId) async {
-    final r = await _dio.post('/checkout', data: {'address_id': addressId});
+  Future<Map<String, dynamic>> placeOrder(
+    int addressId, {
+    Map<int, int?>? electrician,
+  }) async {
+    final data = <String, dynamic>{'address_id': addressId};
+    if (electrician != null && electrician.isNotEmpty) {
+      data['electrician'] = electrician.map((k, v) => MapEntry(k.toString(), v));
+    }
+    final r = await _dio.post('/checkout', data: data);
     return r.data as Map<String, dynamic>;
   }
 

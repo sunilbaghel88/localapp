@@ -28,7 +28,7 @@ return [
     ],
 
     'panel_user' => [
-        'enabled' => true,
+        'enabled' => false,  // Don't auto-assign panel_user to new users (e.g. on registration)
         'name' => 'panel_user',
     ],
 
