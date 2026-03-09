@@ -68,7 +68,6 @@ class UserResource extends Resource
                         Forms\Components\Select::make('roles')
                             ->label('Role')
                             ->relationship('roles', 'name')
-                            ->multiple()
                             ->preload()
                             ->options(Role::pluck('name', 'id')->toArray()),
                         Forms\Components\Toggle::make('is_active')
