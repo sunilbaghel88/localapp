@@ -77,4 +77,9 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->belongsToMany(Shop::class, 'shop_user')->withTimestamps();
     }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->roles()->exists();
+    }
 }
