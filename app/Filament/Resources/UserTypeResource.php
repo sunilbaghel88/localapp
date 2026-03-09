@@ -19,6 +19,8 @@ class UserTypeResource extends Resource
 
     protected static ?string $navigationLabel = 'User Types';
 
+    protected static ?string $navigationGroup = 'Application';
+
     protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
