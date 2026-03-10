@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ProductResource\Pages;
 use App\Filament\Resources\ProductResource\RelationManagers;
 use App\Models\Brand;
+use App\Models\Category;
 use App\Models\Product;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -67,10 +68,48 @@ class ProductResource extends Resource
                     ->unique(ignoreRecord: true)
                     ->maxLength(255)
                     ->readOnly(),
-                Forms\Components\Select::make('category_id')
-                    ->relationship('category', 'name')
+                Forms\Components\Select::make('parent_category_id')
+                    ->label('Parent category')
+                    ->options(fn (): array => Category::query()
+                        ->where('is_active', true)
+                        ->whereNull('parent_id')
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
+                        ->all())
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->live()
+                    ->dehydrated(false)
+                    ->afterStateHydrated(function (Forms\Components\Select $component, ?Product $record): void {
+                        if (! $record?->category_id) {
+                            return;
+                        }
+
+                        $category = Category::query()->with('parent')->find($record->category_id);
+                        $component->state($category?->parent_id);
+                    })
+                    ->afterStateUpdated(function ($state, Forms\Set $set): void {
+                        $set('category_id', null);
+                    }),
+                Forms\Components\Select::make('category_id')
+                    ->label('Subcategory')
+                    ->options(function (Forms\Get $get): array {
+                        $parentId = $get('parent_category_id');
+                        if (! $parentId) {
+                            return [];
+                        }
+
+                        return Category::query()
+                            ->where('is_active', true)
+                            ->where('parent_id', $parentId)
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                            ->all();
+                    })
+                    ->searchable()
+                    ->preload()
+                    ->required()
+                    ->disabled(fn (Forms\Get $get): bool => blank($get('parent_category_id'))),
                 Forms\Components\Select::make('brand_id')
                     ->label('Brand')
                     ->relationship(

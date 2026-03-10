@@ -10,6 +10,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 class CategoryResource extends Resource
@@ -49,9 +50,19 @@ class CategoryResource extends Resource
                     ->readOnly(),
                 Forms\Components\Select::make('parent_id')
                     ->label('Parent')
-                    ->relationship('parent', 'name')
+                    ->relationship(
+                        name: 'parent',
+                        titleAttribute: 'name',
+                        modifyQueryUsing: function (Builder $query, ?Category $record) {
+                            $query->whereNull('parent_id');
+                            if ($record?->getKey()) {
+                                $query->whereKeyNot($record->getKey());
+                            }
+                        },
+                    )
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->helperText('Only top-level categories can be selected as a parent.'),
                 Forms\Components\Textarea::make('description')
                     ->columnSpanFull(),
                 Forms\Components\Toggle::make('is_active')

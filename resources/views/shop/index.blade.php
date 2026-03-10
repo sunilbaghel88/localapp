@@ -29,7 +29,7 @@
             @foreach($categories as $category)
             <a href="{{ route('products.index', ['category' => $category->slug]) }}" class="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition text-center">
                 <div class="text-gray-600 mb-2">{{ $category->name }}</div>
-                <div class="text-sm text-gray-500">{{ $category->products_count }} products</div>
+                <div class="text-sm text-gray-500">{{ $category->products_total_count ?? $category->products_count }} products</div>
             </a>
             @endforeach
         </div>

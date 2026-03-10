@@ -13,17 +13,36 @@
                     
                     <!-- Categories -->
                     <div class="mb-6">
-                        <h4 class="text-sm font-medium text-gray-700 mb-3">Categories</h4>
-                        <div class="space-y-2">
-                            <a href="{{ route('products.index', request()->except(['category', 'page'])) }}" class="block text-sm {{ !request('category') ? 'text-amber-600 font-medium' : 'text-gray-600' }}">
-                                All Categories
-                            </a>
-                            @foreach($categories as $category)
-                            <a href="{{ route('products.index', array_merge(request()->except(['page']), ['category' => $category->slug])) }}" class="block text-sm {{ request('category') === $category->slug ? 'text-amber-600 font-medium' : 'text-gray-600' }}">
-                                {{ $category->name }} ({{ $category->products_count }})
-                            </a>
+                        <ul class="space-y-2">
+                            <li>
+                                <a href="{{ route('products.index', request()->except(['category', 'page'])) }}" class="block text-sm {{ !request('category') ? 'text-amber-600 font-medium' : 'text-gray-600' }}">
+                                    All Categories
+                                </a>
+                            </li>
+
+                            @foreach($categories as $parent)
+                                <li>
+                                    <a href="{{ route('products.index', array_merge(request()->except(['page']), ['category' => $parent->slug])) }}"
+                                       class="block text-sm {{ request('category') === $parent->slug ? 'text-amber-600 font-medium' : 'text-gray-700' }}">
+                                        {{ $parent->name }} ({{ $parent->products_total_count ?? $parent->products_count }})
+                                    </a>
+
+                                    @if($parent->children && $parent->children->count() > 0)
+                                        <ul class="mt-2 space-y-2 ml-4 pl-3 border-l border-gray-200"
+                                            style="margin-left: 1rem; padding-left: .75rem; border-left: 1px solid #e5e7eb;">
+                                            @foreach($parent->children as $child)
+                                                <li>
+                                                    <a href="{{ route('products.index', array_merge(request()->except(['page']), ['category' => $child->slug])) }}"
+                                                       class="block text-sm {{ request('category') === $child->slug ? 'text-amber-600 font-medium' : 'text-gray-600' }}">
+                                                        {{ $child->name }} ({{ $child->products_count }})
+                                                    </a>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    @endif
+                                </li>
                             @endforeach
-                        </div>
+                        </ul>
                     </div>
 
                     <!-- Price Range -->
