@@ -23,12 +23,26 @@ class HomeController extends Controller
             ->get();
 
         $categories = Category::where('is_active', true)
+            ->whereNull('parent_id')
+            ->with([
+                'children' => fn ($q) => $q->where('is_active', true)->orderBy('name'),
+            ])
             ->withCount(['products' => function ($query) {
                 $query->where('status', 'published')
                     ->whereHas('shop', fn ($q) => $q->on());
             }])
+            ->orderBy('name')
             ->take(6)
             ->get();
+
+        $categories->each(function (Category $parent) {
+            $parent->children->loadCount(['products' => function ($query) {
+                $query->where('status', 'published')
+                    ->whereHas('shop', fn ($q) => $q->on());
+            }]);
+
+            $parent->products_total_count = (int) $parent->products_count + (int) $parent->children->sum('products_count');
+        });
 
         return response()->json([
             'featured_products' => $featuredProducts,

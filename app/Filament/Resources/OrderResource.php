@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Filament\Resources\OrderResource\RelationManagers;
 use App\Models\Order;
+use App\Models\Shop;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -37,12 +38,36 @@ class OrderResource extends Resource
                                 : [])
                             ->searchable()
                             ->preload()
+                            ->live()
+                            ->afterStateUpdated(fn ($state, Forms\Set $set) => $set('electrician_user_id', null))
                             ->required(),
                         Forms\Components\Select::make('electrician_user_id')
                             ->label('Electrician')
-                            ->relationship('electricianUser', 'name')
+                            ->options(function (Forms\Get $get): array {
+                                $shopId = $get('shop_id');
+                                if (! $shopId) {
+                                    return [];
+                                }
+
+                                $shop = Shop::query()
+                                    ->with('shopType')
+                                    ->find($shopId);
+
+                                $electricianUserTypeId = $shop?->shopType?->electrician_user_type_id;
+                                if (! $shop || ! $electricianUserTypeId) {
+                                    return [];
+                                }
+
+                                return $shop->electricians()
+                                    ->where('users.user_type_id', $electricianUserTypeId)
+                                    ->where('users.is_active', true)
+                                    ->orderBy('users.name')
+                                    ->pluck('users.name', 'users.id')
+                                    ->all();
+                            })
                             ->searchable()
                             ->preload()
+                            ->disabled(fn (Forms\Get $get): bool => blank($get('shop_id')))
                             ->nullable(),
                         Forms\Components\Select::make('status')
                             ->label('Order Status')

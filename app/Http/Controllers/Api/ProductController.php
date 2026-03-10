@@ -28,9 +28,23 @@ class ProductController extends Controller
         }
 
         if ($request->filled('category') && $request->category !== 'featured') {
-            $query->whereHas('category', function ($q) use ($request) {
-                $q->where('slug', $request->category);
-            });
+            $category = Category::query()
+                ->where('slug', $request->category)
+                ->where('is_active', true)
+                ->first();
+
+            if ($category) {
+                if ($category->parent_id === null) {
+                    $childIds = Category::query()
+                        ->where('is_active', true)
+                        ->where('parent_id', $category->id)
+                        ->pluck('id');
+
+                    $query->whereIn('category_id', $childIds->push($category->id));
+                } else {
+                    $query->where('category_id', $category->id);
+                }
+            }
         }
 
         if ($request->filled('shop')) {
@@ -71,12 +85,24 @@ class ProductController extends Controller
 
         $perPage = min((int) $request->get('per_page', 12), 50);
         $products = $query->paginate($perPage)->withQueryString();
-        $categories = Category::where('is_active', true)
-            ->withCount(['products' => function ($query) {
-                $query->where('status', 'published')
-                    ->whereHas('shop', fn ($q) => $q->on());
-            }])
-            ->get();
+        $productCountScope = function ($query) {
+            $query->where('status', 'published')
+                ->whereHas('shop', fn ($q) => $q->on());
+        };
+
+        $categories = Category::query()
+            ->where('is_active', true)
+            ->whereNull('parent_id')
+            ->with([
+                'children' => fn ($q) => $q->where('is_active', true)->orderBy('name'),
+            ])
+            ->withCount(['products' => $productCountScope])
+            ->orderBy('name')
+            ->get()
+            ->each(function (Category $parent) use ($productCountScope) {
+                $parent->children->loadCount(['products' => $productCountScope]);
+                $parent->products_total_count = (int) $parent->products_count + (int) $parent->children->sum('products_count');
+            });
 
         return response()->json([
             'products' => $products,

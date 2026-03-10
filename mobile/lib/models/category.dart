@@ -5,6 +5,8 @@ class Category {
   final String? description;
   final bool isActive;
   final int? productsCount;
+  final int? productsTotalCount;
+  final List<Category> children;
 
   Category({
     required this.id,
@@ -13,6 +15,8 @@ class Category {
     this.description,
     this.isActive = true,
     this.productsCount,
+    this.productsTotalCount,
+    this.children = const [],
   });
 
   factory Category.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,11 @@ class Category {
       description: json['description'] as String?,
       isActive: json['is_active'] == true,
       productsCount: json['products_count'] as int?,
+      productsTotalCount: json['products_total_count'] as int?,
+      children: (json['children'] as List<dynamic>?)
+              ?.map((e) => Category.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
     );
   }
 }

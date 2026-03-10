@@ -195,7 +195,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(c.name, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
-                        if (c.productsCount != null) Text('${c.productsCount} products', style: Theme.of(context).textTheme.bodySmall),
+                        if (c.productsTotalCount != null || c.productsCount != null)
+                          Text('${c.productsTotalCount ?? c.productsCount} products', style: Theme.of(context).textTheme.bodySmall),
                       ],
                     ),
                   ),
