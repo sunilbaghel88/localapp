@@ -30,11 +30,11 @@ class AuthenticatedSessionController extends Controller
 
         $user = $request->user();
 
-        if ($user->hasRole('super_admin')) {
+        if ($user->roles()->exists()) {
             return redirect()->intended(route('filament.admin.pages.dashboard', absolute: false));
         }
 
-        return redirect()->intended(route('orders.index', absolute: false));
+        return redirect()->intended(route('home', absolute: false));
     }
 
     /**
