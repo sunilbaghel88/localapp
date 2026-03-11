@@ -3,8 +3,10 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\OrderResource\Pages;
-use App\Filament\Resources\OrderResource\RelationManagers;
+use App\Filament\Resources\OrderResource\Pages\CreateOrder;
 use App\Models\Order;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Shop;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -98,6 +100,87 @@ class OrderResource extends Resource
                             ->nullable(),
                     ])
                     ->columns(2),
+                Forms\Components\Section::make('Order items')
+                    ->description('Search and add products from the selected shop. Totals are calculated automatically from these lines.')
+                    ->schema([
+                        Forms\Components\Repeater::make('order_items_data')
+                            ->label('Products')
+                            ->schema([
+                                Forms\Components\Select::make('product_id')
+                                    ->label('Product')
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->live()
+                                    ->getOptionLabelUsing(fn ($value) => Product::find($value)?->name)
+                                    ->getSearchResultsUsing(function (string $search, $livewire): array {
+                                        $shopId = $livewire->data['shop_id'] ?? null;
+                                        if (! $shopId) {
+                                            return [];
+                                        }
+
+                                        return Product::query()
+                                            ->where('shop_id', $shopId)
+                                            ->whereRaw('LOWER(name) like ?', ['%' . strtolower($search) . '%'])
+                                            ->orderBy('name')
+                                            ->limit(50)
+                                            ->pluck('name', 'id')
+                                            ->all();
+                                    })
+                                    ->afterStateUpdated(function ($state, Forms\Set $set): void {
+                                        $set('product_variant_id', null);
+                                        if (! $state) {
+                                            return;
+                                        }
+                                        $product = Product::with(['variants' => fn ($q) => $q->where('is_active', true)->orderBy('id')])
+                                            ->find($state);
+                                        if (! $product) {
+                                            return;
+                                        }
+                                        $variants = $product->variants;
+                                        if ($variants->count() === 1) {
+                                            $set('product_variant_id', $variants->first()->id);
+                                        }
+                                    }),
+                                Forms\Components\Select::make('product_variant_id')
+                                    ->label('Variant')
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->nullable()
+                                    ->options(function (Forms\Get $get): array {
+                                        $productId = $get('product_id');
+                                        if (! $productId) {
+                                            return [];
+                                        }
+
+                                        return ProductVariant::query()
+                                            ->where('product_id', $productId)
+                                            ->where('is_active', true)
+                                            ->orderBy('name')
+                                            ->orderBy('sku')
+                                            ->get()
+                                            ->mapWithKeys(fn ($v) => [$v->id => $v->name ?: $v->sku ?: '#'.$v->id])
+                                            ->all();
+                                    })
+                                    ->required(fn (Forms\Get $get): bool => ProductVariant::where('product_id', $get('product_id'))->where('is_active', true)->exists())
+                                    ->visible(fn (Forms\Get $get): bool => ProductVariant::where('product_id', $get('product_id'))->where('is_active', true)->exists()),
+                                Forms\Components\TextInput::make('quantity')
+                                    ->label('Qty')
+                                    ->numeric()
+                                    ->required()
+                                    ->integer()
+                                    ->minValue(1)
+                                    ->default(1),
+                            ])
+                            ->columns(3)
+                            ->defaultItems(1)
+                            ->addActionLabel('Add product')
+                            ->reorderable()
+                            ->columnSpanFull(),
+                    ])
+                    ->visible(fn ($livewire) => $livewire instanceof CreateOrder)
+                    ->columnSpanFull(),
                 Forms\Components\Section::make('Totals')
                     ->schema([
                         Forms\Components\TextInput::make('subtotal')
@@ -117,7 +200,8 @@ class OrderResource extends Resource
                             ->numeric()
                             ->required(),
                     ])
-                    ->columns(3),
+                    ->columns(3)
+                    ->visible(fn ($livewire) => ! ($livewire instanceof CreateOrder)),
             ]);
     }
 
@@ -256,6 +340,7 @@ class OrderResource extends Resource
                                     ->title('This order has no electrician associated.')
                                     ->danger()
                                     ->send();
+
                                 return;
                             }
                             \App\Models\UserRewardGrant::create([
@@ -267,7 +352,7 @@ class OrderResource extends Resource
                             ]);
                             $record->electricianUser->increment('reward_points', $data['points']);
                             \Filament\Notifications\Notification::make()
-                                ->title('Granted ' . $data['points'] . ' reward points to ' . $record->electricianUser->name)
+                                ->title('Granted '.$data['points'].' reward points to '.$record->electricianUser->name)
                                 ->success()
                                 ->send();
                         })
@@ -296,7 +381,7 @@ class OrderResource extends Resource
                                 $record->update(['status' => $data['status']]);
                             });
                             \Filament\Notifications\Notification::make()
-                                ->title('Order status updated for ' . $records->count() . ' order(s)')
+                                ->title('Order status updated for '.$records->count().' order(s)')
                                 ->success()
                                 ->send();
                         }),
@@ -319,7 +404,7 @@ class OrderResource extends Resource
                                 $record->update(['payment_status' => $data['payment_status']]);
                             });
                             \Filament\Notifications\Notification::make()
-                                ->title('Payment status updated for ' . $records->count() . ' order(s)')
+                                ->title('Payment status updated for '.$records->count().' order(s)')
                                 ->success()
                                 ->send();
                         }),
@@ -330,7 +415,7 @@ class OrderResource extends Resource
                         ->action(function ($records) {
                             $records->each->update(['status' => 'shipped']);
                             \Filament\Notifications\Notification::make()
-                                ->title('Marked ' . $records->count() . ' order(s) as shipped')
+                                ->title('Marked '.$records->count().' order(s) as shipped')
                                 ->success()
                                 ->send();
                         })
@@ -342,7 +427,7 @@ class OrderResource extends Resource
                         ->action(function ($records) {
                             $records->each->update(['status' => 'delivered']);
                             \Filament\Notifications\Notification::make()
-                                ->title('Marked ' . $records->count() . ' order(s) as delivered')
+                                ->title('Marked '.$records->count().' order(s) as delivered')
                                 ->success()
                                 ->send();
                         })
@@ -362,6 +447,7 @@ class OrderResource extends Resource
         if (! $user) {
             return parent::getEloquentQuery()->whereRaw('1 = 0');
         }
+
         return parent::getEloquentQuery()->whereIn('shop_id', $user->shops()->pluck('id'));
     }
 
@@ -374,4 +460,3 @@ class OrderResource extends Resource
         ];
     }
 }
-
