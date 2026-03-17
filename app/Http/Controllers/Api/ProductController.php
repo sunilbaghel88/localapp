@@ -14,11 +14,17 @@ class ProductController extends Controller
     {
         $query = Product::where('status', 'published')
             ->whereHas('shop', fn ($q) => $q->on())
-            ->with(['images' => function ($q) {
-                $q->where('is_primary', true)->orWhereNull('is_primary')->orderBy('sort_order')->limit(1);
-            }, 'variants' => function ($q) {
-                $q->where('is_active', true)->orderBy('price');
-            }, 'category', 'shop']);
+            ->with([
+                'images' => function ($q) {
+                    $q->where('is_primary', true)->orWhereNull('is_primary')->orderBy('sort_order')->limit(1);
+                },
+                'variants' => function ($q) {
+                    $q->where('is_active', true)->orderBy('price');
+                },
+                'category',
+                'shop',
+                'brand',
+            ]);
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
@@ -125,6 +131,7 @@ class ProductController extends Controller
             },
             'category',
             'shop',
+            'brand',
         ]);
 
         $relatedProducts = Product::where('status', 'published')
@@ -134,11 +141,15 @@ class ProductController extends Controller
                 $q->where('category_id', $product->category_id)
                     ->orWhere('shop_id', $product->shop_id);
             })
-            ->with(['images' => function ($q) {
-                $q->where('is_primary', true)->limit(1);
-            }, 'variants' => function ($q) {
-                $q->where('is_active', true)->orderBy('price')->limit(1);
-            }])
+            ->with([
+                'images' => function ($q) {
+                    $q->where('is_primary', true)->limit(1);
+                },
+                'variants' => function ($q) {
+                    $q->where('is_active', true)->orderBy('price')->limit(1);
+                },
+                'brand',
+            ])
             ->take(4)
             ->get();
 

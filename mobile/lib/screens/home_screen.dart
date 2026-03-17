@@ -263,6 +263,7 @@ class _ProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final variant = product.lowestPriceVariant;
     final imageUrl = product.imageUrl;
+    final brand = (product.brand ?? '').trim().isEmpty ? null : product.brand!.trim();
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -285,7 +286,22 @@ class _ProductCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  if (brand != null)
+                    Text(
+                      brand,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.outline,
+                            letterSpacing: 0.6,
+                          ),
+                    ),
+                  Text(
+                    product.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 4),
                   if (variant != null) ...[
                     Row(

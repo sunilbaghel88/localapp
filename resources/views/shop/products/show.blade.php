@@ -40,7 +40,7 @@
             <div>
                 <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ $product->name }}</h1>
                 @if($product->brand)
-                <p class="text-gray-600 mb-4">Brand: {{ $product->brand }}</p>
+                <p class="text-gray-600 mb-4">Brand: {{ $product->brand->name }}</p>
                 @endif
 
                 <!-- Price -->

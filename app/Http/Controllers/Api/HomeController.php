@@ -13,11 +13,15 @@ class HomeController extends Controller
     {
         $featuredProducts = Product::where('status', 'published')
             ->whereHas('shop', fn ($q) => $q->on())
-            ->with(['images' => function ($query) {
-                $query->where('is_primary', true)->orWhereNull('is_primary')->orderBy('sort_order');
-            }, 'variants' => function ($query) {
-                $query->where('is_active', true)->orderBy('price');
-            }])
+            ->with([
+                'images' => function ($query) {
+                    $query->where('is_primary', true)->orWhereNull('is_primary')->orderBy('sort_order');
+                },
+                'variants' => function ($query) {
+                    $query->where('is_active', true)->orderBy('price');
+                },
+                'brand',
+            ])
             ->latest()
             ->take(8)
             ->get();

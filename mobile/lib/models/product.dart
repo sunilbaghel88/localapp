@@ -33,6 +33,14 @@ class Product {
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
+    String? brandValue;
+    final dynamic rawBrand = json['brand'];
+    if (rawBrand is String) {
+      brandValue = rawBrand;
+    } else if (rawBrand is Map<String, dynamic>) {
+      brandValue = rawBrand['name'] as String?;
+    }
+
     return Product(
       id: json['id'] as int,
       shopId: json['shop_id'] as int?,
@@ -40,7 +48,7 @@ class Product {
       name: json['name'] as String,
       slug: json['slug'] as String,
       description: json['description'] as String?,
-      brand: json['brand'] as String?,
+      brand: brandValue,
       status: json['status'] as String? ?? 'published',
       images: (json['images'] as List<dynamic>?) ?.map((e) => ProductImage.fromJson(e as Map<String, dynamic>)).toList() ?? [],
       variants: (json['variants'] as List<dynamic>?) ?.map((e) => ProductVariant.fromJson(e as Map<String, dynamic>)).toList() ?? [],

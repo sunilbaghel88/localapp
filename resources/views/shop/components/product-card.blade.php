@@ -11,6 +11,9 @@
         </div>
     </a>
     <div class="p-4">
+        @if($product->brand)
+            <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">{{ $product->brand->name }}</p>
+        @endif
         <a href="{{ route('products.show', $product->slug) }}">
             <h3 class="font-semibold text-gray-900 mb-2 line-clamp-2">{{ $product->name }}</h3>
         </a>

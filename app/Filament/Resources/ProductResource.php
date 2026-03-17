@@ -173,6 +173,10 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('brand.name')
+                    ->label('Brand')
+                    ->sortable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('shop.name')
                     ->label('Shop')
                     ->sortable(),

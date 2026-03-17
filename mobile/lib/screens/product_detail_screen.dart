@@ -160,8 +160,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if ((product.brand ?? '').trim().isNotEmpty)
+                    Text(
+                      (product.brand ?? '').trim(),
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: Theme.of(context).colorScheme.outline,
+                            letterSpacing: 0.8,
+                          ),
+                    ),
                   Text(product.name, style: Theme.of(context).textTheme.headlineSmall),
-                  if (product.category != null) Text(product.category!.name, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.outline)),
+                  if (product.category != null)
+                    Text(
+                      product.category!.name,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                    ),
                   const SizedBox(height: 12),
                   if (variant != null) ...[
                     Row(
@@ -238,6 +252,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   itemBuilder: (context, i) {
                     final p = _related[i];
                     final v = p.lowestPriceVariant;
+                    final brand = (p.brand ?? '').trim().isEmpty ? null : p.brand!.trim();
                     return SizedBox(
                       width: 140,
                       child: Card(
@@ -256,8 +271,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
-                                    if (v != null) Text('₹${v.price.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                    if (brand != null)
+                                      Text(
+                                        brand,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                              color: Theme.of(context).colorScheme.outline,
+                                              letterSpacing: 0.6,
+                                            ),
+                                      ),
+                                    Text(
+                                      p.name,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                    if (v != null)
+                                      Text(
+                                        '₹${v.price.toStringAsFixed(2)}',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                      ),
                                   ],
                                 ),
                               ),
