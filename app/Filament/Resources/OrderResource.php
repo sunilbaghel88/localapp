@@ -192,7 +192,7 @@ class OrderResource extends Resource
                                     ->default(1),
                             ])
                             ->columns(3)
-                            ->defaultItems(1)
+                            ->defaultItems(0)
                             ->addActionLabel('Add product')
                             ->reorderable()
                             ->columnSpanFull(),
