@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9f422a88ff2948d38d36d7e936d9a48b",
+    "content-hash": "ffb251fd47fc8cfb0df6bf93e3df83e8",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -3307,6 +3307,135 @@
             "time": "2026-01-13T09:37:21+00:00"
         },
         {
+            "name": "lucianotonet/groq-php",
+            "version": "v1.3.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/lucianotonet/groq-php.git",
+                "reference": "326bf74ac4dabbf0c2e2ad2bc45fce8791e86c13"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/lucianotonet/groq-php/zipball/326bf74ac4dabbf0c2e2ad2bc45fce8791e86c13",
+                "reference": "326bf74ac4dabbf0c2e2ad2bc45fce8791e86c13",
+                "shasum": ""
+            },
+            "require": {
+                "guzzlehttp/guzzle": "^7.9",
+                "php": "^8.1.0",
+                "vlucas/phpdotenv": "^5.6"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^11.3"
+            },
+            "type": "package",
+            "autoload": {
+                "psr-4": {
+                    "LucianoTonet\\GroqPHP\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Luciano Tonet",
+                    "email": "tonetlds@gmail.com"
+                }
+            ],
+            "description": "A powerful PHP library for seamless integration with the GroqCloud API",
+            "support": {
+                "issues": "https://github.com/lucianotonet/groq-php/issues",
+                "source": "https://github.com/lucianotonet/groq-php/tree/v1.3.0"
+            },
+            "time": "2025-06-03T20:28:50+00:00"
+        },
+        {
+            "name": "maestroerror/laragent",
+            "version": "1.2.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/MaestroError/LarAgent.git",
+                "reference": "8180ba37e1282e7aa53b8496cd578393614cd0bd"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/MaestroError/LarAgent/zipball/8180ba37e1282e7aa53b8496cd578393614cd0bd",
+                "reference": "8180ba37e1282e7aa53b8496cd578393614cd0bd",
+                "shasum": ""
+            },
+            "require": {
+                "guzzlehttp/guzzle": "^7.9",
+                "illuminate/contracts": "^10.0||^11.0||^12.0",
+                "lucianotonet/groq-php": "^1.3",
+                "mozex/anthropic-php": "^1.1",
+                "openai-php/client": "^0.18.0",
+                "php": "^8.3",
+                "redberry/mcp-client-laravel": "^1.1",
+                "spatie/laravel-package-tools": "^1.16"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.1",
+                "laravel/pint": "^1.14",
+                "nunomaduro/collision": "^8.1.1||^7.10.0",
+                "orchestra/testbench": "^10.0.0||^9.0.0||^8.22.0",
+                "pestphp/pest": "^3.0",
+                "pestphp/pest-plugin-arch": "^3.0",
+                "pestphp/pest-plugin-laravel": "^3.0",
+                "phpstan/extension-installer": "^1.3",
+                "phpstan/phpstan": "^2.1.3"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "LarAgent": "LarAgent\\Facades\\LarAgent"
+                    },
+                    "providers": [
+                        "LarAgent\\LarAgentServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "LarAgent\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "maestroerror",
+                    "email": "revaz.gh@gmail.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Power of AI Agents in your Laravel project ",
+            "homepage": "https://github.com/maestroerror/laragent",
+            "keywords": [
+                "Agent",
+                "ai",
+                "laragent",
+                "laravel",
+                "maestroerror",
+                "rag"
+            ],
+            "support": {
+                "issues": "https://github.com/MaestroError/LarAgent/issues",
+                "source": "https://github.com/MaestroError/LarAgent/tree/1.2.1"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/MaestroError",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-02-09T10:09:42+00:00"
+        },
+        {
             "name": "masterminds/html5",
             "version": "2.10.0",
             "source": {
@@ -3475,6 +3604,93 @@
                 }
             ],
             "time": "2026-01-02T08:56:05+00:00"
+        },
+        {
+            "name": "mozex/anthropic-php",
+            "version": "1.3.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/mozex/anthropic-php.git",
+                "reference": "f4ba9e70ccf77fbdacb3cc38f07f543e8dc5eef1"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/mozex/anthropic-php/zipball/f4ba9e70ccf77fbdacb3cc38f07f543e8dc5eef1",
+                "reference": "f4ba9e70ccf77fbdacb3cc38f07f543e8dc5eef1",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.2.0",
+                "php-http/discovery": "^1.20.0",
+                "php-http/multipart-stream-builder": "^1.4.2",
+                "psr/http-client": "^1.0.3",
+                "psr/http-client-implementation": "^1.0.1",
+                "psr/http-factory-implementation": "*",
+                "psr/http-message": "^1.1.0|^2.0.0"
+            },
+            "require-dev": {
+                "guzzlehttp/guzzle": "^7.10.0",
+                "guzzlehttp/psr7": "^2.8.0",
+                "laravel/pint": "^1.25.1",
+                "mockery/mockery": "^1.6.12",
+                "nunomaduro/collision": "^8.8.3",
+                "pestphp/pest": "^3.8.2|^4.1.4",
+                "pestphp/pest-plugin-arch": "^3.1.1|^4.0.0",
+                "pestphp/pest-plugin-type-coverage": "^3.5.1|^4.0.0",
+                "phpstan/phpstan": "^1.12.32",
+                "spatie/ray": "^1.41",
+                "symfony/var-dumper": "^7.3.5"
+            },
+            "type": "library",
+            "extra": {
+                "COV": "0.19.0"
+            },
+            "autoload": {
+                "files": [
+                    "src/Anthropic.php"
+                ],
+                "psr-4": {
+                    "Anthropic\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Mozex",
+                    "email": "hello@mozex.dev",
+                    "homepage": "https://mozex.dev",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Anthropic PHP is a supercharged community-maintained PHP API client that allows you to interact with Anthropic API.",
+            "keywords": [
+                "Claude Haiku",
+                "Claude Opus",
+                "Claude Sonnet",
+                "anthropic",
+                "api",
+                "claude",
+                "client",
+                "language",
+                "natural",
+                "php",
+                "processing",
+                "sdk"
+            ],
+            "support": {
+                "issues": "https://github.com/mozex/anthropic-php/issues",
+                "source": "https://github.com/mozex/anthropic-php/tree/1.3.3"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/mozex",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-03-05T18:07:36+00:00"
         },
         {
             "name": "nesbot/carbon",
@@ -3881,6 +4097,97 @@
             "time": "2025-11-20T02:34:59+00:00"
         },
         {
+            "name": "openai-php/client",
+            "version": "v0.18.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/openai-php/client.git",
+                "reference": "3362ab004fcfc9d77df3aff7671fbcbe70177cae"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/openai-php/client/zipball/3362ab004fcfc9d77df3aff7671fbcbe70177cae",
+                "reference": "3362ab004fcfc9d77df3aff7671fbcbe70177cae",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.2.0",
+                "php-http/discovery": "^1.20.0",
+                "php-http/multipart-stream-builder": "^1.4.2",
+                "psr/http-client": "^1.0.3",
+                "psr/http-client-implementation": "^1.0.1",
+                "psr/http-factory-implementation": "*",
+                "psr/http-message": "^1.1.0|^2.0.0"
+            },
+            "require-dev": {
+                "guzzlehttp/guzzle": "^7.9.3",
+                "guzzlehttp/psr7": "^2.7.1",
+                "laravel/pint": "^1.24.0",
+                "mockery/mockery": "^1.6.12",
+                "nunomaduro/collision": "^8.8.0",
+                "pestphp/pest": "^3.8.2|^4.0.0",
+                "pestphp/pest-plugin-arch": "^3.1.1|^4.0.0",
+                "pestphp/pest-plugin-type-coverage": "^3.5.1|^4.0.0",
+                "phpstan/phpstan": "^1.12.25",
+                "symfony/var-dumper": "^7.2.6"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "src/OpenAI.php"
+                ],
+                "psr-4": {
+                    "OpenAI\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nuno Maduro",
+                    "email": "enunomaduro@gmail.com"
+                },
+                {
+                    "name": "Sandro Gehri"
+                }
+            ],
+            "description": "OpenAI PHP is a supercharged PHP API client that allows you to interact with the Open AI API",
+            "keywords": [
+                "GPT-3",
+                "api",
+                "client",
+                "codex",
+                "dall-e",
+                "language",
+                "natural",
+                "openai",
+                "php",
+                "processing",
+                "sdk"
+            ],
+            "support": {
+                "issues": "https://github.com/openai-php/client/issues",
+                "source": "https://github.com/openai-php/client/tree/v0.18.0"
+            },
+            "funding": [
+                {
+                    "url": "https://www.paypal.com/paypalme/enunomaduro",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/gehrisandro",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nunomaduro",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-10-31T18:58:57+00:00"
+        },
+        {
             "name": "openspout/openspout",
             "version": "v4.32.0",
             "source": {
@@ -3972,6 +4279,141 @@
                 }
             ],
             "time": "2025-09-03T16:03:54+00:00"
+        },
+        {
+            "name": "php-http/discovery",
+            "version": "1.20.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-http/discovery.git",
+                "reference": "82fe4c73ef3363caed49ff8dd1539ba06044910d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-http/discovery/zipball/82fe4c73ef3363caed49ff8dd1539ba06044910d",
+                "reference": "82fe4c73ef3363caed49ff8dd1539ba06044910d",
+                "shasum": ""
+            },
+            "require": {
+                "composer-plugin-api": "^1.0|^2.0",
+                "php": "^7.1 || ^8.0"
+            },
+            "conflict": {
+                "nyholm/psr7": "<1.0",
+                "zendframework/zend-diactoros": "*"
+            },
+            "provide": {
+                "php-http/async-client-implementation": "*",
+                "php-http/client-implementation": "*",
+                "psr/http-client-implementation": "*",
+                "psr/http-factory-implementation": "*",
+                "psr/http-message-implementation": "*"
+            },
+            "require-dev": {
+                "composer/composer": "^1.0.2|^2.0",
+                "graham-campbell/phpspec-skip-example-extension": "^5.0",
+                "php-http/httplug": "^1.0 || ^2.0",
+                "php-http/message-factory": "^1.0",
+                "phpspec/phpspec": "^5.1 || ^6.1 || ^7.3",
+                "sebastian/comparator": "^3.0.5 || ^4.0.8",
+                "symfony/phpunit-bridge": "^6.4.4 || ^7.0.1"
+            },
+            "type": "composer-plugin",
+            "extra": {
+                "class": "Http\\Discovery\\Composer\\Plugin",
+                "plugin-optional": true
+            },
+            "autoload": {
+                "psr-4": {
+                    "Http\\Discovery\\": "src/"
+                },
+                "exclude-from-classmap": [
+                    "src/Composer/Plugin.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Márk Sági-Kazár",
+                    "email": "mark.sagikazar@gmail.com"
+                }
+            ],
+            "description": "Finds and installs PSR-7, PSR-17, PSR-18 and HTTPlug implementations",
+            "homepage": "http://php-http.org",
+            "keywords": [
+                "adapter",
+                "client",
+                "discovery",
+                "factory",
+                "http",
+                "message",
+                "psr17",
+                "psr7"
+            ],
+            "support": {
+                "issues": "https://github.com/php-http/discovery/issues",
+                "source": "https://github.com/php-http/discovery/tree/1.20.0"
+            },
+            "time": "2024-10-02T11:20:13+00:00"
+        },
+        {
+            "name": "php-http/multipart-stream-builder",
+            "version": "1.4.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-http/multipart-stream-builder.git",
+                "reference": "10086e6de6f53489cca5ecc45b6f468604d3460e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-http/multipart-stream-builder/zipball/10086e6de6f53489cca5ecc45b6f468604d3460e",
+                "reference": "10086e6de6f53489cca5ecc45b6f468604d3460e",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.1 || ^8.0",
+                "php-http/discovery": "^1.15",
+                "psr/http-factory-implementation": "^1.0"
+            },
+            "require-dev": {
+                "nyholm/psr7": "^1.0",
+                "php-http/message": "^1.5",
+                "php-http/message-factory": "^1.0.2",
+                "phpunit/phpunit": "^7.5.15 || ^8.5 || ^9.3"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Http\\Message\\MultipartStream\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Tobias Nyholm",
+                    "email": "tobias.nyholm@gmail.com"
+                }
+            ],
+            "description": "A builder class that help you create a multipart stream",
+            "homepage": "http://php-http.org",
+            "keywords": [
+                "factory",
+                "http",
+                "message",
+                "multipart stream",
+                "stream"
+            ],
+            "support": {
+                "issues": "https://github.com/php-http/multipart-stream-builder/issues",
+                "source": "https://github.com/php-http/multipart-stream-builder/tree/1.4.2"
+            },
+            "time": "2024-09-04T13:22:54+00:00"
         },
         {
             "name": "phpoption/phpoption",
@@ -4785,6 +5227,88 @@
                 "source": "https://github.com/ramsey/uuid/tree/4.9.2"
             },
             "time": "2025-12-14T04:43:48+00:00"
+        },
+        {
+            "name": "redberry/mcp-client-laravel",
+            "version": "v1.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/RedberryProducts/mcp-client-laravel.git",
+                "reference": "a582f02194d80626fcb2ed7264b5095d110a488b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/RedberryProducts/mcp-client-laravel/zipball/a582f02194d80626fcb2ed7264b5095d110a488b",
+                "reference": "a582f02194d80626fcb2ed7264b5095d110a488b",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^10.0||^11.0||^12.0",
+                "php": "^8.3||^8.4",
+                "spatie/laravel-package-tools": "^1.16"
+            },
+            "require-dev": {
+                "larastan/larastan": "^2.9||^3.0",
+                "laravel/pint": "^1.14",
+                "nunomaduro/collision": "^8.1.1||^7.10.0",
+                "orchestra/testbench": "^10.0.0||^9.0.0||^8.22.0",
+                "pestphp/pest": "^2.0||^3.0",
+                "pestphp/pest-plugin-arch": "^3.0",
+                "pestphp/pest-plugin-laravel": "^3.0",
+                "phpstan/extension-installer": "^1.3||^2.0",
+                "phpstan/phpstan-deprecation-rules": "^1.1||^2.0",
+                "phpstan/phpstan-phpunit": "^1.3||^2.0",
+                "spatie/laravel-ray": "^1.35"
+            },
+            "bin": [
+                "bin/check"
+            ],
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "MCPClient": "Redberry\\MCPClient\\Facades\\MCPClient"
+                    },
+                    "providers": [
+                        "Redberry\\MCPClient\\MCPClientServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Redberry\\MCPClient\\": "src/",
+                    "Redberry\\MCPClient\\Database\\Factories\\": "database/factories/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nika Jorjoliani",
+                    "email": "nika@redberry.ge",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Package that enables you access to any mcp server that you define in the config",
+            "homepage": "https://github.com/redberryproducts/mcp-client-laravel",
+            "keywords": [
+                "laravel",
+                "mcp-client-laravel",
+                "redberry"
+            ],
+            "support": {
+                "issues": "https://github.com/RedberryProducts/mcp-client-laravel/issues",
+                "source": "https://github.com/RedberryProducts/mcp-client-laravel/tree/v1.1.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/Redberry",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-11-07T07:29:48+00:00"
         },
         {
             "name": "ryangjchandler/blade-capture-directive",

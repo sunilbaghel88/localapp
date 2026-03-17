@@ -100,6 +100,24 @@ class OrderResource extends Resource
                             ->nullable(),
                     ])
                     ->columns(2),
+                Forms\Components\Section::make('Search & add products using AI')
+                    ->description('Type naturally (or dictate) and let AI add matching products to the order lines.')
+                    ->schema([
+                        Forms\Components\Textarea::make('ai_prompt')
+                            ->label('What do you want to add?')
+                            ->rows(3)
+                            ->placeholder('Add 2 Havells 5A MCB and 1 coil Finolex 1.5mm wire')
+                            ->helperText('Tip: include brand + key specs for best matches.')
+                            ->columnSpanFull(),
+                        Forms\Components\Actions::make([
+                            Forms\Components\Actions\Action::make('apply_ai_prompt')
+                                ->label('Search & add to items')
+                                ->icon('heroicon-m-magnifying-glass')
+                                ->action(fn ($livewire, Forms\Get $get, Forms\Set $set) => $livewire->applyAiPrompt($get, $set)),
+                        ])->columnSpanFull(),
+                    ])
+                    ->visible(fn ($livewire) => $livewire instanceof CreateOrder)
+                    ->columnSpanFull(),
                 Forms\Components\Section::make('Order items')
                     ->description('Search and add products from the selected shop. Totals are calculated automatically from these lines.')
                     ->schema([
