@@ -66,10 +66,19 @@ class CreateOrder extends CreateRecord
                 continue;
             }
 
+            $product = Product::with('brand')->find($match['product_id']);
+            $variant = ProductVariant::find($match['product_variant_id']);
+
+            $unitPrice = $variant ? (float) $variant->price : null;
+            $lineTotal = $unitPrice !== null ? $unitPrice * $qty : null;
+
             $orderItems[] = [
                 'product_id' => $match['product_id'],
                 'product_variant_id' => $match['product_variant_id'],
                 'quantity' => $qty,
+                'brand_name' => $product?->brand?->name,
+                'unit_price' => $unitPrice,
+                'line_total' => $lineTotal,
             ];
         }
 
@@ -83,7 +92,32 @@ class CreateOrder extends CreateRecord
         }
 
         $existing = Arr::wrap($get('order_items_data') ?? []);
-        $merged = array_values(array_filter(array_merge($existing, $orderItems)));
+
+        // Ensure existing rows also have display fields recomputed
+        $existingHydrated = collect($existing)
+            ->map(function ($row) {
+                if (! is_array($row)) {
+                    return $row;
+                }
+                $productId = $row['product_id'] ?? null;
+                $variantId = $row['product_variant_id'] ?? null;
+                $qty = max(1, (int) ($row['quantity'] ?? 1));
+
+                $product = $productId ? Product::with('brand')->find($productId) : null;
+                $variant = $variantId ? ProductVariant::find($variantId) : null;
+
+                $unitPrice = $variant ? (float) $variant->price : null;
+                $lineTotal = $unitPrice !== null ? $unitPrice * $qty : null;
+
+                $row['brand_name'] = $row['brand_name'] ?? ($product?->brand?->name);
+                $row['unit_price'] = $row['unit_price'] ?? $unitPrice;
+                $row['line_total'] = $row['line_total'] ?? $lineTotal;
+
+                return $row;
+            })
+            ->all();
+
+        $merged = array_values(array_filter(array_merge($existingHydrated, $orderItems)));
 
         $set('order_items_data', $merged);
 

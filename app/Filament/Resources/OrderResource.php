@@ -145,19 +145,31 @@ class OrderResource extends Resource
                                             ->pluck('name', 'id')
                                             ->all();
                                     })
-                                    ->afterStateUpdated(function ($state, Forms\Set $set): void {
+                                    ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set): void {
                                         $set('product_variant_id', null);
+                                        $set('brand_name', null);
+                                        $set('unit_price', null);
+                                        $set('line_total', null);
                                         if (! $state) {
                                             return;
                                         }
-                                        $product = Product::with(['variants' => fn ($q) => $q->where('is_active', true)->orderBy('id')])
+                                        $product = Product::with([
+                                                'variants' => fn ($q) => $q->where('is_active', true)->orderBy('id'),
+                                                'brand',
+                                            ])
                                             ->find($state);
                                         if (! $product) {
                                             return;
                                         }
+                                        $set('brand_name', $product->brand?->name ?? null);
                                         $variants = $product->variants;
                                         if ($variants->count() === 1) {
-                                            $set('product_variant_id', $variants->first()->id);
+                                            $variant = $variants->first();
+                                            $set('product_variant_id', $variant->id);
+                                            $price = (float) $variant->price;
+                                            $qty = (int) ($get('quantity') ?: 1);
+                                            $set('unit_price', $price);
+                                            $set('line_total', $qty * $price);
                                         }
                                     }),
                                 Forms\Components\Select::make('product_variant_id')
@@ -182,16 +194,61 @@ class OrderResource extends Resource
                                             ->all();
                                     })
                                     ->required(fn (Forms\Get $get): bool => ProductVariant::where('product_id', $get('product_id'))->where('is_active', true)->exists())
-                                    ->visible(fn (Forms\Get $get): bool => ProductVariant::where('product_id', $get('product_id'))->where('is_active', true)->exists()),
+                                    ->visible(fn (Forms\Get $get): bool => ProductVariant::where('product_id', $get('product_id'))->where('is_active', true)->exists())
+                                    ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set): void {
+                                        $set('unit_price', null);
+                                        $set('line_total', null);
+                                        if (! $state) {
+                                            return;
+                                        }
+                                        $variant = ProductVariant::find($state);
+                                        if (! $variant) {
+                                            return;
+                                        }
+                                        $price = (float) $variant->price;
+                                        $qty = (int) ($get('quantity') ?: 1);
+                                        $set('unit_price', $price);
+                                        $set('line_total', $qty * $price);
+                                    }),
                                 Forms\Components\TextInput::make('quantity')
                                     ->label('Qty')
                                     ->numeric()
                                     ->required()
                                     ->integer()
                                     ->minValue(1)
-                                    ->default(1),
+                                    ->default(1)
+                                    ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set): void {
+                                        $variantId = $get('product_variant_id');
+                                        if (! $variantId) {
+                                            return;
+                                        }
+                                        $variant = ProductVariant::find($variantId);
+                                        if (! $variant) {
+                                            return;
+                                        }
+                                        $qty = (int) ($state ?: 1);
+                                        $price = (float) $variant->price;
+                                        $set('unit_price', $price);
+                                        $set('line_total', $qty * $price);
+                                    }),
+                                Forms\Components\TextInput::make('brand_name')
+                                    ->label('Brand')
+                                    ->disabled()
+                                    ->dehydrated(false),
+                                Forms\Components\TextInput::make('unit_price')
+                                    ->label('Price')
+                                    ->numeric()
+                                    ->prefix('₹')
+                                    ->disabled()
+                                    ->dehydrated(false),
+                                Forms\Components\TextInput::make('line_total')
+                                    ->label('Total')
+                                    ->numeric()
+                                    ->prefix('₹')
+                                    ->disabled()
+                                    ->dehydrated(false),
                             ])
-                            ->columns(3)
+                            ->columns(6)
                             ->defaultItems(0)
                             ->addActionLabel('Add product')
                             ->reorderable()
