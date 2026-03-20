@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use App\Models\ShopType;
 
 class User extends Authenticatable implements FilamentUser
 {
@@ -78,8 +79,20 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsToMany(Shop::class, 'shop_user')->withTimestamps();
     }
 
+    public function isElectrician(): bool
+    {
+        if (! $this->user_type_id) {
+            return false;
+        }
+
+        return ShopType::query()
+            ->where('supports_electrician_rewards', true)
+            ->where('electrician_user_type_id', $this->user_type_id)
+            ->exists();
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->roles()->exists();
+        return $this->roles()->exists() && ! $this->isElectrician();
     }
 }

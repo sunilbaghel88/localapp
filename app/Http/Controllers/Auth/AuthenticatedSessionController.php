@@ -30,6 +30,10 @@ class AuthenticatedSessionController extends Controller
 
         $user = $request->user();
 
+        if ($user && $user->isElectrician()) {
+            return redirect()->intended(route('electrician.dashboard', absolute: false));
+        }
+
         if ($user->roles()->exists()) {
             return redirect()->intended(route('filament.admin.pages.dashboard', absolute: false));
         }
