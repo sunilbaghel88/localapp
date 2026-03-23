@@ -14,6 +14,7 @@ Route::middleware(['auth', 'electrician'])
 
         Route::get('/order-create', [ElectricianOrderController::class, 'create'])->name('orders.create');
         Route::post('/orders', [ElectricianOrderController::class, 'store'])->name('orders.store');
+        Route::post('/orders/ai-suggest', [ElectricianOrderController::class, 'aiSuggestProducts'])->name('orders.ai-suggest');
         Route::get('/orders/search/customers', [ElectricianOrderController::class, 'searchCustomers'])->name('orders.search-customers');
         Route::get('/orders/search/products', [ElectricianOrderController::class, 'searchProducts'])->name('orders.search-products');
         Route::get('/orders/customers/{customerId}/addresses', [ElectricianOrderController::class, 'customerAddresses'])->name('orders.customer-addresses');

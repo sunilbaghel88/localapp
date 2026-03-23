@@ -80,6 +80,25 @@
                 </button>
             </div>
 
+            <div class="mb-5 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <label for="ai_prompt" class="block text-sm font-medium text-gray-800">{{ __('Search & add products using AI') }}</label>
+                <p class="mt-1 text-xs text-gray-600">{{ __('Example: Add 2 Havells 5A MCB and 1 Finolex 1.5mm wire') }}</p>
+                <div class="mt-2 flex gap-2">
+                    <textarea id="ai_prompt" rows="2"
+                        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                        placeholder="{{ __('Type what you want to add') }}"></textarea>
+                    <button type="button" id="apply-ai-items"
+                        class="shrink-0 inline-flex items-center gap-2 rounded-lg bg-amber-600 px-3 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-70">
+                        <svg id="ai_spinner" class="hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity="0.25" stroke-width="4"></circle>
+                            <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="4" stroke-linecap="round"></path>
+                        </svg>
+                        <span id="ai_btn_label">{{ __('Search & add') }}</span>
+                    </button>
+                </div>
+                <p id="ai_message" class="mt-2 text-xs text-gray-700"></p>
+            </div>
+
             @error('items')
                 <p class="mb-2 text-sm text-red-600">{{ $message }}</p>
             @enderror
@@ -121,6 +140,11 @@
     const addressSelect = document.getElementById('address_id');
     const linesBody = document.getElementById('lines-body');
     const addLineBtn = document.getElementById('add-line');
+    const aiPrompt = document.getElementById('ai_prompt');
+    const aiApplyBtn = document.getElementById('apply-ai-items');
+    const aiMessage = document.getElementById('ai_message');
+    const aiSpinner = document.getElementById('ai_spinner');
+    const aiBtnLabel = document.getElementById('ai_btn_label');
 
     let lineIndex = 0;
     let customerTimer = null;
@@ -128,6 +152,7 @@
     const routes = {
         customers: @json(route('electrician.orders.search-customers')),
         products: @json(route('electrician.orders.search-products')),
+        aiSuggest: @json(route('electrician.orders.ai-suggest')),
         addresses: (id) => @json(url('/electrician/orders/customers')) + '/' + id + '/addresses',
     };
 
@@ -392,12 +417,135 @@
         });
     }
 
+    function addPresetLine(item) {
+        addLine();
+        const tr = linesBody.lastElementChild;
+        if (!tr) {
+            return;
+        }
+        const searchInput = tr.querySelector('.product-search');
+        const hiddenPid = tr.querySelector('.product-id');
+        const variantSelect = tr.querySelector('.variant-select');
+        const qtyInput = tr.querySelector('.qty');
+
+        hiddenPid.value = item.product_id;
+        searchInput.value = item.product_name + (item.brand ? ' (' + item.brand + ')' : '');
+        qtyInput.value = item.quantity || 1;
+        variantSelect.innerHTML = '';
+        const variants = Array.isArray(item.variants) ? item.variants : [];
+        if (variants.length > 1) {
+            const empty = document.createElement('option');
+            empty.value = '';
+            empty.textContent = '{{ __("Choose variant") }}';
+            variantSelect.appendChild(empty);
+        }
+
+        if (variants.length) {
+            variants.forEach(function (v) {
+                const opt = document.createElement('option');
+                opt.value = v.id;
+                opt.textContent = v.label + ' — ₹' + v.price + (v.stock != null ? ' (stock ' + v.stock + ')' : '');
+                if (String(v.id) === String(item.variant_id)) {
+                    opt.selected = true;
+                }
+                variantSelect.appendChild(opt);
+            });
+        } else {
+            const opt = document.createElement('option');
+            opt.value = item.variant_id;
+            opt.textContent = item.variant_label + ' — ₹' + item.price + (item.stock != null ? ' (stock ' + item.stock + ')' : '');
+            opt.selected = true;
+            variantSelect.appendChild(opt);
+        }
+    }
+
+    function removeEmptyLines() {
+        const rows = Array.from(linesBody.querySelectorAll('tr'));
+        rows.forEach(function (tr) {
+            const productId = tr.querySelector('.product-id')?.value?.trim() || '';
+            const productSearch = tr.querySelector('.product-search')?.value?.trim() || '';
+            const variantVal = tr.querySelector('.variant-select')?.value?.trim() || '';
+            const qtyVal = tr.querySelector('.qty')?.value?.trim() || '1';
+            const isDefaultQty = qtyVal === '' || qtyVal === '1';
+            const isEmpty = !productId && !productSearch && !variantVal && isDefaultQty;
+            if (isEmpty) {
+                tr.remove();
+            }
+        });
+    }
+
     addLineBtn.addEventListener('click', function () {
         if (!shopSelect.value) {
             alert('{{ __("Please select a shop first.") }}');
             return;
         }
         addLine();
+    });
+
+    aiApplyBtn.addEventListener('click', async function () {
+        const prompt = (aiPrompt.value || '').trim();
+        const shopId = shopSelect.value;
+        aiMessage.textContent = '';
+
+        if (!shopId) {
+            aiMessage.textContent = '{{ __("Select a shop first.") }}';
+            aiMessage.className = 'mt-2 text-xs text-red-700';
+            return;
+        }
+        if (!prompt) {
+            aiMessage.textContent = '{{ __("Type what you want to add.") }}';
+            aiMessage.className = 'mt-2 text-xs text-red-700';
+            return;
+        }
+
+        try {
+            aiApplyBtn.disabled = true;
+            aiSpinner.classList.remove('hidden');
+            aiBtnLabel.textContent = '{{ __("Searching...") }}';
+            const res = await fetch(routes.aiSuggest, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ shop_id: Number(shopId), prompt }),
+            });
+
+            const json = await res.json();
+            if (!res.ok) {
+                const msg = json?.message || json?.errors?.prompt?.[0] || '{{ __("Could not process AI input.") }}';
+                aiMessage.textContent = msg;
+                aiMessage.className = 'mt-2 text-xs text-red-700';
+                return;
+            }
+
+            const items = json.data || [];
+            const missing = json.missing || [];
+
+            if (items.length) {
+                removeEmptyLines();
+            }
+            items.forEach(addPresetLine);
+
+            let msg = items.length
+                ? `{{ __('Added') }} ${items.length} {{ __('item(s).') }}`
+                : '{{ __("No products matched your request.") }}';
+            if (missing.length) {
+                msg += ' {{ __("Not found:") }} ' + missing.join(', ');
+            }
+            aiMessage.textContent = msg;
+            aiMessage.className = items.length ? 'mt-2 text-xs text-green-700' : 'mt-2 text-xs text-red-700';
+        } catch (e) {
+            aiMessage.textContent = '{{ __("AI request failed. Please try again.") }}';
+            aiMessage.className = 'mt-2 text-xs text-red-700';
+        } finally {
+            aiApplyBtn.disabled = false;
+            aiSpinner.classList.add('hidden');
+            aiBtnLabel.textContent = '{{ __("Search & add") }}';
+        }
     });
 
     shopSelect.addEventListener('change', function () {
