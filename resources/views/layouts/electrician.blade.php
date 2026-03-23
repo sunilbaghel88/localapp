@@ -26,6 +26,10 @@
                                 class="{{ request()->routeIs('electrician.rewards.*') ? 'text-amber-700' : 'text-gray-700 hover:text-gray-900' }} text-sm font-medium">
                                 Reward Points
                             </a>
+                            <a href="{{ route('electrician.orders.create') }}"
+                                class="{{ request()->routeIs('electrician.orders.*') ? 'text-amber-700' : 'text-gray-700 hover:text-gray-900' }} text-sm font-medium">
+                                {{ __('Create order') }}
+                            </a>
                         </div>
 
                         <div class="flex items-center gap-2 sm:gap-3">
@@ -61,6 +65,7 @@
                 </div>
             </main>
         </div>
+        @stack('scripts')
     </body>
 </html>
 

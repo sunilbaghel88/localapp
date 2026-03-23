@@ -21,8 +21,12 @@
         </div>
         <div class="rounded-xl bg-white border border-gray-200 p-4">
             <div class="text-sm text-gray-600">Quick links</div>
-            <div class="mt-3">
-                <a class="inline-flex items-center rounded-md bg-amber-500 px-4 py-1 mt-2 text-white text-sm font-medium hover:bg-amber-700"
+            <div class="mt-3 flex flex-col gap-2">
+                <a class="inline-flex items-center rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
+                   href="{{ route('electrician.orders.create') }}">
+                    Create order for customer
+                </a>
+                <a class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
                    href="{{ route('electrician.rewards.index') }}">
                     View reward points (order-wise)
                 </a>
