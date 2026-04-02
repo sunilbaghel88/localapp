@@ -1,6 +1,10 @@
 import '../core/api_client.dart';
 import '../models/address.dart';
+import '../models/brand.dart';
+import '../models/category.dart';
 import '../models/order.dart';
+import '../models/product.dart';
+import '../models/shop.dart';
 import '../models/user.dart';
 
 class ApiService {
@@ -163,5 +167,71 @@ class ApiService {
   Future<Address> setDefaultAddress(int id) async {
     final r = await _dio.post('/addresses/$id/set-default');
     return Address.fromJson(r.data['address'] as Map<String, dynamic>);
+  }
+
+  // ------------------------------------------------------------
+  // Shop owner management APIs
+  // ------------------------------------------------------------
+
+  Future<List<Shop>> getMyShops() async {
+    final r = await _dio.get('/shop/shops');
+    final list = r.data['shops'] as List<dynamic>? ?? [];
+    return list.map((e) => Shop.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<Category>> getShopCategories() async {
+    final r = await _dio.get('/shop/categories');
+    final list = r.data['categories'] as List<dynamic>? ?? [];
+    return list.map((e) => Category.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<Brand>> getShopBrands() async {
+    final r = await _dio.get('/shop/brands');
+    final list = r.data['brands'] as List<dynamic>? ?? [];
+    return list.map((e) => Brand.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<Map<String, dynamic>> getShopProducts({int page = 1, int perPage = 12}) async {
+    final r = await _dio.get('/shop/products', queryParameters: {
+      'page': page,
+      'per_page': perPage,
+    });
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Product> getShopProduct(int id) async {
+    final r = await _dio.get('/shop/products/$id');
+    return Product.fromJson(r.data['product'] as Map<String, dynamic>);
+  }
+
+  Future<Product> createShopProduct(Map<String, dynamic> payload) async {
+    final r = await _dio.post('/shop/products', data: payload);
+    return Product.fromJson(r.data['product'] as Map<String, dynamic>);
+  }
+
+  Future<Product> updateShopProduct(int id, Map<String, dynamic> payload) async {
+    final r = await _dio.patch('/shop/products/$id', data: payload);
+    return Product.fromJson(r.data['product'] as Map<String, dynamic>);
+  }
+
+  Future<Map<String, dynamic>> getShopOrders({int page = 1, int perPage = 10}) async {
+    final r = await _dio.get('/shop/orders', queryParameters: {
+      'page': page,
+      'per_page': perPage,
+    });
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Order> getShopOrder(int id) async {
+    final r = await _dio.get('/shop/orders/$id');
+    return Order.fromJson(r.data['order'] as Map<String, dynamic>);
+  }
+
+  Future<Order> updateShopOrder(int id, {required String status, required String paymentStatus}) async {
+    final r = await _dio.patch('/shop/orders/$id', data: {
+      'status': status,
+      'payment_status': paymentStatus,
+    });
+    return Order.fromJson(r.data['order'] as Map<String, dynamic>);
   }
 }

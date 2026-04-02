@@ -14,6 +14,11 @@ import 'screens/orders_screen.dart';
 import 'screens/order_detail_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/addresses_screen.dart';
+import 'screens/shop_owner_products_screen.dart';
+import 'screens/shop_owner_product_detail_screen.dart';
+import 'screens/shop_owner_product_form_screen.dart';
+import 'screens/shop_owner_orders_screen.dart';
+import 'screens/shop_owner_order_detail_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -24,17 +29,26 @@ GoRouter createRouter(BuildContext context) {
     initialLocation: '/',
     redirect: (context, state) {
       final isAuth = auth.isAuthenticated;
+      final isOwnerRoute = state.matchedLocation.startsWith('/owner');
       final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/register';
       final isSplash = state.matchedLocation == '/';
       if (isSplash) return null;
+      if (auth.isLoading) return null;
       if (!isAuth && (state.matchedLocation.startsWith('/cart') ||
           state.matchedLocation.startsWith('/checkout') ||
           state.matchedLocation.startsWith('/orders') ||
+          state.matchedLocation.startsWith('/owner') ||
           state.matchedLocation.startsWith('/profile') ||
           state.matchedLocation.startsWith('/addresses'))) {
         return '/login';
       }
       if (isAuth && isAuthRoute) return '/home';
+
+      if (isOwnerRoute && isAuth) {
+        final permissions = auth.user?.permissions ?? const [];
+        final canAccessOwner = permissions.contains('view_any_product') || permissions.contains('view_any_order');
+        if (!canAccessOwner) return '/home';
+      }
       return null;
     },
     routes: [
@@ -95,6 +109,39 @@ GoRouter createRouter(BuildContext context) {
       GoRoute(
         path: '/addresses',
         builder: (_, _) => const AddressesScreen(),
+      ),
+      GoRoute(
+        path: '/owner/products',
+        builder: (context, state) => const ShopOwnerProductsScreen(),
+      ),
+      GoRoute(
+        path: '/owner/products/create',
+        builder: (context, state) => const ShopOwnerProductFormScreen(productId: null),
+      ),
+      GoRoute(
+        path: '/owner/products/:id',
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
+          return ShopOwnerProductDetailScreen(productId: id);
+        },
+      ),
+      GoRoute(
+        path: '/owner/products/:id/edit',
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
+          return ShopOwnerProductFormScreen(productId: id);
+        },
+      ),
+      GoRoute(
+        path: '/owner/orders',
+        builder: (context, state) => const ShopOwnerOrdersScreen(),
+      ),
+      GoRoute(
+        path: '/owner/orders/:id',
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
+          return ShopOwnerOrderDetailScreen(orderId: id);
+        },
       ),
     ],
   );

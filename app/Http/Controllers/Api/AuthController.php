@@ -11,6 +11,20 @@ use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
+    /**
+     * Ensure the mobile client can do role/permission based UI.
+     */
+    protected function authUserPayload(User $user): array
+    {
+        $role = $user->roles()->pluck('name')->first();
+        $permissions = $user->getAllPermissions()->pluck('name') ?? collect();
+
+        return array_merge($user->toArray(), [
+            'role' => $role,
+            'permissions' => $permissions,
+        ]);
+    }
+
     public function login(Request $request)
     {
         $request->validate([
@@ -29,7 +43,7 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $user->createToken($request->device_name)->plainTextToken,
-            'user' => $user,
+            'user' => $this->authUserPayload($user),
         ]);
     }
 
@@ -52,7 +66,7 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $user->createToken($request->device_name)->plainTextToken,
-            'user' => $user,
+            'user' => $this->authUserPayload($user),
         ], 201);
     }
 

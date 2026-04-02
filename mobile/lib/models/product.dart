@@ -7,6 +7,7 @@ class Product {
   final int id;
   final int? shopId;
   final int? categoryId;
+  final int? brandId;
   final String name;
   final String slug;
   final String? description;
@@ -21,6 +22,7 @@ class Product {
     required this.id,
     this.shopId,
     this.categoryId,
+    this.brandId,
     required this.name,
     required this.slug,
     this.description,
@@ -41,10 +43,14 @@ class Product {
       brandValue = rawBrand['name'] as String?;
     }
 
+    final brandId = json['brand_id'] as int? ??
+        (json['brand'] is Map<String, dynamic> ? (json['brand']['id'] as int?) : null);
+
     return Product(
       id: json['id'] as int,
       shopId: json['shop_id'] as int?,
       categoryId: json['category_id'] as int?,
+      brandId: brandId,
       name: json['name'] as String,
       slug: json['slug'] as String,
       description: json['description'] as String?,

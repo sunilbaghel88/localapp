@@ -76,15 +76,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 context.push('/profile');
               } else if (value == 'orders') {
                 context.push('/orders');
+              } else if (value == 'owner_products') {
+                context.push('/owner/products');
+              } else if (value == 'owner_orders') {
+                context.push('/owner/orders');
               } else if (value == 'logout') {
                 _logout();
               }
             },
             itemBuilder: (context) {
               if (auth.isAuthenticated) {
+                final permissions = auth.user?.permissions ?? const [];
+                final canManageProducts = permissions.contains('view_any_product');
+                final canManageOrders = permissions.contains('view_any_order');
                 return [
                   const PopupMenuItem(value: 'profile', child: Text('Profile')),
-                  const PopupMenuItem(value: 'orders', child: Text('My Orders')),
+                  if (canManageProducts) const PopupMenuItem(value: 'owner_products', child: Text('Manage Products')),
+                  if (canManageOrders) const PopupMenuItem(value: 'owner_orders', child: Text('Manage Orders')),
+                  if (!canManageOrders) const PopupMenuItem(value: 'orders', child: Text('My Orders')),
                   const PopupMenuItem(value: 'logout', child: Text('Logout')),
                 ];
               }
