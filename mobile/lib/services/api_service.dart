@@ -1,3 +1,7 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+
 import '../core/api_client.dart';
 import '../models/address.dart';
 import '../models/brand.dart';
@@ -212,6 +216,27 @@ class ApiService {
   Future<Product> updateShopProduct(int id, Map<String, dynamic> payload) async {
     final r = await _dio.patch('/shop/products/$id', data: payload);
     return Product.fromJson(r.data['product'] as Map<String, dynamic>);
+  }
+
+  /// Uploads image bytes to the server; returns the storage path for [ProductImage.url].
+  ///
+  /// Uses `MultipartFile.fromBytes` so it works on platforms where `dart:io` is unavailable (Flutter Web).
+  Future<String> uploadShopProductImageBytes(
+    Uint8List bytes, {
+    required String filename,
+  }) async {
+    final formData = FormData.fromMap({
+      'image': MultipartFile.fromBytes(bytes, filename: filename),
+    });
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/product-images/upload',
+      data: formData,
+    );
+    final data = r.data;
+    if (data == null || data['url'] == null) {
+      throw StateError('Invalid upload response');
+    }
+    return data['url'] as String;
   }
 
   Future<Map<String, dynamic>> getShopOrders({int page = 1, int perPage = 10}) async {

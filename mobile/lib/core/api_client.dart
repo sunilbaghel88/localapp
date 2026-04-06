@@ -18,6 +18,9 @@ class ApiClient {
     ));
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
+        if (options.data is FormData) {
+          options.headers.remove(Headers.contentTypeHeader);
+        }
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString(tokenKey);
         if (token != null && token.isNotEmpty) {
