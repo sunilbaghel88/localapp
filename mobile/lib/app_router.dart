@@ -19,6 +19,7 @@ import 'screens/shop_owner_product_detail_screen.dart';
 import 'screens/shop_owner_product_form_screen.dart';
 import 'screens/shop_owner_orders_screen.dart';
 import 'screens/shop_owner_order_detail_screen.dart';
+import 'screens/shop_owner_create_order_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -48,6 +49,9 @@ GoRouter createRouter(BuildContext context) {
         final permissions = auth.user?.permissions ?? const [];
         final canAccessOwner = permissions.contains('view_any_product') || permissions.contains('view_any_order');
         if (!canAccessOwner) return '/home';
+        if (state.matchedLocation == '/owner/orders/create' && !permissions.contains('create_order')) {
+          return '/owner/orders';
+        }
       }
       return null;
     },
@@ -135,6 +139,10 @@ GoRouter createRouter(BuildContext context) {
       GoRoute(
         path: '/owner/orders',
         builder: (context, state) => const ShopOwnerOrdersScreen(),
+      ),
+      GoRoute(
+        path: '/owner/orders/create',
+        builder: (context, state) => const ShopOwnerCreateOrderScreen(),
       ),
       GoRoute(
         path: '/owner/orders/:id',

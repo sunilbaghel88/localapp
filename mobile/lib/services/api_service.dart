@@ -259,4 +259,70 @@ class ApiService {
     });
     return Order.fromJson(r.data['order'] as Map<String, dynamic>);
   }
+
+  /// Shop owner: create order on behalf of a customer (matches electrician web flow).
+  Future<List<Map<String, dynamic>>> searchShopOrderCustomers(String q) async {
+    final r = await _dio.get('/shop/order-create/search-customers', queryParameters: {'q': q});
+    final list = r.data['data'] as List<dynamic>? ?? [];
+    return list.map((e) => e as Map<String, dynamic>).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getShopOrderElectricians(int shopId) async {
+    final r = await _dio.get('/shop/order-create/electricians', queryParameters: {
+      'shop_id': shopId,
+    });
+    final list = r.data['data'] as List<dynamic>? ?? [];
+    return list.map((e) => e as Map<String, dynamic>).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> searchShopOrderProducts(int shopId, String q) async {
+    final r = await _dio.get('/shop/order-create/search-products', queryParameters: {
+      'shop_id': shopId,
+      'q': q,
+    });
+    final list = r.data['data'] as List<dynamic>? ?? [];
+    return list.map((e) => e as Map<String, dynamic>).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getShopOrderCustomerAddresses(int customerId) async {
+    final r = await _dio.get('/shop/order-create/customers/$customerId/addresses');
+    final list = r.data['data'] as List<dynamic>? ?? [];
+    return list.map((e) => e as Map<String, dynamic>).toList();
+  }
+
+  /// Returns `{ 'data': [...], 'missing': [...] }` like the web AI endpoint.
+  Future<Map<String, dynamic>> shopOrderAiSuggest(int shopId, String prompt) async {
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/order-create/ai-suggest',
+      data: {
+        'shop_id': shopId,
+        'prompt': prompt,
+      },
+    );
+    return r.data ?? {};
+  }
+
+  Future<Order> createShopOrderOnBehalf({
+    required int shopId,
+    required int customerUserId,
+    int? addressId,
+    int? electricianUserId,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/orders',
+      data: {
+        'shop_id': shopId,
+        'user_id': customerUserId,
+        'items': items,
+        ...?addressId != null ? {'address_id': addressId} : null,
+        ...?electricianUserId != null ? {'electrician_user_id': electricianUserId} : null,
+      },
+    );
+    final data = r.data;
+    if (data == null || data['order'] == null) {
+      throw StateError('Invalid create order response');
+    }
+    return Order.fromJson(data['order'] as Map<String, dynamic>);
+  }
 }

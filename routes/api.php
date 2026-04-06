@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\Shop\ShopMetaController;
 use App\Http\Controllers\Api\Shop\ShopProductController;
 use App\Http\Controllers\Api\Shop\ShopProductImageController;
 use App\Http\Controllers\Api\Shop\ShopOrderController;
+use App\Http\Controllers\Api\Shop\ShopOrderCreateController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login'])->name('api.login');
@@ -66,7 +67,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/products/{product}', [ShopProductController::class, 'update']);
         Route::post('/product-images/upload', [ShopProductImageController::class, 'store']);
 
-        // Orders
+        // Orders (create-on-behalf-of-customer — same behaviour as electrician web flow)
+        Route::get('/order-create/search-customers', [ShopOrderCreateController::class, 'searchCustomers']);
+        Route::get('/order-create/electricians', [ShopOrderCreateController::class, 'listElectricians']);
+        Route::get('/order-create/search-products', [ShopOrderCreateController::class, 'searchProducts']);
+        Route::get('/order-create/customers/{customerId}/addresses', [ShopOrderCreateController::class, 'customerAddresses']);
+        Route::post('/order-create/ai-suggest', [ShopOrderCreateController::class, 'aiSuggest']);
+        Route::post('/orders', [ShopOrderCreateController::class, 'store']);
+
         Route::get('/orders', [ShopOrderController::class, 'index']);
         Route::get('/orders/{order}', [ShopOrderController::class, 'show']);
         Route::patch('/orders/{order}', [ShopOrderController::class, 'update']);

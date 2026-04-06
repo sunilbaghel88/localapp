@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/order.dart';
+import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 
 class ShopOwnerOrdersScreen extends StatefulWidget {
@@ -75,35 +77,26 @@ class _ShopOwnerOrdersScreenState extends State<ShopOwnerOrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading && _orders.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Manage Orders')),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
+    final perms = context.watch<AuthProvider>().user?.permissions;
+    final canCreateOrder = perms?.contains('create_order') ?? false;
+    final currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
-    if (_error != null && _orders.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Manage Orders')),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(_error!),
-              const SizedBox(height: 16),
-              FilledButton(onPressed: _load, child: const Text('Retry')),
-            ],
-          ),
+    late final Widget body;
+    if (_loading && _orders.isEmpty) {
+      body = const Center(child: CircularProgressIndicator());
+    } else if (_error != null && _orders.isEmpty) {
+      body = Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_error!),
+            const SizedBox(height: 16),
+            FilledButton(onPressed: _load, child: const Text('Retry')),
+          ],
         ),
       );
-    }
-
-    final currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manage Orders'),
-      ),
-      body: RefreshIndicator(
+    } else {
+      body = RefreshIndicator(
         onRefresh: () => _load(),
         child: _orders.isEmpty
             ? const Center(child: Text('No orders yet'))
@@ -112,7 +105,6 @@ class _ShopOwnerOrdersScreenState extends State<ShopOwnerOrdersScreen> {
                 itemCount: _orders.length + (_hasMore ? 1 : 0),
                 itemBuilder: (context, i) {
                   if (i == _orders.length) {
-                    // Pagination trigger.
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       if (mounted) _load(append: true);
                     });
@@ -138,7 +130,21 @@ class _ShopOwnerOrdersScreenState extends State<ShopOwnerOrdersScreen> {
                   );
                 },
               ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Manage Orders'),
+        actions: [
+          if (canCreateOrder)
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: () => context.push('/owner/orders/create'),
+            ),
+        ],
       ),
+      body: body,
     );
   }
 }
