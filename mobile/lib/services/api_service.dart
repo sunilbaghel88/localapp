@@ -325,4 +325,77 @@ class ApiService {
     }
     return Order.fromJson(data['order'] as Map<String, dynamic>);
   }
+
+  // ------------------------------------------------------------
+  // Electrician APIs (auth:sanctum + server-side electrician check)
+  // ------------------------------------------------------------
+
+  Future<List<Shop>> getElectricianShops() async {
+    final r = await _dio.get('/electrician/shops');
+    final list = r.data['shops'] as List<dynamic>? ?? [];
+    return list.map((e) => Shop.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<Map<String, dynamic>> getElectricianRewardGrants({int page = 1, int perPage = 50}) async {
+    final r = await _dio.get('/electrician/reward-grants', queryParameters: {
+      'page': page,
+      'per_page': perPage,
+    });
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> searchElectricianOrderCustomers(String q) async {
+    final r = await _dio.get('/electrician/order-create/search-customers', queryParameters: {'q': q});
+    final list = r.data['data'] as List<dynamic>? ?? [];
+    return list.map((e) => e as Map<String, dynamic>).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> searchElectricianOrderProducts(int shopId, String q) async {
+    final r = await _dio.get('/electrician/order-create/search-products', queryParameters: {
+      'shop_id': shopId,
+      'q': q,
+    });
+    final list = r.data['data'] as List<dynamic>? ?? [];
+    return list.map((e) => e as Map<String, dynamic>).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getElectricianOrderCustomerAddresses(int customerId) async {
+    final r = await _dio.get('/electrician/order-create/customers/$customerId/addresses');
+    final list = r.data['data'] as List<dynamic>? ?? [];
+    return list.map((e) => e as Map<String, dynamic>).toList();
+  }
+
+  Future<Map<String, dynamic>> electricianOrderAiSuggest(int shopId, String prompt) async {
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/electrician/order-create/ai-suggest',
+      data: {
+        'shop_id': shopId,
+        'prompt': prompt,
+      },
+    );
+    return r.data ?? {};
+  }
+
+  /// Electrician creates order for customer; server sets `electrician_user_id` to the logged-in user.
+  Future<Order> createElectricianOrderOnBehalf({
+    required int shopId,
+    required int customerUserId,
+    int? addressId,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/electrician/orders',
+      data: {
+        'shop_id': shopId,
+        'user_id': customerUserId,
+        'items': items,
+        'address_id': ?addressId,
+      },
+    );
+    final data = r.data;
+    if (data == null || data['order'] == null) {
+      throw StateError('Invalid create order response');
+    }
+    return Order.fromJson(data['order'] as Map<String, dynamic>);
+  }
 }

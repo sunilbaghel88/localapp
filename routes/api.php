@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\Shop\ShopProductController;
 use App\Http\Controllers\Api\Shop\ShopProductImageController;
 use App\Http\Controllers\Api\Shop\ShopOrderController;
 use App\Http\Controllers\Api\Shop\ShopOrderCreateController;
+use App\Http\Controllers\Api\Electrician\ElectricianApiController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login'])->name('api.login');
@@ -34,6 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
         return array_merge($user?->toArray() ?? [], [
             'role' => $role,
             'permissions' => $permissions,
+            'is_electrician' => $user ? $user->isElectrician() : false,
         ]);
     });
     Route::post('/logout', [AuthController::class, 'logout'])->name('api.logout');
@@ -78,6 +80,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/orders', [ShopOrderController::class, 'index']);
         Route::get('/orders/{order}', [ShopOrderController::class, 'show']);
         Route::patch('/orders/{order}', [ShopOrderController::class, 'update']);
+    });
+
+    // Electrician (Sanctum + electrician user type / shop-type mapping)
+    Route::prefix('electrician')->middleware('electrician')->group(function () {
+        Route::get('/shops', [ElectricianApiController::class, 'shops']);
+        Route::get('/reward-grants', [ElectricianApiController::class, 'rewardGrants']);
+        Route::get('/order-create/search-customers', [ElectricianApiController::class, 'searchCustomers']);
+        Route::get('/order-create/search-products', [ElectricianApiController::class, 'searchProducts']);
+        Route::get('/order-create/customers/{customerId}/addresses', [ElectricianApiController::class, 'customerAddresses']);
+        Route::post('/order-create/ai-suggest', [ElectricianApiController::class, 'aiSuggest']);
+        Route::post('/orders', [ElectricianApiController::class, 'store']);
     });
 
     // Addresses

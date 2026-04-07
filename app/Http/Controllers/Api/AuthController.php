@@ -22,6 +22,7 @@ class AuthController extends Controller
         return array_merge($user->toArray(), [
             'role' => $role,
             'permissions' => $permissions,
+            'is_electrician' => $user->isElectrician(),
         ]);
     }
 
