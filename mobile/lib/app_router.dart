@@ -20,6 +20,8 @@ import 'screens/shop_owner_product_form_screen.dart';
 import 'screens/shop_owner_orders_screen.dart';
 import 'screens/shop_owner_order_detail_screen.dart';
 import 'screens/shop_owner_create_order_screen.dart';
+import 'screens/electrician_rewards_screen.dart';
+import 'screens/electrician_create_order_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -31,6 +33,7 @@ GoRouter createRouter(BuildContext context) {
     redirect: (context, state) {
       final isAuth = auth.isAuthenticated;
       final isOwnerRoute = state.matchedLocation.startsWith('/owner');
+      final isElectricianRoute = state.matchedLocation.startsWith('/electrician');
       final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/register';
       final isSplash = state.matchedLocation == '/';
       if (isSplash) return null;
@@ -39,6 +42,7 @@ GoRouter createRouter(BuildContext context) {
           state.matchedLocation.startsWith('/checkout') ||
           state.matchedLocation.startsWith('/orders') ||
           state.matchedLocation.startsWith('/owner') ||
+          state.matchedLocation.startsWith('/electrician') ||
           state.matchedLocation.startsWith('/profile') ||
           state.matchedLocation.startsWith('/addresses'))) {
         return '/login';
@@ -52,6 +56,11 @@ GoRouter createRouter(BuildContext context) {
         if (state.matchedLocation == '/owner/orders/create' && !permissions.contains('create_order')) {
           return '/owner/orders';
         }
+      }
+
+      if (isElectricianRoute && isAuth) {
+        final isElectrician = auth.user?.isElectrician ?? false;
+        if (!isElectrician) return '/home';
       }
       return null;
     },
@@ -150,6 +159,14 @@ GoRouter createRouter(BuildContext context) {
           final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
           return ShopOwnerOrderDetailScreen(orderId: id);
         },
+      ),
+      GoRoute(
+        path: '/electrician/rewards',
+        builder: (context, state) => const ElectricianRewardsScreen(),
+      ),
+      GoRoute(
+        path: '/electrician/orders/create',
+        builder: (context, state) => const ElectricianCreateOrderScreen(),
       ),
     ],
   );

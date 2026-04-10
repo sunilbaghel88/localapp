@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'app_router.dart';
+import 'core/app_keys.dart';
 import 'providers/auth_provider.dart';
 
 void main() {
@@ -19,6 +20,7 @@ class MyApp extends StatelessWidget {
       child: Builder(
         builder: (context) {
           return MaterialApp.router(
+            scaffoldMessengerKey: rootScaffoldMessengerKey,
             title: 'LocalApp',
             theme: ThemeData(
               colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber, brightness: Brightness.light),

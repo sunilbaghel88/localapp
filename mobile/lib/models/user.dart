@@ -5,6 +5,7 @@ class User {
   final String? phone;
   final String? role;
   final List<String>? permissions;
+  final bool isElectrician;
 
   User({
     required this.id,
@@ -13,6 +14,7 @@ class User {
     this.phone,
     this.role,
     this.permissions,
+    this.isElectrician = false,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -28,6 +30,7 @@ class User {
       phone: json['phone'] as String?,
       role: json['role'] as String?,
       permissions: permissions,
+      isElectrician: json['is_electrician'] == true,
     );
   }
 
@@ -38,5 +41,6 @@ class User {
         'phone': phone,
         'role': role,
         'permissions': permissions,
+        'is_electrician': isElectrician,
       };
 }

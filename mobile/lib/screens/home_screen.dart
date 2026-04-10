@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/category.dart';
 import '../models/product.dart';
+import '../core/app_keys.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 
@@ -80,6 +81,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 context.push('/owner/products');
               } else if (value == 'owner_orders') {
                 context.push('/owner/orders');
+              } else if (value == 'electrician_rewards') {
+                context.push('/electrician/rewards');
+              } else if (value == 'electrician_create_order') {
+                context.push('/electrician/orders/create');
               } else if (value == 'logout') {
                 _logout();
               }
@@ -89,8 +94,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 final permissions = auth.user?.permissions ?? const [];
                 final canManageProducts = permissions.contains('view_any_product');
                 final canManageOrders = permissions.contains('view_any_order');
+                final isElectrician = auth.user?.isElectrician ?? false;
                 return [
                   const PopupMenuItem(value: 'profile', child: Text('Profile')),
+                  if (isElectrician) ...[
+                    const PopupMenuItem(value: 'electrician_rewards', child: Text('Reward points')),
+                    const PopupMenuItem(value: 'electrician_create_order', child: Text('Create order')),
+                  ],
                   if (canManageProducts) const PopupMenuItem(value: 'owner_products', child: Text('Manage Products')),
                   if (canManageOrders) const PopupMenuItem(value: 'owner_orders', child: Text('Manage Orders')),
                   if (!canManageOrders) const PopupMenuItem(value: 'orders', child: Text('My Orders')),
@@ -259,7 +269,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _logout() async {
     await context.read<AuthProvider>().logout();
-    if (mounted) context.go('/home');
+    if (!mounted) return;
+    rootScaffoldMessengerKey.currentState?.showSnackBar(
+      const SnackBar(content: Text('Logged out successfully')),
+    );
+    context.go('/home');
   }
 }
 

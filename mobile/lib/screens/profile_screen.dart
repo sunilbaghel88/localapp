@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../core/app_keys.dart';
 import '../providers/auth_provider.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -67,7 +68,11 @@ class ProfileScreen extends StatelessWidget {
             title: const Text('Logout'),
             onTap: () async {
               await auth.logout();
-              if (context.mounted) context.go('/home');
+              if (!context.mounted) return;
+              rootScaffoldMessengerKey.currentState?.showSnackBar(
+                const SnackBar(content: Text('Logged out successfully')),
+              );
+              context.go('/home');
             },
           ),
         ],
