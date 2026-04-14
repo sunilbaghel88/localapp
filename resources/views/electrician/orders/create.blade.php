@@ -25,49 +25,45 @@
         @endif
 
         <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 class="text-lg font-medium text-gray-900 mb-4">{{ __('Shop') }}</h2>
-            <div>
-                <label for="shop_id" class="block text-sm font-medium text-gray-700">{{ __('Shop') }} *</label>
-                <select name="shop_id" id="shop_id" required
-                    class="mt-1 block w-full max-w-md rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500">
-                    <option value="">{{ __('Select shop') }}</option>
-                    @foreach ($shops as $shop)
-                        <option value="{{ $shop->id }}" @selected(old('shop_id') == $shop->id)>{{ $shop->name }}</option>
-                    @endforeach
-                </select>
-                @error('shop_id')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
-        </div>
+            <h2 class="text-lg font-medium text-gray-900 mb-4">{{ __('Order details') }}</h2>
+            <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div>
+                    <label for="shop_id" class="block text-sm font-medium text-gray-700">{{ __('Shop') }} *</label>
+                    <select name="shop_id" id="shop_id" required
+                        class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                        <option value="">{{ __('Select shop') }}</option>
+                        @foreach ($shops as $shop)
+                            <option value="{{ $shop->id }}" @selected(old('shop_id') == $shop->id)>{{ $shop->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('shop_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
 
-        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 class="text-lg font-medium text-gray-900 mb-4">{{ __('Customer') }}</h2>
-            <div class="relative max-w-xl">
-                <label for="customer_search" class="block text-sm font-medium text-gray-700">{{ __('Find customer') }} *</label>
-                <input type="text" id="customer_search" name="customer_search" autocomplete="off" placeholder="{{ __('Name, email, or phone…') }}"
-                    class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500"
-                    value="{{ old('customer_search') }}">
-                <input type="hidden" name="user_id" id="user_id" value="{{ old('user_id') }}" required>
-                <div id="customer_results" class="absolute z-20 mt-1 hidden max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg"></div>
-                <p id="customer_hint" class="mt-2 text-sm text-gray-500"></p>
-                @error('user_id')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
-        </div>
+                <div class="relative">
+                    <label for="customer_search" class="block text-sm font-medium text-gray-700">{{ __('Find customer') }} *</label>
+                    <input type="text" id="customer_search" name="customer_search" autocomplete="off" placeholder="{{ __('Name, email, or phone…') }}"
+                        class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                        value="{{ old('customer_search') }}">
+                    <input type="hidden" name="user_id" id="user_id" value="{{ old('user_id') }}" required>
+                    <div id="customer_results" class="absolute z-20 mt-1 hidden max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg"></div>
+                    <p id="customer_hint" class="mt-2 text-sm text-gray-500"></p>
+                    @error('user_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
 
-        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 class="text-lg font-medium text-gray-900 mb-4">{{ __('Shipping address') }}</h2>
-            <div class="max-w-xl">
-                <label for="address_id" class="block text-sm font-medium text-gray-700">{{ __('Address') }}</label>
-                <select name="address_id" id="address_id"
-                    class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500">
-                    <option value="">{{ __('Select customer first') }}</option>
-                </select>
-                @error('address_id')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
+                <div>
+                    <label for="address_id" class="block text-sm font-medium text-gray-700">{{ __('Address') }}</label>
+                    <select name="address_id" id="address_id"
+                        class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                        <option value="">{{ __('Select customer first') }}</option>
+                    </select>
+                    @error('address_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
             </div>
         </div>
 
@@ -527,6 +523,7 @@
 
             if (items.length) {
                 removeEmptyLines();
+                aiPrompt.value = '';
             }
             items.forEach(addPresetLine);
 
