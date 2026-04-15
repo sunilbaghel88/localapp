@@ -12,7 +12,6 @@ use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\UserTypeController;
 use App\Http\Controllers\Api\Shop\ShopMetaController;
 use App\Http\Controllers\Api\Shop\ShopProductController;
-use App\Http\Controllers\Api\Shop\ShopProductImageController;
 use App\Http\Controllers\Api\Shop\ShopOrderController;
 use App\Http\Controllers\Api\Shop\ShopOrderCreateController;
 use App\Http\Controllers\Api\Electrician\ElectricianApiController;
@@ -67,7 +66,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/products', [ShopProductController::class, 'store']);
         Route::get('/products/{product}', [ShopProductController::class, 'show']);
         Route::patch('/products/{product}', [ShopProductController::class, 'update']);
-        Route::post('/product-images/upload', [ShopProductImageController::class, 'store']);
 
         // Orders (create-on-behalf-of-customer — same behaviour as electrician web flow)
         Route::get('/order-create/search-customers', [ShopOrderCreateController::class, 'searchCustomers']);

@@ -1,11 +1,6 @@
-import 'dart:typed_data';
-
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
-import '../core/api_client.dart';
 import '../models/brand.dart';
 import '../models/category.dart';
 import '../models/product_image.dart';
@@ -189,16 +184,13 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
         }
       }
 
+      final images = _images.map((img) => img.toPayload()).toList();
       for (final img in _images) {
-        if (!img.hasServerUrl) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Upload an image for each image row, or remove empty rows')),
-          );
+        if (img.urlText.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image URL cannot be empty')));
           return;
         }
       }
-
-      final images = _images.map((img) => img.toPayload()).toList();
 
       final payload = <String, dynamic>{
         'shop_id': _selectedShopId,
@@ -408,8 +400,6 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
                   return _ImageCard(
                     index: idx,
                     image: img,
-                    api: _api,
-                    onChanged: () => setState(() {}),
                     onRemove: () {
                       setState(() {
                         img.dispose();
@@ -555,18 +545,13 @@ class _VariantRow {
 
 class _ImageRow {
   final int? id;
-  /// Storage path returned by `/shop/product-images/upload` (same as [ProductImage.url]).
-  String? serverUrl;
-  Uint8List? localPreviewBytes;
-  bool uploading;
+  final TextEditingController urlController;
   final TextEditingController sortOrderController;
   bool isPrimary;
 
   _ImageRow({
     this.id,
-    this.serverUrl,
-    this.localPreviewBytes,
-    this.uploading = false,
+    required this.urlController,
     required this.sortOrderController,
     required this.isPrimary,
   });
@@ -574,9 +559,7 @@ class _ImageRow {
   factory _ImageRow.empty() {
     return _ImageRow(
       id: null,
-      serverUrl: null,
-      localPreviewBytes: null,
-      uploading: false,
+      urlController: TextEditingController(),
       sortOrderController: TextEditingController(text: '0'),
       isPrimary: false,
     );
@@ -585,15 +568,13 @@ class _ImageRow {
   factory _ImageRow.fromImage(ProductImage img) {
     return _ImageRow(
       id: img.id,
-      serverUrl: img.url,
-      localPreviewBytes: null,
-      uploading: false,
+      urlController: TextEditingController(text: img.url),
       sortOrderController: TextEditingController(text: img.sortOrder.toString()),
       isPrimary: img.isPrimary,
     );
   }
 
-  bool get hasServerUrl => serverUrl != null && serverUrl!.trim().isNotEmpty;
+  String get urlText => urlController.text.trim();
 
   Map<String, dynamic> toPayload() {
     final sortText = sortOrderController.text.trim();
@@ -601,13 +582,14 @@ class _ImageRow {
 
     return <String, dynamic>{
       if (id != null) 'id': id,
-      'url': serverUrl!.trim(),
+      'url': urlText,
       'is_primary': isPrimary,
       'sort_order': sort,
     };
   }
 
   void dispose() {
+    urlController.dispose();
     sortOrderController.dispose();
   }
 }
@@ -781,82 +763,16 @@ class _VariantCard extends StatelessWidget {
 class _ImageCard extends StatelessWidget {
   final int index;
   final _ImageRow image;
-  final ApiService api;
-  final VoidCallback onChanged;
   final VoidCallback onRemove;
 
   const _ImageCard({
     required this.index,
     required this.image,
-    required this.api,
-    required this.onChanged,
     required this.onRemove,
   });
 
-  Future<void> _pickAndUpload(BuildContext context) async {
-    final picker = ImagePicker();
-    final x = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-      maxWidth: 2048,
-    );
-    if (x == null) return;
-
-    final bytes = await x.readAsBytes();
-    image.localPreviewBytes = bytes;
-    image.uploading = true;
-    onChanged();
-
-    try {
-      final filename = x.name.isNotEmpty ? x.name : 'image.jpg';
-      final path = await api.uploadShopProductImageBytes(
-        bytes,
-        filename: filename,
-      );
-      image.serverUrl = path;
-      image.localPreviewBytes = null;
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
-        );
-      }
-      image.localPreviewBytes = null;
-    } finally {
-      image.uploading = false;
-      onChanged();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    Widget preview;
-    if (image.uploading) {
-      preview = const Center(child: CircularProgressIndicator(strokeWidth: 2));
-    } else if (image.localPreviewBytes != null) {
-      preview = Image.memory(
-        image.localPreviewBytes!,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
-      );
-    } else if (image.hasServerUrl) {
-      preview = CachedNetworkImage(
-        imageUrl: ApiClient.imageUrl(image.serverUrl!),
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
-        placeholder: (context, url) => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-        errorWidget: (context, url, error) => const Center(child: Icon(Icons.broken_image_outlined)),
-      );
-    } else {
-      preview = Center(
-        child: Icon(Icons.add_photo_alternate_outlined, size: 40, color: theme.colorScheme.outline),
-      );
-    }
-
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -867,7 +783,7 @@ class _ImageCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Image ${index + 1}', style: theme.textTheme.titleSmall),
+                Text('Image ${index + 1}', style: Theme.of(context).textTheme.titleSmall),
                 IconButton(
                   onPressed: onRemove,
                   icon: const Icon(Icons.delete_outline),
@@ -875,39 +791,9 @@ class _ImageCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: SizedBox(
-                    width: 100,
-                    height: 100,
-                    child: ColoredBox(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      child: preview,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: image.uploading ? null : () => _pickAndUpload(context),
-                        icon: const Icon(Icons.upload_file, size: 18),
-                        label: Text(image.hasServerUrl ? 'Replace image' : 'Choose image'),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        image.hasServerUrl ? 'Image uploaded' : 'Pick a file from your gallery',
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            TextField(
+              controller: image.urlController,
+              decoration: const InputDecoration(labelText: 'Image URL *'),
             ),
             const SizedBox(height: 12),
             Row(
@@ -926,7 +812,7 @@ class _ImageCard extends StatelessWidget {
                       value: image.isPrimary,
                       onChanged: (v) {
                         image.isPrimary = v;
-                        onChanged();
+                        (context as Element).markNeedsBuild();
                       },
                     ),
                     Text(image.isPrimary ? 'Primary' : 'Not primary'),
