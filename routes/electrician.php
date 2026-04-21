@@ -11,6 +11,7 @@ Route::middleware(['auth', 'electrician'])
     ->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/reward-points', [RewardPointsController::class, 'index'])->name('rewards.index');
+        Route::post('/reward-points/redeem', [RewardPointsController::class, 'storeRedemptionRequest'])->name('rewards.redeem.store');
 
         Route::get('/order-create', [ElectricianOrderController::class, 'create'])->name('orders.create');
         Route::post('/orders', [ElectricianOrderController::class, 'store'])->name('orders.store');
