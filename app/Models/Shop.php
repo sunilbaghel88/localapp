@@ -69,9 +69,11 @@ class Shop extends Model
         return $this->belongsToMany(User::class, 'shop_user')->withTimestamps();
     }
 
-    /**
-     * Scope: only shops that are "On" (their products are visible on the Dashboard).
-     */
+    public function rewardRedemptionRequests(): HasMany
+    {
+        return $this->hasMany(RewardRedemptionRequest::class);
+    }
+
     public function scopeOn(Builder $query): Builder
     {
         return $query->where('status', 'on');

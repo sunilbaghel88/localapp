@@ -74,6 +74,11 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(UserRewardGrant::class);
     }
 
+    public function rewardRedemptionRequests(): HasMany
+    {
+        return $this->hasMany(RewardRedemptionRequest::class);
+    }
+
     public function electricianShops(): BelongsToMany
     {
         return $this->belongsToMany(Shop::class, 'shop_user')->withTimestamps();
