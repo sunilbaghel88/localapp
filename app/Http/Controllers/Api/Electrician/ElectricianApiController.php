@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Electrician;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\Product;
+use App\Models\RewardRedemptionRequest;
 use App\Models\Shop;
 use App\Models\User;
 use App\Models\UserRewardGrant;
@@ -55,6 +56,68 @@ class ElectricianApiController extends Controller
                 'total_granted_audit' => $totalGrantedAudit,
             ]
         ));
+    }
+
+    public function rewardRedemptions(Request $request): JsonResponse
+    {
+        $perPage = min(100, max(1, (int) $request->query('per_page', 20)));
+        $user = $request->user();
+
+        $requests = RewardRedemptionRequest::query()
+            ->with(['shop:id,name', 'approvedBy:id,name'])
+            ->where('user_id', $user->id)
+            ->latest()
+            ->paginate($perPage);
+
+        return response()->json($requests);
+    }
+
+    public function createRewardRedemption(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $shopTable = (new Shop)->getTable();
+        $allowedShopIds = $user->electricianShops()->pluck($shopTable.'.id');
+
+        if ($allowedShopIds->isEmpty()) {
+            return response()->json([
+                'message' => __('You are not attached to any shop yet.'),
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'shop_id' => ['required', 'integer', 'exists:shops,id'],
+            'requested_points' => ['required', 'integer', 'min:1'],
+            'redemption_type' => ['required', 'string', 'in:cash,gift'],
+            'note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        if (! $allowedShopIds->contains((int) $validated['shop_id'])) {
+            return response()->json([
+                'message' => __('You cannot redeem points with this shop.'),
+            ], 403);
+        }
+
+        if ((int) $validated['requested_points'] > (int) $user->reward_points) {
+            return response()->json([
+                'message' => __('Requested points exceed your available balance.'),
+            ], 422);
+        }
+
+        $created = RewardRedemptionRequest::create([
+            'user_id' => $user->id,
+            'shop_id' => (int) $validated['shop_id'],
+            'requested_points' => (int) $validated['requested_points'],
+            'redemption_type' => $validated['redemption_type'],
+            'status' => 'pending',
+            'note' => $validated['note'] ?? null,
+        ]);
+
+        $created->load(['shop:id,name', 'approvedBy:id,name']);
+
+        return response()->json([
+            'message' => __('Redemption request submitted.'),
+            'request' => $created,
+        ], 201);
     }
 
     public function searchCustomers(Request $request): JsonResponse

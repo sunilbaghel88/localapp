@@ -16,9 +16,12 @@ class ElectricianRewardsScreen extends StatefulWidget {
 class _ElectricianRewardsScreenState extends State<ElectricianRewardsScreen> {
   final ApiService _api = ApiService();
   List<Map<String, dynamic>> _rows = [];
+  List<Map<String, dynamic>> _redemptions = [];
+  List<Map<String, dynamic>> _shops = [];
   int _currentPoints = 0;
   int _totalGrantedAudit = 0;
   bool _loading = true;
+  bool _submittingRedeem = false;
   String? _error;
 
   static final DateFormat _dateFmt = DateFormat('d MMM yyyy, h:mm a');
@@ -53,13 +56,18 @@ class _ElectricianRewardsScreenState extends State<ElectricianRewardsScreen> {
       _error = null;
     });
     try {
-      final json = await _api.getElectricianRewardGrants(page: 1, perPage: 50);
+      final grantsJson = await _api.getElectricianRewardGrants(page: 1, perPage: 50);
+      final redemptionJson = await _api.getElectricianRewardRedemptions(page: 1, perPage: 20);
+      final shops = await _api.getElectricianShops();
       if (!mounted) return;
-      final list = (json['data'] as List<dynamic>? ?? []).map((e) => e as Map<String, dynamic>).toList();
+      final list = (grantsJson['data'] as List<dynamic>? ?? []).map((e) => e as Map<String, dynamic>).toList();
+      final redemptionList = (redemptionJson['data'] as List<dynamic>? ?? []).map((e) => e as Map<String, dynamic>).toList();
       setState(() {
         _rows = list;
-        _currentPoints = _parseInt(json['current_points']);
-        _totalGrantedAudit = _parseInt(json['total_granted_audit']);
+        _redemptions = redemptionList;
+        _shops = shops.map((s) => {'id': s.id, 'name': s.name}).toList();
+        _currentPoints = _parseInt(grantsJson['current_points']);
+        _totalGrantedAudit = _parseInt(grantsJson['total_granted_audit']);
         _loading = false;
       });
     } on DioException catch (e) {
@@ -117,6 +125,20 @@ class _ElectricianRewardsScreenState extends State<ElectricianRewardsScreen> {
                     children: [
                       _buildSummaryCards(context),
                       const SizedBox(height: 16),
+                      _buildRedeemCard(context),
+                      const SizedBox(height: 16),
+                      Text('Redemption requests', style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      if (_redemptions.isEmpty)
+                        const Card(child: ListTile(title: Text('No redemption requests yet.')))
+                      else
+                        ..._redemptions.map((r) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: _redemptionTile(context, r),
+                            )),
+                      const SizedBox(height: 16),
+                      Text('Reward grants history', style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 8),
                       if (_rows.isEmpty)
                         const Padding(
                           padding: EdgeInsets.only(top: 48),
@@ -130,6 +152,183 @@ class _ElectricianRewardsScreenState extends State<ElectricianRewardsScreen> {
                     ],
                   ),
                 ),
+    );
+  }
+
+  Widget _buildRedeemCard(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Redeem points', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            const Text('Send request to shop owner for cash or gift.'),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _shops.isEmpty || _submittingRedeem ? null : _openRedeemDialog,
+                icon: const Icon(Icons.redeem),
+                label: Text(_shops.isEmpty ? 'No linked shop found' : 'Request redemption'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openRedeemDialog() async {
+    if (_shops.isEmpty) return;
+    final formKey = GlobalKey<FormState>();
+    final pointsController = TextEditingController();
+    final noteController = TextEditingController();
+    int selectedShopId = _parseInt(_shops.first['id']);
+    String redemptionType = 'cash';
+
+    final shouldSubmit = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Request redemption'),
+            content: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<int>(
+                      initialValue: selectedShopId,
+                      decoration: const InputDecoration(labelText: 'Shop'),
+                      items: _shops
+                          .map((s) => DropdownMenuItem<int>(
+                                value: _parseInt(s['id']),
+                                child: Text((s['name'] ?? '').toString()),
+                              ))
+                          .toList(),
+                      onChanged: (v) => selectedShopId = v ?? selectedShopId,
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: pointsController,
+                      decoration: const InputDecoration(labelText: 'Points'),
+                      keyboardType: TextInputType.number,
+                      validator: (v) {
+                        final n = int.tryParse(v ?? '');
+                        if (n == null || n <= 0) return 'Enter valid points';
+                        if (n > _currentPoints) return 'Exceeds current balance';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      initialValue: redemptionType,
+                      decoration: const InputDecoration(labelText: 'Type'),
+                      items: const [
+                        DropdownMenuItem(value: 'cash', child: Text('Cash')),
+                        DropdownMenuItem(value: 'gift', child: Text('Gift')),
+                      ],
+                      onChanged: (v) => redemptionType = v ?? 'cash',
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: noteController,
+                      decoration: const InputDecoration(labelText: 'Note (optional)'),
+                      minLines: 1,
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: () {
+                  if (formKey.currentState?.validate() ?? false) {
+                    Navigator.pop(ctx, true);
+                  }
+                },
+                child: const Text('Submit'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!shouldSubmit || !mounted) return;
+
+    setState(() => _submittingRedeem = true);
+    try {
+      await _api.createElectricianRewardRedemption(
+        shopId: selectedShopId,
+        requestedPoints: int.parse(pointsController.text.trim()),
+        redemptionType: redemptionType,
+        note: noteController.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Redemption request submitted.')),
+      );
+      await _load();
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final msg = (e.response?.data is Map<String, dynamic>)
+          ? ((e.response?.data['message'] ?? e.message)?.toString() ?? 'Request failed')
+          : (e.message ?? 'Request failed');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    } finally {
+      if (mounted) {
+        setState(() => _submittingRedeem = false);
+      }
+    }
+  }
+
+  Widget _redemptionTile(BuildContext context, Map<String, dynamic> r) {
+    final shop = r['shop'] as Map<String, dynamic>?;
+    final status = (r['status'] ?? 'pending').toString();
+    final note = (status == 'rejected'
+            ? (r['rejection_reason']?.toString() ?? '')
+            : (r['note']?.toString() ?? ''))
+        .trim();
+    final created = _formatDate(r['created_at']);
+
+    Color chipBg;
+    Color chipFg;
+    switch (status) {
+      case 'approved':
+        chipBg = Colors.green.shade100;
+        chipFg = Colors.green.shade900;
+        break;
+      case 'rejected':
+        chipBg = Colors.red.shade100;
+        chipFg = Colors.red.shade900;
+        break;
+      default:
+        chipBg = Colors.amber.shade100;
+        chipFg = Colors.amber.shade900;
+    }
+
+    return Card(
+      child: ListTile(
+        title: Text('-${_parseInt(r['requested_points'])} pts · ${(r['redemption_type'] ?? '').toString().toUpperCase()}'),
+        subtitle: Text(
+          [
+            if (shop != null && (shop['name']?.toString().isNotEmpty ?? false)) shop['name'].toString(),
+            if (created.isNotEmpty) created,
+            if (note.isNotEmpty) note,
+          ].join(' · '),
+        ),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(color: chipBg, borderRadius: BorderRadius.circular(999)),
+          child: Text(
+            status[0].toUpperCase() + status.substring(1),
+            style: TextStyle(color: chipFg, fontWeight: FontWeight.w600, fontSize: 12),
+          ),
+        ),
+      ),
     );
   }
 

@@ -20,6 +20,7 @@ import 'screens/shop_owner_product_form_screen.dart';
 import 'screens/shop_owner_orders_screen.dart';
 import 'screens/shop_owner_order_detail_screen.dart';
 import 'screens/shop_owner_create_order_screen.dart';
+import 'screens/shop_owner_reward_redemptions_screen.dart';
 import 'screens/electrician_rewards_screen.dart';
 import 'screens/electrician_create_order_screen.dart';
 
@@ -148,6 +149,10 @@ GoRouter createRouter(BuildContext context) {
       GoRoute(
         path: '/owner/orders',
         builder: (context, state) => const ShopOwnerOrdersScreen(),
+      ),
+      GoRoute(
+        path: '/owner/reward-redemptions',
+        builder: (context, state) => const ShopOwnerRewardRedemptionsScreen(),
       ),
       GoRoute(
         path: '/owner/orders/create',

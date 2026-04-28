@@ -235,6 +235,34 @@ class ApiService {
     return Order.fromJson(r.data['order'] as Map<String, dynamic>);
   }
 
+  Future<Map<String, dynamic>> getShopRewardRedemptions({
+    int page = 1,
+    int perPage = 20,
+    String? status,
+  }) async {
+    final r = await _dio.get('/shop/reward-redemptions', queryParameters: {
+      'page': page,
+      'per_page': perPage,
+      if (status != null && status.isNotEmpty) 'status': status,
+    });
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> approveShopRewardRedemption(int requestId) async {
+    final r = await _dio.post('/shop/reward-redemptions/$requestId/approve');
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> rejectShopRewardRedemption(
+    int requestId, {
+    required String reason,
+  }) async {
+    final r = await _dio.post('/shop/reward-redemptions/$requestId/reject', data: {
+      'rejection_reason': reason,
+    });
+    return r.data as Map<String, dynamic>;
+  }
+
   /// Shop owner: create order on behalf of a customer (matches electrician web flow).
   Future<List<Map<String, dynamic>>> searchShopOrderCustomers(String q) async {
     final r = await _dio.get('/shop/order-create/search-customers', queryParameters: {'q': q});
@@ -315,6 +343,29 @@ class ApiService {
     final r = await _dio.get('/electrician/reward-grants', queryParameters: {
       'page': page,
       'per_page': perPage,
+    });
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getElectricianRewardRedemptions({int page = 1, int perPage = 20}) async {
+    final r = await _dio.get('/electrician/reward-redemptions', queryParameters: {
+      'page': page,
+      'per_page': perPage,
+    });
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createElectricianRewardRedemption({
+    required int shopId,
+    required int requestedPoints,
+    required String redemptionType,
+    String? note,
+  }) async {
+    final r = await _dio.post('/electrician/reward-redemptions', data: {
+      'shop_id': shopId,
+      'requested_points': requestedPoints,
+      'redemption_type': redemptionType,
+      if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
     });
     return r.data as Map<String, dynamic>;
   }
