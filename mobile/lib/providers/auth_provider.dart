@@ -58,6 +58,46 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> requestEmailOtp(String email) async {
+    _error = null;
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _api.requestLoginOtp(email);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on DioException catch (e) {
+      _error = e.response?.data?['message'] ?? e.response?.data?['errors']?['email']?[0] ?? 'Failed to send OTP';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> loginWithOtp(String email, String otp) async {
+    _error = null;
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final data = await _api.loginWithOtp(email, otp);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(tokenKey, data['token'] as String);
+      _user = User.fromJson(data['user'] as Map<String, dynamic>);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on DioException catch (e) {
+      _error = e.response?.data?['message'] ??
+          e.response?.data?['errors']?['otp']?[0] ??
+          e.response?.data?['errors']?['email']?[0] ??
+          'OTP login failed';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> register(
     String name,
     String email,

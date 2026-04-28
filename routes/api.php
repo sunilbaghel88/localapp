@@ -19,6 +19,8 @@ use App\Http\Controllers\Api\Electrician\ElectricianApiController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login'])->name('api.login');
+Route::post('/login/otp/request', [AuthController::class, 'requestEmailOtp'])->name('api.login.otp.request');
+Route::post('/login/otp/verify', [AuthController::class, 'loginWithOtp'])->name('api.login.otp.verify');
 Route::post('/register', [AuthController::class, 'register'])->name('api.register');
 
 Route::get('/home', [HomeController::class, 'index'])->name('api.home');

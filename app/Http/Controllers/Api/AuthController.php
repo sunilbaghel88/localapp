@@ -4,13 +4,19 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
+    protected const OTP_CACHE_PREFIX = 'auth_login_otp:';
+    protected const OTP_TTL_MINUTES = 10;
+
     /**
      * Ensure the mobile client can do role/permission based UI.
      */
@@ -41,6 +47,70 @@ class AuthController extends Controller
                 'email' => ['Invalid credentials.'],
             ]);
         }
+
+        return response()->json([
+            'token' => $user->createToken($request->device_name)->plainTextToken,
+            'user' => $this->authUserPayload($user),
+        ]);
+    }
+
+    public function requestEmailOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $email = strtolower((string) $request->email);
+        $otp = (string) random_int(100000, 999999);
+        $cacheKey = self::OTP_CACHE_PREFIX . $email;
+        Cache::put($cacheKey, Hash::make($otp), now()->addMinutes(self::OTP_TTL_MINUTES));
+
+        try {
+            Mail::raw(
+                "Your login OTP is {$otp}. It will expire in " . self::OTP_TTL_MINUTES . ' minutes.',
+                function ($message) use ($email) {
+                    $message->to($email)->subject('Your Login OTP');
+                }
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send login OTP email', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'If the email exists, an OTP has been sent.',
+            'expires_in_minutes' => self::OTP_TTL_MINUTES,
+        ]);
+    }
+
+    public function loginWithOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|digits:6',
+            'device_name' => 'required|string|max:255',
+        ]);
+
+        $email = strtolower((string) $request->email);
+        $cacheKey = self::OTP_CACHE_PREFIX . $email;
+        $hashedOtp = Cache::get($cacheKey);
+
+        if (! is_string($hashedOtp) || ! Hash::check((string) $request->otp, $hashedOtp)) {
+            throw ValidationException::withMessages([
+                'otp' => ['Invalid or expired OTP.'],
+            ]);
+        }
+
+        $user = User::where('email', $email)->first();
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'email' => ['No account found for this email.'],
+            ]);
+        }
+
+        Cache::forget($cacheKey);
 
         return response()->json([
             'token' => $user->createToken($request->device_name)->plainTextToken,

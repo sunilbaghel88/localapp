@@ -20,6 +20,22 @@ class ApiService {
     return r.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> requestLoginOtp(String email) async {
+    final r = await _dio.post('/login/otp/request', data: {
+      'email': email,
+    });
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> loginWithOtp(String email, String otp) async {
+    final r = await _dio.post('/login/otp/verify', data: {
+      'email': email,
+      'otp': otp,
+      'device_name': 'flutter-mobile',
+    });
+    return r.data as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> register(
     String name,
     String email,

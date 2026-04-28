@@ -26,20 +26,49 @@ class _LoginFormState extends State<_LoginForm> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _otpController = TextEditingController();
   bool _obscurePassword = true;
+  bool _otpRequested = false;
+  LoginMethod _loginMethod = LoginMethod.password;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  Future<void> _submitPasswordLogin() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final auth = context.read<AuthProvider>();
     auth.clearError();
     final ok = await auth.login(_emailController.text.trim(), _passwordController.text);
+    if (!mounted) return;
+    if (ok) {
+      context.go('/home');
+    }
+  }
+
+  Future<void> _sendOtp() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final auth = context.read<AuthProvider>();
+    auth.clearError();
+    final ok = await auth.requestEmailOtp(_emailController.text.trim());
+    if (!mounted) return;
+    if (ok) {
+      setState(() => _otpRequested = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('OTP sent to your email')),
+      );
+    }
+  }
+
+  Future<void> _submitOtpLogin() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final auth = context.read<AuthProvider>();
+    auth.clearError();
+    final ok = await auth.loginWithOtp(_emailController.text.trim(), _otpController.text.trim());
     if (!mounted) return;
     if (ok) {
       context.go('/home');
@@ -58,6 +87,34 @@ class _LoginFormState extends State<_LoginForm> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 24),
+                SegmentedButton<LoginMethod>(
+                  segments: const [
+                    ButtonSegment(
+                      value: LoginMethod.password,
+                      label: Text('Password'),
+                      icon: Icon(Icons.lock_outline),
+                    ),
+                    ButtonSegment(
+                      value: LoginMethod.otp,
+                      label: Text('Email OTP'),
+                      icon: Icon(Icons.password_outlined),
+                    ),
+                  ],
+                  selected: {_loginMethod},
+                  onSelectionChanged: auth.isLoading
+                      ? null
+                      : (selection) {
+                          setState(() {
+                            _loginMethod = selection.first;
+                            if (_loginMethod == LoginMethod.password) {
+                              _otpRequested = false;
+                              _otpController.clear();
+                            }
+                          });
+                          auth.clearError();
+                        },
+                ),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -73,31 +130,67 @@ class _LoginFormState extends State<_LoginForm> {
                   },
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                if (_loginMethod == LoginMethod.password)
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      ),
                     ),
+                    validator: (v) {
+                      if (_loginMethod != LoginMethod.password) return null;
+                      return (v == null || v.isEmpty) ? 'Enter your password' : null;
+                    },
+                  )
+                else
+                  TextFormField(
+                    controller: _otpController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    decoration: const InputDecoration(
+                      labelText: 'OTP',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.verified_user_outlined),
+                      counterText: '',
+                    ),
+                    validator: (v) {
+                      if (_loginMethod != LoginMethod.otp) return null;
+                      if (v == null || v.trim().isEmpty) return 'Enter OTP';
+                      if (v.trim().length != 6) return 'OTP must be 6 digits';
+                      return null;
+                    },
                   ),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Enter your password' : null,
-                ),
                 if (auth.error != null) ...[
                   const SizedBox(height: 12),
                   Text(auth.error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                 ],
                 const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: auth.isLoading ? null : _submit,
-                  child: auth.isLoading
-                      ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Login'),
-                ),
+                if (_loginMethod == LoginMethod.password)
+                  FilledButton(
+                    onPressed: auth.isLoading ? null : _submitPasswordLogin,
+                    child: auth.isLoading
+                        ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('Login'),
+                  )
+                else ...[
+                  OutlinedButton(
+                    onPressed: auth.isLoading ? null : _sendOtp,
+                    child: Text(_otpRequested ? 'Resend OTP' : 'Send OTP'),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: auth.isLoading ? null : _submitOtpLogin,
+                    child: auth.isLoading
+                        ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('Login with OTP'),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: () => context.push('/register'),
@@ -110,4 +203,9 @@ class _LoginFormState extends State<_LoginForm> {
       },
     );
   }
+}
+
+enum LoginMethod {
+  password,
+  otp,
 }
