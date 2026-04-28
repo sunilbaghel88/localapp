@@ -362,12 +362,7 @@ class ShopProductController extends Controller
 
         // Images: update/create by id, and delete removed ones.
         $incomingImages = $data['images'] ?? [];
-        $incomingImageIds = collect($incomingImages)
-            ->map(fn ($img) => $img['id'] ?? null)
-            ->filter()
-            ->values()
-            ->all();
-
+        $keptImageIds = [];
         foreach ($incomingImages as $image) {
             $imageId = $image['id'] ?? null;
             if (! empty($imageId)) {
@@ -381,21 +376,23 @@ class ShopProductController extends Controller
                     'is_primary' => (bool) ($image['is_primary'] ?? false),
                     'sort_order' => (int) ($image['sort_order'] ?? 0),
                 ]);
+                $keptImageIds[] = $existing->id;
             } else {
-                ProductImage::create([
+                $created = ProductImage::create([
                     'product_id' => $product->id,
                     'product_variant_id' => null,
                     'url' => $image['url'],
                     'is_primary' => (bool) ($image['is_primary'] ?? false),
                     'sort_order' => (int) ($image['sort_order'] ?? 0),
                 ]);
+                $keptImageIds[] = $created->id;
             }
         }
 
         if ($imagesWasProvided) {
             $q = ProductImage::query()->where('product_id', $product->id);
-            if (count($incomingImageIds) > 0) {
-                $q->whereNotIn('id', $incomingImageIds);
+            if (count($keptImageIds) > 0) {
+                $q->whereNotIn('id', $keptImageIds);
             }
             $q->delete();
         }
