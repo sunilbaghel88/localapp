@@ -7,8 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../models/shop.dart';
 import '../services/api_service.dart';
 
-/// Create an order on behalf of a customer — same flow as the electrician web page
-/// (shop, customer search, address, product lines with search, AI prompt).
 class ShopOwnerCreateOrderScreen extends StatefulWidget {
   const ShopOwnerCreateOrderScreen({super.key});
 

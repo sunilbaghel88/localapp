@@ -79,7 +79,6 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
       _error = null;
     });
     try {
-      // Start with empty (will be replaced by load below).
       _resetVariants();
       _resetImages();
 
@@ -104,7 +103,6 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
       if (widget.productId != null) {
         await _loadProduct(widget.productId!);
       } else {
-        // Create mode: at least 1 variant row.
         _variants.add(_VariantRow.empty());
       }
     } catch (e) {
@@ -555,7 +553,6 @@ class _VariantRow {
 
 class _ImageRow {
   final int? id;
-  /// Storage path returned by `/shop/product-images/upload` (same as [ProductImage.url]).
   String? serverUrl;
   Uint8List? localPreviewBytes;
   bool uploading;

@@ -44,7 +44,6 @@ class _ShopOwnerOrdersScreenState extends State<ShopOwnerOrdersScreen> {
       final paginator = data['orders'] as Map<String, dynamic>?;
       final list = (paginator?['data'] ?? data['orders']) as List<dynamic>?;
 
-      // Note: Laravel paginator serialized to JSON includes `current_page`, `last_page`, and `data`.
       final currentPage = (paginator?['current_page'] ?? 1) as int;
       final lastPage = (paginator?['last_page'] ?? 1) as int;
 
