@@ -25,6 +25,33 @@ class _ShopOwnerOrderDetailScreenState extends State<ShopOwnerOrderDetailScreen>
   final _statuses = const ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
   final _paymentStatuses = const ['pending', 'paid', 'failed', 'refunded'];
 
+  static final _dateTimeFmt = DateFormat.yMMMd().add_jm();
+
+  String _formatDateTime(DateTime? d) {
+    if (d == null) return '—';
+    return _dateTimeFmt.format(d.toLocal());
+  }
+
+  Widget _infoLine(BuildContext context, String label, String value) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: muted)),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(value, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -106,20 +133,65 @@ class _ShopOwnerOrderDetailScreenState extends State<ShopOwnerOrderDetailScreen>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text('Order Status', style: TextStyle(fontWeight: FontWeight.w600)),
-                                    Text(order.status),
-                                  ],
-                                ),
+                                Text('Order summary', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 12),
-                                if (order.shop != null)
-                                  Text('Shop: ${order.shop!.name}', style: Theme.of(context).textTheme.bodyMedium),
-                                const SizedBox(height: 12),
-                                Text('Payment Status: ${order.paymentStatus}', style: Theme.of(context).textTheme.bodyMedium),
+                                _infoLine(context, 'Order date', _formatDateTime(order.createdAt)),
+                                _infoLine(context, 'Last updated', _formatDateTime(order.updatedAt)),
+                                _infoLine(context, 'Order status', order.status),
+                                _infoLine(context, 'Payment status', order.paymentStatus),
+                                if (order.shop != null) _infoLine(context, 'Shop', order.shop!.name),
                               ],
                             ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+                        Text('Customer', style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: order.customer != null
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _infoLine(context, 'Name', order.customer!.name),
+                                      _infoLine(context, 'Email', order.customer!.email),
+                                      if (order.customer!.phone != null && order.customer!.phone!.trim().isNotEmpty)
+                                        _infoLine(context, 'Phone', order.customer!.phone!.trim()),
+                                    ],
+                                  )
+                                : Text(
+                                    'No customer account linked.',
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+                        Text('Electrician', style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: order.electrician != null
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _infoLine(context, 'Name', order.electrician!.name),
+                                      _infoLine(context, 'Email', order.electrician!.email),
+                                      if (order.electrician!.phone != null && order.electrician!.phone!.trim().isNotEmpty)
+                                        _infoLine(context, 'Phone', order.electrician!.phone!.trim()),
+                                    ],
+                                  )
+                                : Text(
+                                    'No electrician linked to this order.',
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
                           ),
                         ),
 
@@ -140,6 +212,45 @@ class _ShopOwnerOrderDetailScreenState extends State<ShopOwnerOrderDetailScreen>
                             trailing: Text(currency.format(item.total), style: const TextStyle(fontWeight: FontWeight.bold)),
                           );
                         }),
+
+                        const SizedBox(height: 16),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [const Text('Subtotal'), Text(currency.format(order.subtotal))],
+                                ),
+                                if (order.discountTotal > 0) ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text('Discount'),
+                                      Text('- ${currency.format(order.discountTotal)}', style: const TextStyle(color: Colors.green)),
+                                    ],
+                                  ),
+                                ],
+                                if (order.shippingTotal > 0) ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [const Text('Shipping'), Text(currency.format(order.shippingTotal))],
+                                  ),
+                                ],
+                                if (order.taxTotal > 0) ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [const Text('Tax'), Text(currency.format(order.taxTotal))],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
 
                         const Divider(height: 32),
 
