@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Actions\GrantOrderRewardPoints;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Filament\Resources\OrderResource\Pages\CreateOrder;
 use App\Models\Order;
@@ -139,7 +140,7 @@ class OrderResource extends Resource
 
                                         return Product::query()
                                             ->where('shop_id', $shopId)
-                                            ->whereRaw('LOWER(name) like ?', ['%' . strtolower($search) . '%'])
+                                            ->whereRaw('LOWER(name) like ?', ['%'.strtolower($search).'%'])
                                             ->orderBy('name')
                                             ->limit(50)
                                             ->pluck('name', 'id')
@@ -154,9 +155,9 @@ class OrderResource extends Resource
                                             return;
                                         }
                                         $product = Product::with([
-                                                'variants' => fn ($q) => $q->where('is_active', true)->orderBy('id'),
-                                                'brand',
-                                            ])
+                                            'variants' => fn ($q) => $q->where('is_active', true)->orderBy('id'),
+                                            'brand',
+                                        ])
                                             ->find($state);
                                         if (! $product) {
                                             return;
@@ -399,38 +400,8 @@ class OrderResource extends Resource
                         ->label('Grant Reward Points')
                         ->icon('heroicon-m-star')
                         ->color('warning')
-                        ->form([
-                            Forms\Components\TextInput::make('points')
-                                ->label('Points to grant')
-                                ->numeric()
-                                ->required()
-                                ->minValue(1),
-                            Forms\Components\Textarea::make('notes')
-                                ->label('Notes (optional)')
-                                ->rows(2),
-                        ])
-                        ->action(function (array $data, $record) {
-                            if (! $record->electrician_user_id) {
-                                \Filament\Notifications\Notification::make()
-                                    ->title('This order has no electrician associated.')
-                                    ->danger()
-                                    ->send();
-
-                                return;
-                            }
-                            \App\Models\UserRewardGrant::create([
-                                'user_id' => $record->electrician_user_id,
-                                'order_id' => $record->id,
-                                'points' => $data['points'],
-                                'granted_by' => auth()->id(),
-                                'notes' => $data['notes'] ?? null,
-                            ]);
-                            $record->electricianUser->increment('reward_points', $data['points']);
-                            \Filament\Notifications\Notification::make()
-                                ->title('Granted '.$data['points'].' reward points to '.$record->electricianUser->name)
-                                ->success()
-                                ->send();
-                        })
+                        ->form(GrantOrderRewardPoints::formSchema())
+                        ->action(fn (array $data, Order $record) => GrantOrderRewardPoints::handle($record, $data))
                         ->visible(fn ($record) => $record->electrician_user_id !== null),
                 ]),
             ])

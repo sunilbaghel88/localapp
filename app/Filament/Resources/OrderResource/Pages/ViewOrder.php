@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\OrderResource\Pages;
 
+use App\Actions\GrantOrderRewardPoints;
 use App\Filament\Resources\OrderResource;
+use App\Models\Order;
 use Filament\Actions;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
+use Filament\Resources\Pages\ViewRecord;
 
 class ViewOrder extends ViewRecord
 {
@@ -19,37 +21,8 @@ class ViewOrder extends ViewRecord
                 ->label('Grant Reward Points')
                 ->icon('heroicon-m-star')
                 ->color('warning')
-                ->form([
-                    \Filament\Forms\Components\TextInput::make('points')
-                        ->label('Points to grant')
-                        ->numeric()
-                        ->required()
-                        ->minValue(1),
-                    \Filament\Forms\Components\Textarea::make('notes')
-                        ->label('Notes (optional)')
-                        ->rows(2),
-                ])
-                ->action(function (array $data, $record) {
-                    if (! $record->electrician_user_id) {
-                        \Filament\Notifications\Notification::make()
-                            ->title('This order has no electrician associated.')
-                            ->danger()
-                            ->send();
-                        return;
-                    }
-                    \App\Models\UserRewardGrant::create([
-                        'user_id' => $record->electrician_user_id,
-                        'order_id' => $record->id,
-                        'points' => $data['points'],
-                        'granted_by' => auth()->id(),
-                        'notes' => $data['notes'] ?? null,
-                    ]);
-                    $record->electricianUser->increment('reward_points', $data['points']);
-                    \Filament\Notifications\Notification::make()
-                        ->title('Granted ' . $data['points'] . ' reward points to ' . $record->electricianUser->name)
-                        ->success()
-                        ->send();
-                })
+                ->form(GrantOrderRewardPoints::formSchema())
+                ->action(fn (array $data, Order $record) => GrantOrderRewardPoints::handle($record, $data))
                 ->visible(fn ($record) => $record->electrician_user_id !== null),
             Actions\Action::make('update_status')
                 ->label('Update Status')
@@ -149,7 +122,8 @@ class ViewOrder extends ViewRecord
                                 if ($grants->isEmpty()) {
                                     return 'None yet';
                                 }
-                                return $grants->map(fn ($g) => $g->points . ' pts by ' . $g->grantedBy->name)->join(', ');
+
+                                return $grants->map(fn ($g) => $g->points.' pts by '.$g->grantedBy->name)->join(', ');
                             })
                             ->visible(fn ($record) => $record->electrician_user_id && $record->rewardGrants->isNotEmpty()),
                     ])
@@ -273,4 +247,3 @@ class ViewOrder extends ViewRecord
             ]);
     }
 }
-
