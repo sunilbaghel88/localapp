@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Shop;
 
+use App\Actions\GrantOrderRewardPoints;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use Illuminate\Http\JsonResponse;
@@ -85,6 +86,34 @@ class ShopOrderController extends Controller
         ]);
 
         return response()->json([
+            'order' => $order,
+        ]);
+    }
+
+    public function grantReward(Request $request, Order $order): JsonResponse
+    {
+        $shopIds = $this->shopIdsForCurrentUser();
+        $this->ensureOrderBelongsToCurrentUser($order, $shopIds);
+
+        $this->authorize('update', $order);
+
+        $data = $request->validate([
+            'points' => ['required', 'integer', 'min:1'],
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        GrantOrderRewardPoints::handle($order, $data);
+
+        $order->load([
+            'shop',
+            'address',
+            'items',
+            'user:id,name,email,phone',
+            'electricianUser:id,name,email,phone',
+        ]);
+
+        return response()->json([
+            'message' => 'Reward points granted successfully.',
             'order' => $order,
         ]);
     }

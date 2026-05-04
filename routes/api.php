@@ -83,6 +83,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/orders', [ShopOrderController::class, 'index']);
         Route::get('/orders/{order}', [ShopOrderController::class, 'show']);
         Route::patch('/orders/{order}', [ShopOrderController::class, 'update']);
+        Route::post('/orders/{order}/grant-reward', [ShopOrderController::class, 'grantReward']);
 
         Route::get('/reward-redemptions', [ShopRewardRedemptionController::class, 'index']);
         Route::post('/reward-redemptions/{rewardRedemptionRequest}/approve', [ShopRewardRedemptionController::class, 'approve']);
