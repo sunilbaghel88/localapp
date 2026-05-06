@@ -8,12 +8,15 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
+use App\Models\UserType;
 use App\Services\Orders\CreateOrderWithItemsService;
 use App\Services\Orders\OrderOnBehalfAiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class ShopOrderCreateController extends Controller
@@ -180,6 +183,158 @@ class ShopOrderCreateController extends Controller
                 'line' => trim($a->address_line1.' '.$a->city.' '.$a->postal_code),
             ]),
         ]);
+    }
+
+    /**
+     * Register-style customer record for order-on-behalf (customer user type when configured).
+     */
+    public function storeCustomer(Request $request): JsonResponse
+    {
+        $this->authorize('create', Order::class);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ]);
+
+        $customerTypeId = UserType::query()
+            ->where('slug', 'customer')
+            ->where('is_active', true)
+            ->value('id');
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+            'password' => Hash::make($validated['password']),
+            'user_type_id' => $customerTypeId,
+            'is_active' => true,
+        ]);
+
+        return response()->json([
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? null,
+                'label' => $user->name.' — '.($user->email ?? '').($user->phone ? ' · '.$user->phone : ''),
+            ],
+        ], 201);
+    }
+
+    /**
+     * Create an electrician user for this shop type and attach them to the shop (same pool as listElectricians).
+     */
+    public function storeElectrician(Request $request): JsonResponse
+    {
+        $this->authorize('create', Order::class);
+
+        $validated = $request->validate([
+            'shop_id' => ['required', 'integer', 'exists:shops,id'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ]);
+
+        $shopId = (int) $validated['shop_id'];
+
+        if (! $this->userOwnsShop($shopId)) {
+            abort(403);
+        }
+
+        $shop = Shop::query()
+            ->with('shopType')
+            ->findOrFail($shopId);
+
+        $electricianUserTypeId = $shop->shopType?->electrician_user_type_id;
+        if (! $electricianUserTypeId) {
+            throw ValidationException::withMessages([
+                'shop_id' => [__('This shop does not support electricians.')],
+            ]);
+        }
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+            'password' => Hash::make($validated['password']),
+            'user_type_id' => $electricianUserTypeId,
+            'is_active' => true,
+        ]);
+
+        $shop->electricians()->syncWithoutDetaching([$user->id]);
+
+        return response()->json([
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? null,
+                'label' => $user->name.($user->phone ? ' ('.$user->phone.')' : ''),
+            ],
+        ], 201);
+    }
+
+    public function storeCustomerAddress(Request $request, int $customerId): JsonResponse
+    {
+        $this->authorize('create', Order::class);
+
+        $user = $request->user();
+        if ($customerId === $user->id) {
+            throw ValidationException::withMessages([
+                'customer' => [__('Cannot add an address for your own account from this flow.')],
+            ]);
+        }
+
+        User::query()->findOrFail($customerId);
+
+        $validated = $request->validate([
+            'label' => ['nullable', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'address_line1' => ['required', 'string', 'max:255'],
+            'address_line2' => ['nullable', 'string', 'max:255'],
+            'city' => ['required', 'string', 'max:255'],
+            'state' => ['required', 'string', 'max:255'],
+            'country' => ['required', 'string', 'max:255'],
+            'postal_code' => ['required', 'string', 'max:20'],
+            'is_default' => ['nullable', 'boolean'],
+        ]);
+
+        if (! empty($validated['is_default'])) {
+            Address::query()
+                ->where('user_id', $customerId)
+                ->update(['is_default' => false]);
+        }
+
+        $address = Address::create([
+            'user_id' => $customerId,
+            'label' => $validated['label'] ?? null,
+            'name' => $validated['name'],
+            'phone' => $validated['phone'] ?? null,
+            'address_line1' => $validated['address_line1'],
+            'address_line2' => $validated['address_line2'] ?? null,
+            'city' => $validated['city'],
+            'state' => $validated['state'],
+            'country' => $validated['country'],
+            'postal_code' => $validated['postal_code'],
+            'is_default' => (bool) ($validated['is_default'] ?? false),
+        ]);
+
+        if (Address::query()->where('user_id', $customerId)->count() === 1) {
+            $address->update(['is_default' => true]);
+        }
+
+        return response()->json([
+            'data' => [
+                'id' => $address->id,
+                'label' => $address->label,
+                'line' => trim($address->address_line1.' '.$address->city.' '.$address->postal_code),
+            ],
+        ], 201);
     }
 
     public function aiSuggest(Request $request): JsonResponse

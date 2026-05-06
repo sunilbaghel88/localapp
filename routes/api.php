@@ -77,6 +77,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/order-create/electricians', [ShopOrderCreateController::class, 'listElectricians']);
         Route::get('/order-create/search-products', [ShopOrderCreateController::class, 'searchProducts']);
         Route::get('/order-create/customers/{customerId}/addresses', [ShopOrderCreateController::class, 'customerAddresses']);
+        Route::post('/order-create/customers', [ShopOrderCreateController::class, 'storeCustomer']);
+        Route::post('/order-create/electricians', [ShopOrderCreateController::class, 'storeElectrician']);
+        Route::post('/order-create/customers/{customerId}/addresses', [ShopOrderCreateController::class, 'storeCustomerAddress']);
         Route::post('/order-create/ai-suggest', [ShopOrderCreateController::class, 'aiSuggest']);
         Route::post('/orders', [ShopOrderCreateController::class, 'store']);
 

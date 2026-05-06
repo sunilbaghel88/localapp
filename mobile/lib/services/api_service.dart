@@ -397,6 +397,86 @@ class ApiService {
     return list.map((e) => e as Map<String, dynamic>).toList();
   }
 
+  Future<Map<String, dynamic>> createShopOrderCustomer({
+    required String name,
+    required String email,
+    String? phone,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/order-create/customers',
+      data: {
+        'name': name,
+        'email': email.trim().toLowerCase(),
+        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      },
+    );
+    final row = r.data?['data'] as Map<String, dynamic>?;
+    if (row == null) throw StateError('Invalid create customer response');
+    return row;
+  }
+
+  Future<Map<String, dynamic>> createShopOrderElectrician({
+    required int shopId,
+    required String name,
+    required String email,
+    String? phone,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/order-create/electricians',
+      data: {
+        'shop_id': shopId,
+        'name': name,
+        'email': email.trim().toLowerCase(),
+        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      },
+    );
+    final row = r.data?['data'] as Map<String, dynamic>?;
+    if (row == null) throw StateError('Invalid create electrician response');
+    return row;
+  }
+
+  Future<Map<String, dynamic>> createShopOrderCustomerAddress({
+    required int customerId,
+    String? label,
+    required String name,
+    String? phone,
+    required String addressLine1,
+    String? addressLine2,
+    required String city,
+    required String state,
+    required String country,
+    required String postalCode,
+    bool isDefault = false,
+  }) async {
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/order-create/customers/$customerId/addresses',
+      data: {
+        if (label != null && label.trim().isNotEmpty) 'label': label.trim(),
+        'name': name,
+        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+        'address_line1': addressLine1,
+        if (addressLine2 != null && addressLine2.trim().isNotEmpty)
+          'address_line2': addressLine2.trim(),
+        'city': city,
+        'state': state,
+        'country': country,
+        'postal_code': postalCode,
+        if (isDefault) 'is_default': true,
+      },
+    );
+    final row = r.data?['data'] as Map<String, dynamic>?;
+    if (row == null) throw StateError('Invalid create address response');
+    return row;
+  }
+
   /// Returns `{ 'data': [...], 'missing': [...] }` like the web AI endpoint.
   Future<Map<String, dynamic>> shopOrderAiSuggest(
     int shopId,

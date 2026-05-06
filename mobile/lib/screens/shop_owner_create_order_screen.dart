@@ -123,7 +123,7 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
     }
   }
 
-  Future<void> _loadElectricians(int? shopId) async {
+  Future<void> _loadElectricians(int? shopId, {int? preferElectricianId}) async {
     if (shopId == null) {
       if (!mounted) return;
       setState(() {
@@ -139,7 +139,15 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
       if (!mounted) return;
       setState(() {
         _electricians = rows;
-        _electricianId = null;
+        final want = preferElectricianId;
+        bool sameId(dynamic a, dynamic b) {
+          if (a == b) return true;
+          if (a is num && b is num) return a.toInt() == b.toInt();
+          return false;
+        }
+
+        _electricianId =
+            want != null && rows.any((e) => sameId(e['id'], want)) ? want : null;
         _loadingElectricians = false;
       });
     } catch (_) {
@@ -452,6 +460,515 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
     }
   }
 
+  String _shopOrderApiError(DioException e) {
+    final data = e.response?.data;
+    if (data is Map && data['errors'] is Map) {
+      final errs = data['errors'] as Map;
+      for (final v in errs.values) {
+        if (v is List && v.isNotEmpty) return v.first.toString();
+        if (v != null) return v.toString();
+      }
+      if (data['message'] != null) return data['message'].toString();
+    }
+    return e.message ?? 'Request failed';
+  }
+
+  void _disposeTextControllersNextFrame(Iterable<TextEditingController> ctrls) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final c in ctrls) {
+        c.dispose();
+      }
+    });
+  }
+
+  Future<void> _showAddCustomerDialog() async {
+    final name = TextEditingController();
+    final email = TextEditingController();
+    final phone = TextEditingController();
+    final password = TextEditingController();
+    final password2 = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        var saving = false;
+        var dialogClosed = false;
+        return StatefulBuilder(
+          builder: (ctx, setDlg) {
+            Future<void> save() async {
+              if (saving) return;
+              final n = name.text.trim();
+              final em = email.text.trim();
+              final pw = password.text;
+              final p2 = password2.text;
+              if (n.isEmpty || em.isEmpty || pw.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Name, email, and password are required.')),
+                );
+                return;
+              }
+              if (pw != p2) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Passwords do not match.')),
+                );
+                return;
+              }
+              setDlg(() => saving = true);
+              try {
+                final row = await _api.createShopOrderCustomer(
+                  name: n,
+                  email: em,
+                  phone: phone.text.trim().isEmpty ? null : phone.text.trim(),
+                  password: pw,
+                  passwordConfirmation: p2,
+                );
+                if (!mounted) return;
+                dialogClosed = true;
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                await _selectCustomer(row);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Customer added.')),
+                );
+              } on DioException catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(_shopOrderApiError(e))),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                }
+              } finally {
+                if (!dialogClosed && ctx.mounted) {
+                  setDlg(() => saving = false);
+                }
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Add new customer'),
+              content: SingleChildScrollView(
+                child: SizedBox(
+                  width: MediaQuery.sizeOf(context).width < 560 ? double.maxFinite : 400,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: name,
+                        enabled: !saving,
+                        decoration: const InputDecoration(labelText: 'Name *', border: OutlineInputBorder()),
+                        textCapitalization: TextCapitalization.words,
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: email,
+                        enabled: !saving,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(labelText: 'Email *', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: phone,
+                        enabled: !saving,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(labelText: 'Phone (optional)', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: password,
+                        enabled: !saving,
+                        obscureText: true,
+                        decoration: const InputDecoration(labelText: 'Password *', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: password2,
+                        enabled: !saving,
+                        obscureText: true,
+                        decoration: const InputDecoration(labelText: 'Confirm password *', border: OutlineInputBorder()),
+                        onSubmitted: (_) => save(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: saving ? null : save,
+                  child: saving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    _disposeTextControllersNextFrame([name, email, phone, password, password2]);
+  }
+
+  Future<void> _showAddElectricianDialog() async {
+    final shopId = _shopId;
+    if (shopId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a shop first.')),
+      );
+      return;
+    }
+    final name = TextEditingController();
+    final email = TextEditingController();
+    final phone = TextEditingController();
+    final password = TextEditingController();
+    final password2 = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        var saving = false;
+        var dialogClosed = false;
+        return StatefulBuilder(
+          builder: (ctx, setDlg) {
+            Future<void> save() async {
+              if (saving) return;
+              final n = name.text.trim();
+              final em = email.text.trim();
+              final pw = password.text;
+              final p2 = password2.text;
+              if (n.isEmpty || em.isEmpty || pw.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Name, email, and password are required.')),
+                );
+                return;
+              }
+              if (pw != p2) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Passwords do not match.')),
+                );
+                return;
+              }
+              setDlg(() => saving = true);
+              try {
+                final row = await _api.createShopOrderElectrician(
+                  shopId: shopId,
+                  name: n,
+                  email: em,
+                  phone: phone.text.trim().isEmpty ? null : phone.text.trim(),
+                  password: pw,
+                  passwordConfirmation: p2,
+                );
+                final idVal = row['id'];
+                final newId = idVal is int ? idVal : (idVal as num).toInt();
+                if (!mounted) return;
+                dialogClosed = true;
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                await _loadElectricians(shopId, preferElectricianId: newId);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Electrician added and linked to this shop.')),
+                );
+              } on DioException catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(_shopOrderApiError(e))),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                }
+              } finally {
+                if (!dialogClosed && ctx.mounted) {
+                  setDlg(() => saving = false);
+                }
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Add new electrician'),
+              content: SingleChildScrollView(
+                child: SizedBox(
+                  width: MediaQuery.sizeOf(context).width < 560 ? double.maxFinite : 400,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Creates an account with this shop\'s electrician role and attaches them to the selected shop.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: name,
+                        enabled: !saving,
+                        decoration: const InputDecoration(labelText: 'Name *', border: OutlineInputBorder()),
+                        textCapitalization: TextCapitalization.words,
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: email,
+                        enabled: !saving,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(labelText: 'Email *', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: phone,
+                        enabled: !saving,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(labelText: 'Phone (optional)', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: password,
+                        enabled: !saving,
+                        obscureText: true,
+                        decoration: const InputDecoration(labelText: 'Password *', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: password2,
+                        enabled: !saving,
+                        obscureText: true,
+                        decoration: const InputDecoration(labelText: 'Confirm password *', border: OutlineInputBorder()),
+                        onSubmitted: (_) => save(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: saving ? null : save,
+                  child: saving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    _disposeTextControllersNextFrame([name, email, phone, password, password2]);
+  }
+
+  Future<void> _showAddShippingAddressDialog() async {
+    final customerId = _customerId;
+    if (customerId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a customer first.')),
+      );
+      return;
+    }
+    final label = TextEditingController();
+    final contactName = TextEditingController();
+    final contactPhone = TextEditingController();
+    final line1 = TextEditingController();
+    final line2 = TextEditingController();
+    final city = TextEditingController();
+    final state = TextEditingController();
+    final country = TextEditingController(text: 'India');
+    final postal = TextEditingController();
+    var isDefault = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        var saving = false;
+        var dialogClosed = false;
+        return StatefulBuilder(
+          builder: (ctx, setDlg) {
+            Future<void> save() async {
+              if (saving) return;
+              final n = contactName.text.trim();
+              final a1 = line1.text.trim();
+              final c = city.text.trim();
+              final s = state.text.trim();
+              final co = country.text.trim();
+              final pc = postal.text.trim();
+              if (n.isEmpty || a1.isEmpty || c.isEmpty || s.isEmpty || co.isEmpty || pc.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Fill all required address fields.')),
+                );
+                return;
+              }
+              setDlg(() => saving = true);
+              try {
+                final row = await _api.createShopOrderCustomerAddress(
+                  customerId: customerId,
+                  label: label.text.trim().isEmpty ? null : label.text.trim(),
+                  name: n,
+                  phone: contactPhone.text.trim().isEmpty ? null : contactPhone.text.trim(),
+                  addressLine1: a1,
+                  addressLine2: line2.text.trim().isEmpty ? null : line2.text.trim(),
+                  city: c,
+                  state: s,
+                  country: co,
+                  postalCode: pc,
+                  isDefault: isDefault,
+                );
+                if (!mounted) return;
+                dialogClosed = true;
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                final addrIdVal = row['id'];
+                final newId = addrIdVal is int ? addrIdVal : (addrIdVal as num).toInt();
+                setState(() {
+                  _addresses = [..._addresses, row];
+                  _addressId = newId;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Address added.')),
+                );
+              } on DioException catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(_shopOrderApiError(e))),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                }
+              } finally {
+                if (!dialogClosed && ctx.mounted) {
+                  setDlg(() => saving = false);
+                }
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Add shipping address'),
+              content: SingleChildScrollView(
+                child: SizedBox(
+                  width: MediaQuery.sizeOf(context).width < 560 ? double.maxFinite : 400,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: label,
+                        enabled: !saving,
+                        decoration: const InputDecoration(
+                          labelText: 'Label (optional)',
+                          hintText: 'e.g. Home, Site',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: contactName,
+                        enabled: !saving,
+                        decoration: const InputDecoration(labelText: 'Contact name *', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: contactPhone,
+                        enabled: !saving,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(labelText: 'Phone (optional)', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: line1,
+                        enabled: !saving,
+                        decoration: const InputDecoration(labelText: 'Address line 1 *', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: line2,
+                        enabled: !saving,
+                        decoration: const InputDecoration(labelText: 'Address line 2', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: city,
+                        enabled: !saving,
+                        decoration: const InputDecoration(labelText: 'City *', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: state,
+                        enabled: !saving,
+                        decoration: const InputDecoration(labelText: 'State *', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: country,
+                        enabled: !saving,
+                        decoration: const InputDecoration(labelText: 'Country *', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: postal,
+                        enabled: !saving,
+                        decoration: const InputDecoration(labelText: 'Postal code *', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 8),
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: isDefault,
+                        enabled: !saving,
+                        title: const Text('Set as default for this customer'),
+                        onChanged: (v) => setDlg(() => isDefault = v ?? false),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: saving ? null : save,
+                  child: saving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    _disposeTextControllersNextFrame([
+      label,
+      contactName,
+      contactPhone,
+      line1,
+      line2,
+      city,
+      state,
+      country,
+      postal,
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loadingShops) {
@@ -487,136 +1004,6 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
               ),
-            DropdownButtonFormField<int>(
-              // ignore: deprecated_member_use
-              value: _shopId,
-              decoration: const InputDecoration(labelText: 'Shop *'),
-              items: _shops
-                  .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name)))
-                  .toList(),
-              onChanged: (v) {
-                setState(() {
-                  _shopId = v;
-                  for (final l in _lines) {
-                    l.productId = null;
-                    l.variantId = null;
-                    l.variants = [];
-                    l.selectedProduct = null;
-                    l.productSearchResults = [];
-                    l.productSearchController.clear();
-                  }
-                });
-                _loadElectricians(v);
-              },
-            ),
-            if (_loadingElectricians)
-              const Padding(
-                padding: EdgeInsets.only(top: 12),
-                child: LinearProgressIndicator(),
-              )
-            else ...[
-              const SizedBox(height: 12),
-              Text(
-                'Electrician (optional)',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Linked electricians for this shop type (same as admin order form).',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<int?>(
-                // ignore: deprecated_member_use
-                value: _electricianId,
-                decoration: const InputDecoration(
-                  labelText: 'Electrician',
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('None'),
-                  ),
-                  ..._electricians.map((e) {
-                    return DropdownMenuItem<int?>(
-                      value: e['id'] as int,
-                      child: Text(e['label'] as String? ?? e['name'] as String? ?? ''),
-                    );
-                  }),
-                ],
-                onChanged: (v) => setState(() => _electricianId = v),
-              ),
-            ],
-            const SizedBox(height: 16),
-            const Text('Customer *', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _customerSearchController,
-              decoration: const InputDecoration(
-                hintText: 'Name, email, or phone…',
-                border: OutlineInputBorder(),
-              ),
-              onChanged: _onCustomerQueryChanged,
-            ),
-            if (_customerId != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  'Selected: $_customerLabel',
-                  style: TextStyle(color: Theme.of(context).colorScheme.primary),
-                ),
-              ),
-            if (_customerResults.isNotEmpty)
-              Card(
-                margin: const EdgeInsets.only(top: 8),
-                child: Column(
-                  children: _customerResults.map((row) {
-                    return ListTile(
-                      title: Text(row['label'] as String? ?? ''),
-                      onTap: () => _selectCustomer(row),
-                    );
-                  }).toList(),
-                ),
-              ),
-            const SizedBox(height: 16),
-            const Text('Shipping address', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            if (_customerId == null)
-              Text(
-                'Select a customer first',
-                style: TextStyle(color: Theme.of(context).colorScheme.outline),
-              )
-            else if (_addresses.isEmpty)
-              Text(
-                'No address (optional)',
-                style: TextStyle(color: Theme.of(context).colorScheme.outline),
-              )
-            else
-              DropdownButtonFormField<int?>(
-                // ignore: deprecated_member_use
-                value: _addressId,
-                decoration: const InputDecoration(border: OutlineInputBorder()),
-                items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('No address (optional)'),
-                  ),
-                  ..._addresses.map((a) {
-                    final id = a['id'] as int;
-                    final label = a['label'] as String? ?? '';
-                    final line = a['line'] as String? ?? '';
-                    return DropdownMenuItem<int?>(
-                      value: id,
-                      child: Text(label.isEmpty ? line : '$label — $line'),
-                    );
-                  }),
-                ],
-                onChanged: (v) => setState(() => _addressId = v),
-              ),
-            const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -662,7 +1049,7 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
                   : const Icon(Icons.auto_awesome),
               label: Text(_aiBusy ? 'Searching…' : 'Search & add'),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 8),
             ...List.generate(_lines.length, (i) {
               final line = _lines[i];
               return Card(
@@ -749,11 +1136,176 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
             }),
             const SizedBox(height: 8),
             Text(
-              'Products are limited to the shop you selected.',
+              'Product search uses the shop you choose under Order details. Changing shop clears lines.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.outline,
                   ),
             ),
+            const SizedBox(height: 24),
+            Text('Order details', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int>(
+              // ignore: deprecated_member_use
+              value: _shopId,
+              decoration: const InputDecoration(labelText: 'Shop *'),
+              items: _shops
+                  .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name)))
+                  .toList(),
+              onChanged: (v) {
+                setState(() {
+                  _shopId = v;
+                  for (final l in _lines) {
+                    l.productId = null;
+                    l.variantId = null;
+                    l.variants = [];
+                    l.selectedProduct = null;
+                    l.productSearchResults = [];
+                    l.productSearchController.clear();
+                  }
+                });
+                _loadElectricians(v);
+              },
+            ),
+            if (_loadingElectricians)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: LinearProgressIndicator(),
+              )
+            else ...[
+              const SizedBox(height: 12),
+              Text(
+                'Electrician (optional)',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Linked electricians for this shop type (same as admin order form).',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<int?>(
+                // ignore: deprecated_member_use
+                value: _electricianId,
+                decoration: const InputDecoration(
+                  labelText: 'Electrician',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('None'),
+                  ),
+                  ..._electricians.map((e) {
+                    return DropdownMenuItem<int?>(
+                      value: e['id'] as int,
+                      child: Text(e['label'] as String? ?? e['name'] as String? ?? ''),
+                    );
+                  }),
+                ],
+                onChanged: (v) => setState(() => _electricianId = v),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: _loadingElectricians ? null : _showAddElectricianDialog,
+                  icon: const Icon(Icons.person_add_alt_1_outlined, size: 20),
+                  label: const Text('Add new electrician'),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Expanded(
+                  child: Text('Customer *', style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+                TextButton.icon(
+                  onPressed: _showAddCustomerDialog,
+                  icon: const Icon(Icons.person_add_outlined, size: 20),
+                  label: const Text('Add new'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _customerSearchController,
+              decoration: const InputDecoration(
+                hintText: 'Name, email, or phone…',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: _onCustomerQueryChanged,
+            ),
+            if (_customerId != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Selected: $_customerLabel',
+                  style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                ),
+              ),
+            if (_customerResults.isNotEmpty)
+              Card(
+                margin: const EdgeInsets.only(top: 8),
+                child: Column(
+                  children: _customerResults.map((row) {
+                    return ListTile(
+                      title: Text(row['label'] as String? ?? ''),
+                      onTap: () => _selectCustomer(row),
+                    );
+                  }).toList(),
+                ),
+              ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Expanded(
+                  child: Text('Shipping address', style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+                if (_customerId != null)
+                  TextButton.icon(
+                    onPressed: _showAddShippingAddressDialog,
+                    icon: const Icon(Icons.add_location_alt_outlined, size: 20),
+                    label: const Text('Add new'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (_customerId == null)
+              Text(
+                'Select a customer first',
+                style: TextStyle(color: Theme.of(context).colorScheme.outline),
+              )
+            else if (_addresses.isEmpty)
+              Text(
+                'No address (optional)',
+                style: TextStyle(color: Theme.of(context).colorScheme.outline),
+              )
+            else
+              DropdownButtonFormField<int?>(
+                // ignore: deprecated_member_use
+                value: _addressId,
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('No address (optional)'),
+                  ),
+                  ..._addresses.map((a) {
+                    final id = a['id'] as int;
+                    final label = a['label'] as String? ?? '';
+                    final line = a['line'] as String? ?? '';
+                    return DropdownMenuItem<int?>(
+                      value: id,
+                      child: Text(label.isEmpty ? line : '$label — $line'),
+                    );
+                  }),
+                ],
+                onChanged: (v) => setState(() => _addressId = v),
+              ),
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _submitting ? null : _submit,
