@@ -15,12 +15,15 @@ class Order extends Model
         'user_id',
         'shop_id',
         'address_id',
+        'delivery_method',
         'electrician_user_id',
+        'delivery_agent_user_id',
         'status',
         'payment_status',
         'subtotal',
         'discount_total',
         'shipping_total',
+        'delivery_charge',
         'tax_total',
         'grand_total',
         'meta',
@@ -30,6 +33,7 @@ class Order extends Model
         'subtotal' => 'decimal:2',
         'discount_total' => 'decimal:2',
         'shipping_total' => 'decimal:2',
+        'delivery_charge' => 'decimal:2',
         'tax_total' => 'decimal:2',
         'grand_total' => 'decimal:2',
         'meta' => 'array',
@@ -63,6 +67,11 @@ class Order extends Model
     public function electricianUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'electrician_user_id');
+    }
+
+    public function deliveryAgentUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'delivery_agent_user_id');
     }
 
     public function rewardGrants(): HasMany

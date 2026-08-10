@@ -71,6 +71,11 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
   List<Map<String, dynamic>> _electricians = [];
   int? _electricianId;
   bool _loadingElectricians = false;
+  List<Map<String, dynamic>> _deliveryAgents = [];
+  int? _deliveryAgentId;
+  bool _loadingDeliveryAgents = false;
+  String _deliveryMethod = 'pickup';
+  final TextEditingController _deliveryChargeController = TextEditingController(text: '0');
 
   final TextEditingController _customerSearchController = TextEditingController();
   int? _customerId;
@@ -114,6 +119,7 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
         _loadingShops = false;
       });
       await _loadElectricians(sid);
+      await _loadDeliveryAgents(sid);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -160,12 +166,50 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
     }
   }
 
+  Future<void> _loadDeliveryAgents(int? shopId, {int? preferDeliveryAgentId}) async {
+    if (shopId == null) {
+      if (!mounted) return;
+      setState(() {
+        _deliveryAgents = [];
+        _deliveryAgentId = null;
+        _loadingDeliveryAgents = false;
+      });
+      return;
+    }
+    setState(() => _loadingDeliveryAgents = true);
+    try {
+      final rows = await _api.getShopOrderDeliveryAgents(shopId);
+      if (!mounted) return;
+      setState(() {
+        _deliveryAgents = rows;
+        final want = preferDeliveryAgentId;
+        bool sameId(dynamic a, dynamic b) {
+          if (a == b) return true;
+          if (a is num && b is num) return a.toInt() == b.toInt();
+          return false;
+        }
+
+        _deliveryAgentId =
+            want != null && rows.any((e) => sameId(e['id'], want)) ? want : null;
+        _loadingDeliveryAgents = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _deliveryAgents = [];
+        _deliveryAgentId = null;
+        _loadingDeliveryAgents = false;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _customerDebounce?.cancel();
     _productDebounce?.cancel();
     _customerSearchController.dispose();
     _aiPromptController.dispose();
+    _deliveryChargeController.dispose();
     for (final l in _lines) {
       l.dispose();
     }
@@ -394,6 +438,25 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
       );
       return;
     }
+    if (_deliveryMethod == 'home_delivery' && _addressId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Shipping address is required for home delivery.')),
+      );
+      return;
+    }
+    if (_deliveryMethod == 'home_delivery' && _deliveryAgentId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a delivery agent for home delivery.')),
+      );
+      return;
+    }
+    final deliveryCharge = double.tryParse(_deliveryChargeController.text.trim()) ?? 0;
+    if (_deliveryMethod == 'home_delivery' && deliveryCharge < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Delivery charge cannot be negative.')),
+      );
+      return;
+    }
 
     final payloadItems = <Map<String, dynamic>>[];
     for (final line in _lines) {
@@ -426,8 +489,11 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
       final order = await _api.createShopOrderOnBehalf(
         shopId: shopId,
         customerUserId: customerId,
-        addressId: _addressId,
+        deliveryMethod: _deliveryMethod,
+        addressId: _deliveryMethod == 'home_delivery' ? _addressId : null,
         electricianUserId: _electricianId,
+        deliveryAgentUserId: _deliveryMethod == 'home_delivery' ? _deliveryAgentId : null,
+        deliveryCharge: _deliveryMethod == 'home_delivery' ? deliveryCharge : 0,
         items: payloadItems,
       );
       if (!mounted) return;
@@ -704,6 +770,161 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
                     children: [
                       Text(
                         'Creates an account with this shop\'s electrician role and attaches them to the selected shop.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: name,
+                        enabled: !saving,
+                        decoration: const InputDecoration(labelText: 'Name *', border: OutlineInputBorder()),
+                        textCapitalization: TextCapitalization.words,
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: email,
+                        enabled: !saving,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(labelText: 'Email *', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: phone,
+                        enabled: !saving,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(labelText: 'Phone (optional)', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: password,
+                        enabled: !saving,
+                        obscureText: true,
+                        decoration: const InputDecoration(labelText: 'Password *', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: password2,
+                        enabled: !saving,
+                        obscureText: true,
+                        decoration: const InputDecoration(labelText: 'Confirm password *', border: OutlineInputBorder()),
+                        onSubmitted: (_) => save(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: saving ? null : save,
+                  child: saving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    _disposeTextControllersNextFrame([name, email, phone, password, password2]);
+  }
+
+  Future<void> _showAddDeliveryAgentDialog() async {
+    final shopId = _shopId;
+    if (shopId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a shop first.')),
+      );
+      return;
+    }
+    final name = TextEditingController();
+    final email = TextEditingController();
+    final phone = TextEditingController();
+    final password = TextEditingController();
+    final password2 = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        var saving = false;
+        var dialogClosed = false;
+        return StatefulBuilder(
+          builder: (ctx, setDlg) {
+            Future<void> save() async {
+              if (saving) return;
+              final n = name.text.trim();
+              final em = email.text.trim();
+              final pw = password.text;
+              final p2 = password2.text;
+              if (n.isEmpty || em.isEmpty || pw.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Name, email, and password are required.')),
+                );
+                return;
+              }
+              if (pw != p2) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Passwords do not match.')),
+                );
+                return;
+              }
+              setDlg(() => saving = true);
+              try {
+                final row = await _api.createShopOrderDeliveryAgent(
+                  shopId: shopId,
+                  name: n,
+                  email: em,
+                  phone: phone.text.trim().isEmpty ? null : phone.text.trim(),
+                  password: pw,
+                  passwordConfirmation: p2,
+                );
+                final idVal = row['id'];
+                final newId = idVal is int ? idVal : (idVal as num).toInt();
+                if (!mounted) return;
+                dialogClosed = true;
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                await _loadDeliveryAgents(shopId, preferDeliveryAgentId: newId);
+                if (!mounted) return;
+                setState(() => _deliveryAgentId = newId);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Delivery agent added and linked to this shop.')),
+                );
+              } on DioException catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(_shopOrderApiError(e))),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                }
+              } finally {
+                if (!dialogClosed && ctx.mounted) {
+                  setDlg(() => saving = false);
+                }
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Add new delivery agent'),
+              content: SingleChildScrollView(
+                child: SizedBox(
+                  width: MediaQuery.sizeOf(context).width < 560 ? double.maxFinite : 400,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Creates a delivery agent account and attaches it to this shop.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context).colorScheme.outline,
                             ),
@@ -1164,6 +1385,7 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
                   }
                 });
                 _loadElectricians(v);
+                _loadDeliveryAgents(v);
               },
             ),
             if (_loadingElectricians)
@@ -1212,6 +1434,79 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
                   onPressed: _loadingElectricians ? null : _showAddElectricianDialog,
                   icon: const Icon(Icons.person_add_alt_1_outlined, size: 20),
                   label: const Text('Add new electrician'),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              initialValue: _deliveryMethod,
+              decoration: const InputDecoration(
+                labelText: 'Delivery method *',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem<String>(
+                  value: 'pickup',
+                  child: Text('Pickup at Shop'),
+                ),
+                DropdownMenuItem<String>(
+                  value: 'home_delivery',
+                  child: Text('Home Delivery'),
+                ),
+              ],
+              onChanged: (v) {
+                if (v == null) return;
+                setState(() {
+                  _deliveryMethod = v;
+                  if (_deliveryMethod == 'pickup') {
+                    _deliveryAgentId = null;
+                    _deliveryChargeController.text = '0';
+                  }
+                });
+              },
+            ),
+            if (_deliveryMethod == 'home_delivery') ...[
+              const SizedBox(height: 12),
+              if (_loadingDeliveryAgents)
+                const LinearProgressIndicator()
+              else ...[
+                DropdownButtonFormField<int?>(
+                  initialValue: _deliveryAgentId,
+                  decoration: const InputDecoration(
+                    labelText: 'Delivery agent *',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Choose delivery agent'),
+                    ),
+                    ..._deliveryAgents.map((e) {
+                      return DropdownMenuItem<int?>(
+                        value: e['id'] as int,
+                        child: Text(e['label'] as String? ?? e['name'] as String? ?? ''),
+                      );
+                    }),
+                  ],
+                  onChanged: (v) => setState(() => _deliveryAgentId = v),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: _loadingDeliveryAgents ? null : _showAddDeliveryAgentDialog,
+                    icon: const Icon(Icons.delivery_dining_outlined, size: 20),
+                    label: const Text('Add new delivery agent'),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
+              TextField(
+                controller: _deliveryChargeController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Delivery charge *',
+                  prefixText: 'Rs ',
+                  border: OutlineInputBorder(),
                 ),
               ),
             ],
@@ -1274,14 +1569,19 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
               ],
             ),
             const SizedBox(height: 8),
-            if (_customerId == null)
+            if (_deliveryMethod == 'pickup')
+              Text(
+                'Not required for pickup at shop',
+                style: TextStyle(color: Theme.of(context).colorScheme.outline),
+              )
+            else if (_customerId == null)
               Text(
                 'Select a customer first',
                 style: TextStyle(color: Theme.of(context).colorScheme.outline),
               )
             else if (_addresses.isEmpty)
               Text(
-                'No address (optional)',
+                'No address found. Add one to continue home delivery.',
                 style: TextStyle(color: Theme.of(context).colorScheme.outline),
               )
             else
@@ -1290,10 +1590,16 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
                 value: _addressId,
                 decoration: const InputDecoration(border: OutlineInputBorder()),
                 items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('No address (optional)'),
-                  ),
+                  if (_deliveryMethod == 'home_delivery')
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Choose shipping address'),
+                    )
+                  else
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('No address (optional)'),
+                    ),
                   ..._addresses.map((a) {
                     final id = a['id'] as int;
                     final label = a['label'] as String? ?? '';

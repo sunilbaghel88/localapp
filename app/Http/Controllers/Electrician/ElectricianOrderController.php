@@ -94,6 +94,9 @@ class ElectricianOrderController extends Controller
                 shopId: (int) $validated['shop_id'],
                 addressId: $validated['address_id'] ?? null,
                 electricianUserId: $user->id,
+                deliveryMethod: ! empty($validated['address_id']) ? 'home_delivery' : 'pickup',
+                deliveryAgentUserId: null,
+                deliveryCharge: 0,
                 items: $items,
             );
         } catch (\Illuminate\Validation\ValidationException $e) {

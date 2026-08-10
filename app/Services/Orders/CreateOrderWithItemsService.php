@@ -19,6 +19,9 @@ class CreateOrderWithItemsService
         int $shopId,
         ?int $addressId,
         ?int $electricianUserId,
+        string $deliveryMethod,
+        ?int $deliveryAgentUserId,
+        float $deliveryCharge,
         array $items,
     ): Order {
         $items = array_values(array_filter($items, fn ($row) => ! empty($row['product_id']) && ! empty($row['quantity'])));
@@ -38,7 +41,9 @@ class CreateOrderWithItemsService
         }
 
         $discountTotal = 0;
-        $shippingTotal = 0;
+        $shippingTotal = $deliveryMethod === 'home_delivery'
+            ? max(0, round($deliveryCharge, 2))
+            : 0;
         $taxTotal = 0;
         $grandTotal = round($subtotal + $shippingTotal + $taxTotal - $discountTotal, 2);
 
@@ -47,6 +52,9 @@ class CreateOrderWithItemsService
             $shopId,
             $addressId,
             $electricianUserId,
+            $deliveryMethod,
+            $deliveryAgentUserId,
+            $deliveryCharge,
             $items,
             $subtotal,
             $discountTotal,
@@ -58,12 +66,15 @@ class CreateOrderWithItemsService
                 'user_id' => $customerUserId,
                 'shop_id' => $shopId,
                 'address_id' => $addressId,
+                'delivery_method' => $deliveryMethod,
                 'electrician_user_id' => $electricianUserId,
+                'delivery_agent_user_id' => $deliveryAgentUserId,
                 'status' => 'pending',
                 'payment_status' => 'pending',
                 'subtotal' => round($subtotal, 2),
                 'discount_total' => $discountTotal,
                 'shipping_total' => $shippingTotal,
+                'delivery_charge' => round(max(0, $deliveryCharge), 2),
                 'tax_total' => $taxTotal,
                 'grand_total' => $grandTotal,
             ]);

@@ -375,6 +375,17 @@ class ApiService {
     return list.map((e) => e as Map<String, dynamic>).toList();
   }
 
+  Future<List<Map<String, dynamic>>> getShopOrderDeliveryAgents(
+    int shopId,
+  ) async {
+    final r = await _dio.get(
+      '/shop/order-create/delivery-agents',
+      queryParameters: {'shop_id': shopId},
+    );
+    final list = r.data['data'] as List<dynamic>? ?? [];
+    return list.map((e) => e as Map<String, dynamic>).toList();
+  }
+
   Future<List<Map<String, dynamic>>> searchShopOrderProducts(
     int shopId,
     String q,
@@ -443,6 +454,30 @@ class ApiService {
     return row;
   }
 
+  Future<Map<String, dynamic>> createShopOrderDeliveryAgent({
+    required int shopId,
+    required String name,
+    required String email,
+    String? phone,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/order-create/delivery-agents',
+      data: {
+        'shop_id': shopId,
+        'name': name,
+        'email': email.trim().toLowerCase(),
+        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      },
+    );
+    final row = r.data?['data'] as Map<String, dynamic>?;
+    if (row == null) throw StateError('Invalid create delivery agent response');
+    return row;
+  }
+
   Future<Map<String, dynamic>> createShopOrderCustomerAddress({
     required int customerId,
     String? label,
@@ -492,8 +527,11 @@ class ApiService {
   Future<Order> createShopOrderOnBehalf({
     required int shopId,
     required int customerUserId,
+    required String deliveryMethod,
     int? addressId,
     int? electricianUserId,
+    int? deliveryAgentUserId,
+    double? deliveryCharge,
     required List<Map<String, dynamic>> items,
   }) async {
     final r = await _dio.post<Map<String, dynamic>>(
@@ -501,11 +539,16 @@ class ApiService {
       data: {
         'shop_id': shopId,
         'user_id': customerUserId,
+        'delivery_method': deliveryMethod,
         'items': items,
         ...?addressId != null ? {'address_id': addressId} : null,
         ...?electricianUserId != null
             ? {'electrician_user_id': electricianUserId}
             : null,
+        ...?deliveryAgentUserId != null
+            ? {'delivery_agent_user_id': deliveryAgentUserId}
+            : null,
+        ...?deliveryCharge != null ? {'delivery_charge': deliveryCharge} : null,
       },
     );
     final data = r.data;

@@ -29,6 +29,14 @@ class ShopOrderCreateController extends Controller
             ->exists();
     }
 
+    protected function deliveryAgentUserTypeId(): ?int
+    {
+        return UserType::query()
+            ->where('is_active', true)
+            ->whereIn('slug', ['delivery-agent', 'delivery_agent'])
+            ->value('id');
+    }
+
     public function searchCustomers(Request $request): JsonResponse
     {
         $this->authorize('create', Order::class);
@@ -92,6 +100,44 @@ class ShopOrderCreateController extends Controller
 
         $rows = $shop->electricians()
             ->where('users.user_type_id', $electricianUserTypeId)
+            ->where('users.is_active', true)
+            ->orderBy('users.name')
+            ->get(['users.id', 'users.name', 'users.email', 'users.phone']);
+
+        return response()->json([
+            'data' => $rows->map(fn (User $u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'phone' => $u->phone ?? null,
+                'label' => $u->name.($u->phone ? ' ('.$u->phone.')' : ''),
+            ]),
+        ]);
+    }
+
+    public function listDeliveryAgents(Request $request): JsonResponse
+    {
+        $this->authorize('create', Order::class);
+
+        $request->validate([
+            'shop_id' => ['required', 'integer', 'exists:shops,id'],
+        ]);
+
+        $shopId = (int) $request->query('shop_id');
+
+        if (! $this->userOwnsShop($shopId)) {
+            abort(403);
+        }
+
+        $deliveryAgentUserTypeId = $this->deliveryAgentUserTypeId();
+        if (! $deliveryAgentUserTypeId) {
+            return response()->json(['data' => []]);
+        }
+
+        $shop = Shop::query()->findOrFail($shopId);
+
+        $rows = $shop->electricians()
+            ->where('users.user_type_id', $deliveryAgentUserTypeId)
             ->where('users.is_active', true)
             ->orderBy('users.name')
             ->get(['users.id', 'users.name', 'users.email', 'users.phone']);
@@ -278,6 +324,54 @@ class ShopOrderCreateController extends Controller
         ], 201);
     }
 
+    public function storeDeliveryAgent(Request $request): JsonResponse
+    {
+        $this->authorize('create', Order::class);
+
+        $validated = $request->validate([
+            'shop_id' => ['required', 'integer', 'exists:shops,id'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ]);
+
+        $shopId = (int) $validated['shop_id'];
+
+        if (! $this->userOwnsShop($shopId)) {
+            abort(403);
+        }
+
+        $deliveryAgentUserTypeId = $this->deliveryAgentUserTypeId();
+        if (! $deliveryAgentUserTypeId) {
+            throw ValidationException::withMessages([
+                'shop_id' => [__('Delivery agent user type is not configured.')],
+            ]);
+        }
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+            'password' => Hash::make($validated['password']),
+            'user_type_id' => $deliveryAgentUserTypeId,
+            'is_active' => true,
+        ]);
+
+        $shop = Shop::query()->findOrFail($shopId);
+        $shop->electricians()->syncWithoutDetaching([$user->id]);
+
+        return response()->json([
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? null,
+                'label' => $user->name.($user->phone ? ' ('.$user->phone.')' : ''),
+            ],
+        ], 201);
+    }
+
     public function storeCustomerAddress(Request $request, int $customerId): JsonResponse
     {
         $this->authorize('create', Order::class);
@@ -376,6 +470,9 @@ class ShopOrderCreateController extends Controller
             'user_id' => ['required', 'integer', 'exists:users,id'],
             'address_id' => ['nullable', 'integer', 'exists:addresses,id'],
             'electrician_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'delivery_method' => ['required', 'string', 'in:pickup,home_delivery'],
+            'delivery_agent_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'delivery_charge' => ['nullable', 'numeric', 'min:0'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
             'items.*.product_variant_id' => ['nullable', 'integer', 'exists:product_variants,id'],
@@ -392,6 +489,19 @@ class ShopOrderCreateController extends Controller
             ]);
         }
 
+        $deliveryMethod = (string) $validated['delivery_method'];
+        if ($deliveryMethod === 'pickup') {
+            $validated['address_id'] = null;
+            $validated['delivery_agent_user_id'] = null;
+            $validated['delivery_charge'] = 0;
+        }
+
+        if ($deliveryMethod === 'home_delivery' && empty($validated['address_id'])) {
+            throw ValidationException::withMessages([
+                'address_id' => [__('Shipping address is required for home delivery.')],
+            ]);
+        }
+
         if (! empty($validated['address_id'])) {
             $address = Address::query()
                 ->where('id', $validated['address_id'])
@@ -400,6 +510,36 @@ class ShopOrderCreateController extends Controller
             if (! $address) {
                 throw ValidationException::withMessages([
                     'address_id' => [__('The selected address does not belong to this customer.')],
+                ]);
+            }
+        }
+
+        $deliveryAgentUserId = isset($validated['delivery_agent_user_id']) ? (int) $validated['delivery_agent_user_id'] : null;
+        $deliveryCharge = isset($validated['delivery_charge']) ? (float) $validated['delivery_charge'] : 0;
+        if ($deliveryMethod === 'home_delivery') {
+            if ($deliveryAgentUserId === null) {
+                throw ValidationException::withMessages([
+                    'delivery_agent_user_id' => [__('Select a delivery agent for home delivery.')],
+                ]);
+            }
+
+            $deliveryAgentUserTypeId = $this->deliveryAgentUserTypeId();
+            if (! $deliveryAgentUserTypeId) {
+                throw ValidationException::withMessages([
+                    'delivery_agent_user_id' => [__('Delivery agent user type is not configured.')],
+                ]);
+            }
+
+            $shopModel = Shop::query()->findOrFail((int) $validated['shop_id']);
+            $validDeliveryAgent = $shopModel->electricians()
+                ->where('users.id', $deliveryAgentUserId)
+                ->where('users.user_type_id', $deliveryAgentUserTypeId)
+                ->where('users.is_active', true)
+                ->exists();
+
+            if (! $validDeliveryAgent) {
+                throw ValidationException::withMessages([
+                    'delivery_agent_user_id' => [__('The selected delivery agent is not valid for this shop.')],
                 ]);
             }
         }
@@ -445,6 +585,9 @@ class ShopOrderCreateController extends Controller
                 shopId: (int) $validated['shop_id'],
                 addressId: $validated['address_id'] ?? null,
                 electricianUserId: $electricianUserId,
+                deliveryMethod: $deliveryMethod,
+                deliveryAgentUserId: $deliveryAgentUserId,
+                deliveryCharge: $deliveryCharge,
                 items: $items,
             );
         } catch (ValidationException $e) {
@@ -454,7 +597,7 @@ class ShopOrderCreateController extends Controller
             ], 422);
         }
 
-        $order->load(['shop', 'address', 'items']);
+        $order->load(['shop', 'address', 'items', 'deliveryAgentUser']);
 
         return response()->json([
             'order' => $order,
