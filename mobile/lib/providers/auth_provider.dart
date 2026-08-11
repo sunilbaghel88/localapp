@@ -98,6 +98,96 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  String? _firstApiError(DioException e, [List<String> fields = const []]) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final errors = data['errors'];
+      if (errors is Map) {
+        for (final field in fields) {
+          final value = errors[field];
+          if (value is List && value.isNotEmpty) return value.first.toString();
+          if (value is String && value.isNotEmpty) return value;
+        }
+        if (errors.isNotEmpty) {
+          final first = errors.values.first;
+          if (first is List && first.isNotEmpty) return first.first.toString();
+          if (first is String) return first;
+        }
+      }
+      if (data['message'] is String) return data['message'] as String;
+    }
+    return null;
+  }
+
+  Future<bool> requestSmsOtp(String phone, {String purpose = 'login'}) async {
+    _error = null;
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _api.requestSmsOtp(phone, purpose: purpose);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on DioException catch (e) {
+      _error = _firstApiError(e, const ['phone']) ?? 'Failed to send OTP';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> loginWithSmsOtp(String phone, String otp) async {
+    _error = null;
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final data = await _api.loginWithSmsOtp(phone, otp);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(tokenKey, data['token'] as String);
+      _user = User.fromJson(data['user'] as Map<String, dynamic>);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on DioException catch (e) {
+      _error = _firstApiError(e, const ['otp', 'phone']) ?? 'OTP login failed';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> registerWithSmsOtp({
+    required String name,
+    required String phone,
+    required String otp,
+    int? userTypeId,
+    String? email,
+  }) async {
+    _error = null;
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final data = await _api.registerWithSmsOtp(
+        name: name,
+        phone: phone,
+        otp: otp,
+        userTypeId: userTypeId,
+        email: email,
+      );
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(tokenKey, data['token'] as String);
+      _user = User.fromJson(data['user'] as Map<String, dynamic>);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on DioException catch (e) {
+      _error = _firstApiError(e, const ['otp', 'phone', 'name', 'email']) ?? 'Registration failed';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> register(
     String name,
     String email,

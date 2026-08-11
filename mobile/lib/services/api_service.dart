@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 
 import '../core/api_client.dart';
 import '../models/address.dart';
+import '../models/app_branding.dart';
 import '../models/brand.dart';
 import '../models/category.dart';
 import '../models/order.dart';
@@ -13,6 +14,11 @@ import '../models/user.dart';
 
 class ApiService {
   final _dio = ApiClient.instance.dio;
+
+  Future<AppBranding> getAppBranding() async {
+    final r = await _dio.get('/app-branding');
+    return AppBranding.fromJson(r.data as Map<String, dynamic>);
+  }
 
   // Auth
   Future<Map<String, dynamic>> login(String email, String password) async {
@@ -37,6 +43,41 @@ class ApiService {
       '/login/otp/verify',
       data: {'email': email, 'otp': otp, 'device_name': 'flutter-mobile'},
     );
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> requestSmsOtp(String phone, {String purpose = 'login'}) async {
+    final r = await _dio.post(
+      '/login/sms/otp/request',
+      data: {'phone': phone, 'purpose': purpose},
+    );
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> loginWithSmsOtp(String phone, String otp) async {
+    final r = await _dio.post(
+      '/login/sms/otp/verify',
+      data: {'phone': phone, 'otp': otp, 'device_name': 'flutter-mobile'},
+    );
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> registerWithSmsOtp({
+    required String name,
+    required String phone,
+    required String otp,
+    int? userTypeId,
+    String? email,
+  }) async {
+    final data = <String, dynamic>{
+      'name': name,
+      'phone': phone,
+      'otp': otp,
+      'device_name': 'flutter-mobile',
+    };
+    if (userTypeId != null) data['user_type_id'] = userTypeId;
+    if (email != null && email.isNotEmpty) data['email'] = email;
+    final r = await _dio.post('/register/sms/otp/verify', data: data);
     return r.data as Map<String, dynamic>;
   }
 

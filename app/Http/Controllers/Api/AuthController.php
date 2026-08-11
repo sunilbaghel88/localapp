@@ -3,19 +3,29 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\SmsSetting;
+use App\Models\User;
+use App\Services\Sms\SmsSender;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use App\Models\User;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
     protected const OTP_CACHE_PREFIX = 'auth_login_otp:';
+
+    protected const SMS_OTP_CACHE_PREFIX = 'auth_sms_otp:';
+
     protected const OTP_TTL_MINUTES = 10;
+
+    public function __construct(
+        protected SmsSender $smsSender
+    ) {}
 
     /**
      * Ensure the mobile client can do role/permission based UI.
@@ -30,6 +40,44 @@ class AuthController extends Controller
             'permissions' => $permissions,
             'is_electrician' => $user->isElectrician(),
         ]);
+    }
+
+    protected function normalizePhone(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+
+        // Keep last 10 digits for Indian mobiles when longer numbers include country code.
+        if (strlen($digits) > 10) {
+            $digits = substr($digits, -10);
+        }
+
+        return $digits;
+    }
+
+    protected function smsOtpTtlMinutes(): int
+    {
+        return max(1, (int) SmsSetting::current()->otp_ttl_minutes ?: self::OTP_TTL_MINUTES);
+    }
+
+    protected function storeSmsOtp(string $phone, string $otp): void
+    {
+        Cache::put(
+            self::SMS_OTP_CACHE_PREFIX . $phone,
+            Hash::make($otp),
+            now()->addMinutes($this->smsOtpTtlMinutes())
+        );
+    }
+
+    protected function verifySmsOtp(string $phone, string $otp): bool
+    {
+        $hashedOtp = Cache::get(self::SMS_OTP_CACHE_PREFIX . $phone);
+
+        return is_string($hashedOtp) && Hash::check($otp, $hashedOtp);
+    }
+
+    protected function forgetSmsOtp(string $phone): void
+    {
+        Cache::forget(self::SMS_OTP_CACHE_PREFIX . $phone);
     }
 
     public function login(Request $request)
@@ -116,6 +164,137 @@ class AuthController extends Controller
             'token' => $user->createToken($request->device_name)->plainTextToken,
             'user' => $this->authUserPayload($user),
         ]);
+    }
+
+    public function requestSmsOtp(Request $request)
+    {
+        $request->validate([
+            'phone' => ['required', 'string', 'min:10', 'max:15'],
+            'purpose' => ['nullable', 'in:login,register'],
+        ]);
+
+        $phone = $this->normalizePhone((string) $request->phone);
+
+        if (strlen($phone) < 10) {
+            throw ValidationException::withMessages([
+                'phone' => ['Enter a valid mobile number.'],
+            ]);
+        }
+
+        $purpose = $request->input('purpose', 'login');
+        $existing = User::where('phone', $phone)->first();
+
+        if ($purpose === 'login' && ! $existing) {
+            throw ValidationException::withMessages([
+                'phone' => ['No account found for this mobile number. Please register first.'],
+            ]);
+        }
+
+        if ($purpose === 'register' && $existing) {
+            throw ValidationException::withMessages([
+                'phone' => ['An account already exists for this mobile number. Please login.'],
+            ]);
+        }
+
+        $otp = (string) random_int(100000, 999999);
+        $this->storeSmsOtp($phone, $otp);
+
+        try {
+            $this->smsSender->sendOtp($phone, $otp);
+        } catch (\Throwable $e) {
+            $this->forgetSmsOtp($phone);
+
+            throw ValidationException::withMessages([
+                'phone' => [$e->getMessage() ?: 'Failed to send OTP SMS.'],
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'OTP has been sent to your mobile number.',
+            'expires_in_minutes' => $this->smsOtpTtlMinutes(),
+        ]);
+    }
+
+    public function loginWithSmsOtp(Request $request)
+    {
+        $request->validate([
+            'phone' => ['required', 'string', 'min:10', 'max:15'],
+            'otp' => ['required', 'digits:6'],
+            'device_name' => ['required', 'string', 'max:255'],
+        ]);
+
+        $phone = $this->normalizePhone((string) $request->phone);
+
+        if (! $this->verifySmsOtp($phone, (string) $request->otp)) {
+            throw ValidationException::withMessages([
+                'otp' => ['Invalid or expired OTP.'],
+            ]);
+        }
+
+        $user = User::where('phone', $phone)->first();
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'phone' => ['No account found for this mobile number.'],
+            ]);
+        }
+
+        if ($user->is_active === false) {
+            throw ValidationException::withMessages([
+                'phone' => ['This account is inactive.'],
+            ]);
+        }
+
+        $this->forgetSmsOtp($phone);
+
+        return response()->json([
+            'token' => $user->createToken($request->device_name)->plainTextToken,
+            'user' => $this->authUserPayload($user),
+        ]);
+    }
+
+    public function registerWithSmsOtp(Request $request)
+    {
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'min:10', 'max:15'],
+            'otp' => ['required', 'digits:6'],
+            'device_name' => ['required', 'string', 'max:255'],
+            'user_type_id' => ['nullable', 'exists:user_types,id'],
+            'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+        ]);
+
+        $phone = $this->normalizePhone((string) $request->phone);
+
+        if (! $this->verifySmsOtp($phone, (string) $request->otp)) {
+            throw ValidationException::withMessages([
+                'otp' => ['Invalid or expired OTP.'],
+            ]);
+        }
+
+        if (User::where('phone', $phone)->exists()) {
+            throw ValidationException::withMessages([
+                'phone' => ['An account already exists for this mobile number.'],
+            ]);
+        }
+
+        $email = $request->filled('email')
+            ? strtolower((string) $request->email)
+            : $phone.'@phone.localapp';
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $email,
+            'phone' => $phone,
+            'password' => Hash::make(Str::random(32)),
+            'user_type_id' => $request->user_type_id ?: null,
+        ]);
+
+        $this->forgetSmsOtp($phone);
+
+        return response()->json([
+            'token' => $user->createToken($request->device_name)->plainTextToken,
+            'user' => $this->authUserPayload($user),
+        ], 201);
     }
 
     public function register(Request $request)

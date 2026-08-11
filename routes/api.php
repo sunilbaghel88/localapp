@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\AppBrandingController;
 use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
@@ -22,8 +23,12 @@ use App\Http\Controllers\Api\Electrician\ElectricianApiController;
 Route::post('/login', [AuthController::class, 'login'])->name('api.login');
 Route::post('/login/otp/request', [AuthController::class, 'requestEmailOtp'])->name('api.login.otp.request');
 Route::post('/login/otp/verify', [AuthController::class, 'loginWithOtp'])->name('api.login.otp.verify');
+Route::post('/login/sms/otp/request', [AuthController::class, 'requestSmsOtp'])->name('api.login.sms.otp.request');
+Route::post('/login/sms/otp/verify', [AuthController::class, 'loginWithSmsOtp'])->name('api.login.sms.otp.verify');
+Route::post('/register/sms/otp/verify', [AuthController::class, 'registerWithSmsOtp'])->name('api.register.sms.otp.verify');
 Route::post('/register', [AuthController::class, 'register'])->name('api.register');
 
+Route::get('/app-branding', [AppBrandingController::class, 'show'])->name('api.app-branding.show');
 Route::get('/home', [HomeController::class, 'index'])->name('api.home');
 Route::get('/user-types', [UserTypeController::class, 'index'])->name('api.user-types.index');
 Route::get('/products', [ProductController::class, 'index'])->name('api.products.index');
