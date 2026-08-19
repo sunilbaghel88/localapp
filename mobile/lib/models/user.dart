@@ -25,13 +25,23 @@ class User {
 
     return User(
       id: json['id'] as int,
-      name: json['name'] as String,
+      name: _fullNameFromJson(json),
       email: json['email'] as String,
       phone: json['phone'] as String?,
       role: json['role'] as String?,
       permissions: permissions,
       isElectrician: json['is_electrician'] == true,
     );
+  }
+
+  static String _fullNameFromJson(Map<String, dynamic> json) {
+    final name = json['name'] as String?;
+    if (name != null && name.trim().isNotEmpty) return name.trim();
+    return [json['first_name'], json['last_name']]
+        .whereType<String>()
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .join(' ');
   }
 
   Map<String, dynamic> toJson() => {

@@ -31,7 +31,10 @@ class UserResource extends Resource
             ->schema([
                 Forms\Components\Section::make('User details')
                     ->schema([
-                        Forms\Components\TextInput::make('name')
+                        Forms\Components\TextInput::make('first_name')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('last_name')
                             ->required()
                             ->maxLength(255),
                         Forms\Components\TextInput::make('email')
@@ -86,8 +89,13 @@ class UserResource extends Resource
                     ->label('ID')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $q) use ($search) {
+                            $q->where('first_name', 'like', "%{$search}%")
+                                ->orWhere('last_name', 'like', "%{$search}%");
+                        });
+                    })
+                    ->sortable(['first_name', 'last_name']),
                 Tables\Columns\TextColumn::make('email')
                     ->searchable()
                     ->sortable(),
@@ -169,6 +177,6 @@ class UserResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['name', 'email', 'phone'];
+        return ['first_name', 'last_name', 'email', 'phone'];
     }
 }

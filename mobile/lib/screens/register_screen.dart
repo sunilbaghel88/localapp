@@ -30,7 +30,8 @@ class _SmsRegisterBody extends StatefulWidget {
 class _SmsRegisterBodyState extends State<_SmsRegisterBody> {
   final _formKey = GlobalKey<FormState>();
   final _api = ApiService();
-  final _nameController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
   bool _otpRequested = false;
@@ -60,16 +61,16 @@ class _SmsRegisterBodyState extends State<_SmsRegisterBody> {
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
   }
 
-  Future<void> _sendOtp() async {
-    final name = _nameController.text.trim();
+  Future<void> _resendOtp() async {
     final phone = _phoneController.text.trim();
-    if (name.isEmpty || phone.isEmpty || phone.length < 10) {
+    if (phone.length < 10) {
       _formKey.currentState?.validate();
       return;
     }
@@ -78,7 +79,6 @@ class _SmsRegisterBodyState extends State<_SmsRegisterBody> {
     final ok = await auth.requestSmsOtp(phone, purpose: 'register');
     if (!mounted) return;
     if (ok) {
-      setState(() => _otpRequested = true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('OTP sent to your mobile number')),
       );
@@ -87,17 +87,26 @@ class _SmsRegisterBodyState extends State<_SmsRegisterBody> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (!_otpRequested) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please get OTP first')),
-      );
-      return;
-    }
     final auth = context.read<AuthProvider>();
     auth.clearError();
+    final phone = _phoneController.text.trim();
+
+    if (!_otpRequested) {
+      final ok = await auth.requestSmsOtp(phone, purpose: 'register');
+      if (!mounted) return;
+      if (ok) {
+        setState(() => _otpRequested = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('OTP sent to your mobile number')),
+        );
+      }
+      return;
+    }
+
     final ok = await auth.registerWithSmsOtp(
-      name: _nameController.text.trim(),
-      phone: _phoneController.text.trim(),
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
+      phone: phone,
       otp: _otpController.text.trim(),
       userTypeId: _selectedUserTypeId,
     );
@@ -170,11 +179,19 @@ class _SmsRegisterBodyState extends State<_SmsRegisterBody> {
                             ),
                             const SizedBox(height: 16),
                             _WhiteField(
-                              controller: _nameController,
-                              hintText: 'Enter Full Name',
+                              controller: _firstNameController,
+                              hintText: 'First name',
                               textCapitalization: TextCapitalization.words,
                               validator: (v) =>
-                                  (v == null || v.trim().isEmpty) ? 'Enter your name' : null,
+                                  (v == null || v.trim().isEmpty) ? 'Enter first name' : null,
+                            ),
+                            const SizedBox(height: 12),
+                            _WhiteField(
+                              controller: _lastNameController,
+                              hintText: 'Last name',
+                              textCapitalization: TextCapitalization.words,
+                              validator: (v) =>
+                                  (v == null || v.trim().isEmpty) ? 'Enter last name' : null,
                             ),
                             const SizedBox(height: 12),
                             _WhiteField(
@@ -249,15 +266,20 @@ class _SmsRegisterBodyState extends State<_SmsRegisterBody> {
                             ],
                             const SizedBox(height: 18),
                             _GreyButton(
-                              label: _otpRequested ? 'RESEND OTP' : 'GET OTP',
-                              onPressed: auth.isLoading ? null : _sendOtp,
-                            ),
-                            const SizedBox(height: 12),
-                            _GreyButton(
                               label: 'CREATE ACCOUNT',
                               onPressed: auth.isLoading ? null : _submit,
                               loading: auth.isLoading,
                             ),
+                            if (_otpRequested) ...[
+                              const SizedBox(height: 8),
+                              TextButton(
+                                onPressed: auth.isLoading ? null : _resendOtp,
+                                child: const Text(
+                                  'Resend OTP',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 16),
                             TextButton(
                               onPressed: () => context.go('/login'),

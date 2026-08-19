@@ -256,9 +256,10 @@ class AuthController extends Controller
     public function registerWithSmsOtp(Request $request)
     {
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'min:10', 'max:15'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
             'otp' => ['required', 'digits:6'],
+            'phone' => ['required', 'string', 'min:10', 'max:15'],
             'device_name' => ['required', 'string', 'max:255'],
             'user_type_id' => ['nullable', 'exists:user_types,id'],
             'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
@@ -283,7 +284,8 @@ class AuthController extends Controller
             : $phone.'@phone.localapp';
 
         $user = User::create([
-            'name' => $request->name,
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
             'email' => $email,
             'phone' => $phone,
             'password' => Hash::make(Str::random(32)),
@@ -301,7 +303,8 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Password::defaults()],
             'device_name' => 'required|string|max:255',
@@ -309,7 +312,8 @@ class AuthController extends Controller
         ]);
 
         $user = User::create([
-            'name' => $request->name,
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'user_type_id' => $request->user_type_id ?: null,

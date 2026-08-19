@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Shop;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -30,8 +31,9 @@ class OrderResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('user_id')
                             ->label('Customer')
-                            ->relationship('user', 'name')
-                            ->searchable()
+                            ->relationship('user', 'first_name')
+                            ->getOptionLabelFromRecordUsing(fn (User $record): string => $record->name)
+                            ->searchable(['first_name', 'last_name', 'email', 'phone'])
                             ->preload()
                             ->required(),
                         Forms\Components\Select::make('shop_id')
@@ -64,8 +66,10 @@ class OrderResource extends Resource
                                 return $shop->electricians()
                                     ->where('users.user_type_id', $electricianUserTypeId)
                                     ->where('users.is_active', true)
-                                    ->orderBy('users.name')
-                                    ->pluck('users.name', 'users.id')
+                                    ->orderBy('users.first_name')
+                                    ->orderBy('users.last_name')
+                                    ->get(['users.id', 'users.first_name', 'users.last_name'])
+                                    ->mapWithKeys(fn (User $u) => [$u->id => $u->name])
                                     ->all();
                             })
                             ->searchable()

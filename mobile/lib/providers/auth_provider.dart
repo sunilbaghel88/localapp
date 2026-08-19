@@ -157,7 +157,8 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<bool> registerWithSmsOtp({
-    required String name,
+    required String firstName,
+    required String lastName,
     required String phone,
     required String otp,
     int? userTypeId,
@@ -168,7 +169,8 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
     try {
       final data = await _api.registerWithSmsOtp(
-        name: name,
+        firstName: firstName,
+        lastName: lastName,
         phone: phone,
         otp: otp,
         userTypeId: userTypeId,
@@ -181,7 +183,7 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } on DioException catch (e) {
-      _error = _firstApiError(e, const ['otp', 'phone', 'name', 'email']) ?? 'Registration failed';
+      _error = _firstApiError(e, const ['otp', 'phone', 'first_name', 'last_name', 'email']) ?? 'Registration failed';
       _isLoading = false;
       notifyListeners();
       return false;
@@ -189,7 +191,8 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<bool> register(
-    String name,
+    String firstName,
+    String lastName,
     String email,
     String password,
     String passwordConfirmation, {
@@ -200,7 +203,8 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
     try {
       final data = await _api.register(
-        name,
+        firstName,
+        lastName,
         email,
         password,
         passwordConfirmation,

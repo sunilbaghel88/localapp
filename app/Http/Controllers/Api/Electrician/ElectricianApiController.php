@@ -132,15 +132,15 @@ class ElectricianApiController extends Controller
         $users = User::query()
             ->where('id', '!=', $request->user()->id)
             ->where(function ($query) use ($needle) {
-                $query->where('name', 'like', $needle)
+                $query->whereNameLike($needle)
                     ->orWhere('email', 'like', $needle);
                 if (DB::getSchemaBuilder()->hasColumn('users', 'phone')) {
                     $query->orWhere('phone', 'like', $needle);
                 }
             })
-            ->orderBy('name')
+            ->orderByName()
             ->limit(20)
-            ->get(['id', 'name', 'email', 'phone']);
+            ->get(['id', 'first_name', 'last_name', 'email', 'phone']);
 
         return response()->json([
             'data' => $users->map(fn (User $u) => [

@@ -41,7 +41,14 @@ class ElectriciansRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('name')
             ->columns([
-                Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $q) use ($search) {
+                            $q->where('first_name', 'like', "%{$search}%")
+                                ->orWhere('last_name', 'like', "%{$search}%");
+                        });
+                    })
+                    ->sortable(['first_name', 'last_name']),
                 Tables\Columns\TextColumn::make('email')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('phone')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('reward_points')
@@ -56,11 +63,12 @@ class ElectriciansRelationManager extends RelationManager
                         }
                         return $query->where('user_type_id', $electricianUserTypeId)
                             ->where('is_active', true)
-                            ->orderBy('name');
+                            ->orderBy('first_name')
+                            ->orderBy('last_name');
                     })
                     ->recordTitle(fn (User $record): string => $record->name . ($record->phone ? ' (' . $record->phone . ')' : ''))
                     ->preloadRecordSelect()
-                    ->recordSelectSearchColumns(['name', 'email', 'phone']),
+                    ->recordSelectSearchColumns(['first_name', 'last_name', 'email', 'phone']),
             ])
             ->actions([
                 Tables\Actions\DetachAction::make(),

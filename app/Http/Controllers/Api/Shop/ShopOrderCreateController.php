@@ -51,15 +51,15 @@ class ShopOrderCreateController extends Controller
         $users = User::query()
             ->where('id', '!=', $request->user()->id)
             ->where(function ($query) use ($needle) {
-                $query->where('name', 'like', $needle)
+                $query->whereNameLike($needle)
                     ->orWhere('email', 'like', $needle);
                 if (DB::getSchemaBuilder()->hasColumn('users', 'phone')) {
                     $query->orWhere('phone', 'like', $needle);
                 }
             })
-            ->orderBy('name')
+            ->orderByName()
             ->limit(20)
-            ->get(['id', 'name', 'email', 'phone']);
+            ->get(['id', 'first_name', 'last_name', 'email', 'phone']);
 
         return response()->json([
             'data' => $users->map(fn (User $u) => [
@@ -101,8 +101,9 @@ class ShopOrderCreateController extends Controller
         $rows = $shop->electricians()
             ->where('users.user_type_id', $electricianUserTypeId)
             ->where('users.is_active', true)
-            ->orderBy('users.name')
-            ->get(['users.id', 'users.name', 'users.email', 'users.phone']);
+            ->orderBy('users.first_name')
+            ->orderBy('users.last_name')
+            ->get(['users.id', 'users.first_name', 'users.last_name', 'users.email', 'users.phone']);
 
         return response()->json([
             'data' => $rows->map(fn (User $u) => [
@@ -139,8 +140,9 @@ class ShopOrderCreateController extends Controller
         $rows = $shop->electricians()
             ->where('users.user_type_id', $deliveryAgentUserTypeId)
             ->where('users.is_active', true)
-            ->orderBy('users.name')
-            ->get(['users.id', 'users.name', 'users.email', 'users.phone']);
+            ->orderBy('users.first_name')
+            ->orderBy('users.last_name')
+            ->get(['users.id', 'users.first_name', 'users.last_name', 'users.email', 'users.phone']);
 
         return response()->json([
             'data' => $rows->map(fn (User $u) => [

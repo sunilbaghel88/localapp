@@ -63,14 +63,16 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> registerWithSmsOtp({
-    required String name,
+    required String firstName,
+    required String lastName,
     required String phone,
     required String otp,
     int? userTypeId,
     String? email,
   }) async {
     final data = <String, dynamic>{
-      'name': name,
+      'first_name': firstName,
+      'last_name': lastName,
       'phone': phone,
       'otp': otp,
       'device_name': 'flutter-mobile',
@@ -82,14 +84,16 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> register(
-    String name,
+    String firstName,
+    String lastName,
     String email,
     String password,
     String passwordConfirmation, {
     int? userTypeId,
   }) async {
     final data = <String, dynamic>{
-      'name': name,
+      'first_name': firstName,
+      'last_name': lastName,
       'email': email,
       'password': password,
       'password_confirmation': passwordConfirmation,
