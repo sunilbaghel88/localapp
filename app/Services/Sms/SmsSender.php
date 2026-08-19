@@ -48,29 +48,11 @@ class SmsSender
                 default => Http::timeout(30)->get($endpoint, $params),
             };
         } catch (\Throwable $e) {
-            Log::error('SMS API request failed', [
-                'endpoint' => $endpoint,
-                'mobile' => $mobile,
-                'error' => $e->getMessage(),
-            ]);
-
             throw new RuntimeException('Failed to send SMS. Please try again.');
         }
 
         if (! $response->successful()) {
-            Log::warning('SMS API returned non-success status', [
-                'endpoint' => $endpoint,
-                'mobile' => $mobile,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
             throw new RuntimeException('SMS provider rejected the request.');
         }
-
-        Log::info('SMS OTP sent', [
-            'mobile' => $mobile,
-            'status' => $response->status(),
-        ]);
     }
 }

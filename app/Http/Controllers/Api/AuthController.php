@@ -121,10 +121,11 @@ class AuthController extends Controller
                 }
             );
         } catch (\Throwable $e) {
-            Log::warning('Failed to send login OTP email', [
-                'email' => $email,
+            return response()->json([
+                'message' => 'Failed to send login OTP email. Please try again.',
                 'error' => $e->getMessage(),
-            ]);
+                'email' => $email,
+            ], 500);
         }
 
         return response()->json([
