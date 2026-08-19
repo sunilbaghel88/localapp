@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/eshop_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/products_screen.dart';
@@ -34,27 +35,37 @@ GoRouter createRouter(BuildContext context) {
     redirect: (context, state) {
       final isAuth = auth.isAuthenticated;
       final isOwnerRoute = state.matchedLocation.startsWith('/owner');
-      final isElectricianRoute = state.matchedLocation.startsWith('/electrician');
-      final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/register';
+      final isElectricianRoute = state.matchedLocation.startsWith(
+        '/electrician',
+      );
+      final isAuthRoute =
+          state.matchedLocation == '/login' ||
+          state.matchedLocation == '/register';
       final isSplash = state.matchedLocation == '/';
       if (isSplash) return null;
       if (auth.isLoading) return null;
-      if (!isAuth && (state.matchedLocation.startsWith('/cart') ||
-          state.matchedLocation.startsWith('/checkout') ||
-          state.matchedLocation.startsWith('/orders') ||
-          state.matchedLocation.startsWith('/owner') ||
-          state.matchedLocation.startsWith('/electrician') ||
-          state.matchedLocation.startsWith('/profile') ||
-          state.matchedLocation.startsWith('/addresses'))) {
+      if (!isAuth &&
+          (state.matchedLocation == '/home' ||
+              state.matchedLocation == '/eshop' ||
+              state.matchedLocation.startsWith('/cart') ||
+              state.matchedLocation.startsWith('/checkout') ||
+              state.matchedLocation.startsWith('/orders') ||
+              state.matchedLocation.startsWith('/owner') ||
+              state.matchedLocation.startsWith('/electrician') ||
+              state.matchedLocation.startsWith('/profile') ||
+              state.matchedLocation.startsWith('/addresses'))) {
         return '/login';
       }
       if (isAuth && isAuthRoute) return '/home';
 
       if (isOwnerRoute && isAuth) {
         final permissions = auth.user?.permissions ?? const [];
-        final canAccessOwner = permissions.contains('view_any_product') || permissions.contains('view_any_order');
+        final canAccessOwner =
+            permissions.contains('view_any_product') ||
+            permissions.contains('view_any_order');
         if (!canAccessOwner) return '/home';
-        if (state.matchedLocation == '/owner/orders/create' && !permissions.contains('create_order')) {
+        if (state.matchedLocation == '/owner/orders/create' &&
+            !permissions.contains('create_order')) {
           return '/owner/orders';
         }
       }
@@ -66,22 +77,11 @@ GoRouter createRouter(BuildContext context) {
       return null;
     },
     routes: [
-      GoRoute(
-        path: '/',
-        builder: (_, _) => const SplashScreen(),
-      ),
-      GoRoute(
-        path: '/login',
-        builder: (_, _) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: '/register',
-        builder: (_, _) => const RegisterScreen(),
-      ),
-      GoRoute(
-        path: '/home',
-        builder: (_, _) => const HomeScreen(),
-      ),
+      GoRoute(path: '/', builder: (_, _) => const SplashScreen()),
+      GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
+      GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+      GoRoute(path: '/eshop', builder: (_, _) => const EshopScreen()),
       GoRoute(
         path: '/products',
         builder: (_, _) => const ProductsScreen(),
@@ -95,14 +95,8 @@ GoRouter createRouter(BuildContext context) {
           ),
         ],
       ),
-      GoRoute(
-        path: '/cart',
-        builder: (_, _) => const CartScreen(),
-      ),
-      GoRoute(
-        path: '/checkout',
-        builder: (_, _) => const CheckoutScreen(),
-      ),
+      GoRoute(path: '/cart', builder: (_, _) => const CartScreen()),
+      GoRoute(path: '/checkout', builder: (_, _) => const CheckoutScreen()),
       GoRoute(
         path: '/orders',
         builder: (_, _) => const OrdersScreen(),
@@ -116,21 +110,16 @@ GoRouter createRouter(BuildContext context) {
           ),
         ],
       ),
-      GoRoute(
-        path: '/profile',
-        builder: (_, _) => const ProfileScreen(),
-      ),
-      GoRoute(
-        path: '/addresses',
-        builder: (_, _) => const AddressesScreen(),
-      ),
+      GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
+      GoRoute(path: '/addresses', builder: (_, _) => const AddressesScreen()),
       GoRoute(
         path: '/owner/products',
         builder: (context, state) => const ShopOwnerProductsScreen(),
       ),
       GoRoute(
         path: '/owner/products/create',
-        builder: (context, state) => const ShopOwnerProductFormScreen(productId: null),
+        builder: (context, state) =>
+            const ShopOwnerProductFormScreen(productId: null),
       ),
       GoRoute(
         path: '/owner/products/:id',

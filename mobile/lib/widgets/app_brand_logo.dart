@@ -32,23 +32,27 @@ class AppBrandLogo extends StatelessWidget {
     if (logoUrl == null) {
       return SizedBox(
         height: height,
-        child: Center(
-          child: Image.asset(
-            'assets/images/app_logo.png',
-            height: height,
-            fit: BoxFit.contain,
-            errorBuilder: (_, error, stackTrace) => fallback,
-          ),
+        width: double.infinity,
+        child: Image.asset(
+          'assets/images/app_logo.png',
+          height: height,
+          width: double.infinity,
+          fit: BoxFit.contain,
+          alignment: Alignment.center,
+          errorBuilder: (_, error, stackTrace) => fallback,
         ),
       );
     }
 
     return SizedBox(
       height: height,
+      width: double.infinity,
       child: CachedNetworkImage(
         imageUrl: logoUrl,
         height: height,
+        width: double.infinity,
         fit: BoxFit.contain,
+        alignment: Alignment.center,
         placeholder: (_, url) => Center(
           child: SizedBox(
             width: 28,

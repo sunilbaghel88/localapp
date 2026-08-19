@@ -6,6 +6,7 @@ class User {
   final String? role;
   final List<String>? permissions;
   final bool isElectrician;
+  final int rewardPoints;
 
   User({
     required this.id,
@@ -15,6 +16,7 @@ class User {
     this.role,
     this.permissions,
     this.isElectrician = false,
+    this.rewardPoints = 0,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -26,12 +28,19 @@ class User {
     return User(
       id: json['id'] as int,
       name: _fullNameFromJson(json),
-      email: json['email'] as String,
+      email: json['email'] as String? ?? '',
       phone: json['phone'] as String?,
       role: json['role'] as String?,
       permissions: permissions,
       isElectrician: json['is_electrician'] == true,
+      rewardPoints: _intFromJson(json['reward_points']),
     );
+  }
+
+  static int _intFromJson(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   static String _fullNameFromJson(Map<String, dynamic> json) {
@@ -45,12 +54,13 @@ class User {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'email': email,
-        'phone': phone,
-        'role': role,
-        'permissions': permissions,
-        'is_electrician': isElectrician,
-      };
+    'id': id,
+    'name': name,
+    'email': email,
+    'phone': phone,
+    'role': role,
+    'permissions': permissions,
+    'is_electrician': isElectrician,
+    'reward_points': rewardPoints,
+  };
 }

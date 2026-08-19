@@ -51,7 +51,10 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } on DioException catch (e) {
-      _error = e.response?.data?['message'] ?? e.response?.data?['errors']?['email']?[0] ?? 'Login failed';
+      _error =
+          e.response?.data?['message'] ??
+          e.response?.data?['errors']?['email']?[0] ??
+          'Login failed';
       _isLoading = false;
       notifyListeners();
       return false;
@@ -68,7 +71,10 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } on DioException catch (e) {
-      _error = e.response?.data?['message'] ?? e.response?.data?['errors']?['email']?[0] ?? 'Failed to send OTP';
+      _error =
+          e.response?.data?['message'] ??
+          e.response?.data?['errors']?['email']?[0] ??
+          'Failed to send OTP';
       _isLoading = false;
       notifyListeners();
       return false;
@@ -88,7 +94,8 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } on DioException catch (e) {
-      _error = e.response?.data?['message'] ??
+      _error =
+          e.response?.data?['message'] ??
           e.response?.data?['errors']?['otp']?[0] ??
           e.response?.data?['errors']?['email']?[0] ??
           'OTP login failed';
@@ -183,7 +190,15 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } on DioException catch (e) {
-      _error = _firstApiError(e, const ['otp', 'phone', 'first_name', 'last_name', 'email']) ?? 'Registration failed';
+      _error =
+          _firstApiError(e, const [
+            'otp',
+            'phone',
+            'first_name',
+            'last_name',
+            'email',
+          ]) ??
+          'Registration failed';
       _isLoading = false;
       notifyListeners();
       return false;
@@ -221,7 +236,11 @@ class AuthProvider with ChangeNotifier {
       if (err != null && err['errors'] != null) {
         final errors = err['errors'] as Map<String, dynamic>;
         final first = errors.values.first;
-        _error = first is List ? (first.isNotEmpty ? first.first.toString() : 'Registration failed') : first.toString();
+        _error = first is List
+            ? (first.isNotEmpty
+                  ? first.first.toString()
+                  : 'Registration failed')
+            : first.toString();
       } else {
         _error = err?['message'] ?? 'Registration failed';
       }
@@ -229,6 +248,13 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  Future<void> refreshUser() async {
+    try {
+      _user = await _api.getCurrentUser();
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> logout() async {

@@ -18,7 +18,10 @@ class ProfileScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text('Please log in to view your profile.'),
-              FilledButton(onPressed: () => context.push('/login'), child: const Text('Login')),
+              FilledButton(
+                onPressed: () => context.push('/login'),
+                child: const Text('Login'),
+              ),
             ],
           ),
         ),
@@ -35,7 +38,11 @@ class ProfileScreen extends StatelessWidget {
         children: [
           Card(
             child: ListTile(
-              leading: CircleAvatar(child: Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : '?')),
+              leading: CircleAvatar(
+                child: Text(
+                  user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                ),
+              ),
               title: Text(user.name),
               subtitle: Text(user.email),
             ),
@@ -51,7 +58,8 @@ class ProfileScreen extends StatelessWidget {
             leading: const Icon(Icons.shopping_bag_outlined),
             title: Text(canManageOrders ? 'Manage Orders' : 'My Orders'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(canManageOrders ? '/owner/orders' : '/orders'),
+            onTap: () =>
+                context.push(canManageOrders ? '/owner/orders' : '/orders'),
           ),
           if (canManageProducts) ...[
             const SizedBox(height: 16),
@@ -72,7 +80,7 @@ class ProfileScreen extends StatelessWidget {
               rootScaffoldMessengerKey.currentState?.showSnackBar(
                 const SnackBar(content: Text('Logged out successfully')),
               );
-              context.go('/home');
+              context.go('/login');
             },
           ),
         ],
