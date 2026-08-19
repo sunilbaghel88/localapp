@@ -9,6 +9,7 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Support\Facades\Storage;
 
 class AppBrandingSettings extends Page implements HasForms
 {
@@ -62,8 +63,23 @@ class AppBrandingSettings extends Page implements HasForms
                             ->disk('public')
                             ->directory('branding')
                             ->visibility('public')
-                            ->imageEditor()
+                            ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/webp'])
                             ->maxSize(5120)
+                            ->fetchFileInformation(false)
+                            ->getUploadedFileUsing(function ($component, string $file): ?array {
+                                $disk = Storage::disk('public');
+
+                                if (! $disk->exists($file)) {
+                                    return null;
+                                }
+
+                                return [
+                                    'name' => basename($file),
+                                    'size' => $disk->size($file),
+                                    'type' => $disk->mimeType($file) ?: 'image/png',
+                                    'url' => '/storage/'.$file,
+                                ];
+                            })
                             ->helperText('PNG or JPG recommended. Shown on login/register. Leave empty to use the mobile sample logo.'),
                     ]),
             ])
@@ -89,6 +105,12 @@ class AppBrandingSettings extends Page implements HasForms
             'app_name' => $data['app_name'] ?? null,
             'tagline' => $data['tagline'] ?? null,
             'logo_path' => $newLogo,
+        ]);
+
+        $this->form->fill([
+            'app_name' => $branding->app_name,
+            'tagline' => $branding->tagline,
+            'logo_path' => $branding->logo_path,
         ]);
 
         Notification::make()

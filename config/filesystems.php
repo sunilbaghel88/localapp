@@ -41,7 +41,9 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
+            // Relative URL so Filament/FilePond previews use the same host+scheme
+            // as the admin panel (this site redirects HTTP → HTTPS).
+            'url' => '/storage',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,

@@ -37,7 +37,7 @@ class AppBranding extends Model
         $path = ltrim((string) $this->logo_path, '/');
 
         // Prefer the app media route used by the mobile client.
-        return url('/media/'.$path);
+        return secure_url('media/'.$path);
     }
 
     public function toApiArray(): array
