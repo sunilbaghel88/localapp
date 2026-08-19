@@ -19,7 +19,8 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!auth.isLoading && !_redirected) {
       _redirected = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.go('/home');
+        if (!mounted) return;
+        context.go(auth.isAuthenticated ? '/home' : '/login');
       });
     }
     return Scaffold(
