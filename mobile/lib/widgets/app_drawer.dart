@@ -75,21 +75,9 @@ class AppDrawer extends StatelessWidget {
                   ),
                   _item(
                     context,
-                    icon: Icons.menu_book_outlined,
-                    label: 'My Ledger',
-                    currentPath: currentPath,
-                  ),
-                  _item(
-                    context,
                     icon: Icons.shopping_bag_outlined,
                     label: 'My Purchase',
                     route: '/orders',
-                    currentPath: currentPath,
-                  ),
-                  _item(
-                    context,
-                    icon: Icons.upload_file_outlined,
-                    label: 'Upload Invoice',
                     currentPath: currentPath,
                   ),
                   _item(

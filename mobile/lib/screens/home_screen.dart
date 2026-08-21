@@ -144,6 +144,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
     final points = user?.rewardPoints ?? 0;
     final isPartner = user?.isPartner ?? false;
+    final canCreateOrder =
+        user?.permissions?.contains('create_order') ?? false;
 
     return MainScaffold(
       body: CustomScrollView(
@@ -170,7 +172,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 10),
                   _PageDots(count: _slides.length, index: _slideIndex),
                   const SizedBox(height: 22),
-                  _ActionGrid(isPartner: isPartner),
+                  _ActionGrid(
+                    isPartner: isPartner,
+                    canCreateOrder: canCreateOrder,
+                  ),
                 ],
               ),
             ),
@@ -467,22 +472,30 @@ class _PageDots extends StatelessWidget {
 }
 
 class _ActionGrid extends StatelessWidget {
-  const _ActionGrid({required this.isPartner});
+  const _ActionGrid({
+    required this.isPartner,
+    required this.canCreateOrder,
+  });
 
   final bool isPartner;
+  final bool canCreateOrder;
 
   @override
   Widget build(BuildContext context) {
     final items = <_HomeAction>[
-      const _HomeAction(
-        label: 'UPLOAD INVOICE',
-        icon: Icons.upload_file_outlined,
-      ),
       _HomeAction(
         label: 'MY PURCHASE',
         icon: Icons.shopping_cart_outlined,
         route: '/orders',
       ),
+      if (canCreateOrder || isPartner)
+        _HomeAction(
+          label: 'CREATE ORDER',
+          icon: Icons.add_shopping_cart_outlined,
+          route: canCreateOrder
+              ? '/owner/orders/create'
+              : '/partner/orders/create',
+        ),
       if (isPartner)
         const _HomeAction(
           label: 'REDEEM POINTS',
