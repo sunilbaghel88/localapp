@@ -75,13 +75,6 @@ class AppDrawer extends StatelessWidget {
                   ),
                   _item(
                     context,
-                    icon: Icons.workspace_premium_outlined,
-                    label: 'Redeem Points',
-                    route: isPartner ? '/partner/rewards' : null,
-                    currentPath: currentPath,
-                  ),
-                  _item(
-                    context,
                     icon: Icons.menu_book_outlined,
                     label: 'My Ledger',
                     currentPath: currentPath,
@@ -178,6 +171,14 @@ class AppDrawer extends StatelessWidget {
                         icon: Icons.sell_outlined,
                         label: 'Assign User Types',
                         route: '/owner/user-types',
+                        currentPath: currentPath,
+                      ),
+                    if (isPartner)
+                      _item(
+                        context,
+                        icon: Icons.workspace_premium_outlined,
+                        label: 'Redeem Points',
+                        route: '/partner/rewards',
                         currentPath: currentPath,
                       ),
                     if (isPartner)

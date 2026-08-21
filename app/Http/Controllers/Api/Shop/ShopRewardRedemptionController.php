@@ -27,7 +27,7 @@ class ShopRewardRedemptionController extends Controller
         $status = (string) $request->query('status', '');
 
         $query = RewardRedemptionRequest::query()
-            ->with(['user:id,name,email,phone', 'shop:id,name', 'approvedBy:id,name'])
+            ->with(['user:id,first_name,last_name,email,phone', 'shop:id,name', 'approvedBy:id,first_name,last_name'])
             ->whereIn('shop_id', $shopIds)
             ->latest();
 
@@ -72,7 +72,7 @@ class ShopRewardRedemptionController extends Controller
                 'rejection_reason' => null,
             ]);
 
-            $locked->load(['user:id,name,email,phone', 'shop:id,name', 'approvedBy:id,name']);
+            $locked->load(['user:id,first_name,last_name,email,phone', 'shop:id,name', 'approvedBy:id,first_name,last_name']);
 
             return [
                 'status' => 'approved',
@@ -126,7 +126,7 @@ class ShopRewardRedemptionController extends Controller
         }
 
         $rewardRedemptionRequest->refresh();
-        $rewardRedemptionRequest->load(['user:id,name,email,phone', 'shop:id,name', 'approvedBy:id,name']);
+        $rewardRedemptionRequest->load(['user:id,first_name,last_name,email,phone', 'shop:id,name', 'approvedBy:id,first_name,last_name']);
 
         return response()->json([
             'message' => __('Redemption request rejected.'),

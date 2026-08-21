@@ -54,8 +54,8 @@ class ShopOrderController extends Controller
             'shop',
             'address',
             'items',
-            'user:id,name,email,phone',
-            'electricianUser:id,name,email,phone',
+            'user:id,first_name,last_name,email,phone',
+            'electricianUser:id,first_name,last_name,email,phone',
         ]);
 
         return response()->json([
@@ -81,8 +81,8 @@ class ShopOrderController extends Controller
             'shop',
             'address',
             'items',
-            'user:id,name,email,phone',
-            'electricianUser:id,name,email,phone',
+            'user:id,first_name,last_name,email,phone',
+            'electricianUser:id,first_name,last_name,email,phone',
         ]);
 
         return response()->json([
@@ -108,8 +108,8 @@ class ShopOrderController extends Controller
             'shop',
             'address',
             'items',
-            'user:id,name,email,phone',
-            'electricianUser:id,name,email,phone',
+            'user:id,first_name,last_name,email,phone',
+            'electricianUser:id,first_name,last_name,email,phone',
         ]);
 
         return response()->json([

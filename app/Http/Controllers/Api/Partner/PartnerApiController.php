@@ -64,7 +64,7 @@ class PartnerApiController extends Controller
         $user = $request->user();
 
         $requests = RewardRedemptionRequest::query()
-            ->with(['shop:id,name', 'approvedBy:id,name'])
+            ->with(['shop:id,name', 'approvedBy:id,first_name,last_name'])
             ->where('user_id', $user->id)
             ->latest()
             ->paginate($perPage);
@@ -112,7 +112,7 @@ class PartnerApiController extends Controller
             'note' => $validated['note'] ?? null,
         ]);
 
-        $created->load(['shop:id,name', 'approvedBy:id,name']);
+        $created->load(['shop:id,name', 'approvedBy:id,first_name,last_name']);
 
         return response()->json([
             'message' => __('Redemption request submitted.'),

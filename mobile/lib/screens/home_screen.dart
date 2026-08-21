@@ -483,11 +483,12 @@ class _ActionGrid extends StatelessWidget {
         icon: Icons.shopping_cart_outlined,
         route: '/orders',
       ),
-      _HomeAction(
-        label: 'REDEEM POINTS',
-        icon: Icons.workspace_premium_outlined,
-        route: isPartner ? '/partner/rewards' : null,
-      ),
+      if (isPartner)
+        const _HomeAction(
+          label: 'REDEEM POINTS',
+          icon: Icons.workspace_premium_outlined,
+          route: '/partner/rewards',
+        ),
       const _HomeAction(label: 'EVENT', icon: Icons.event_outlined),
       const _HomeAction(label: 'CONTACT US', icon: Icons.phone_outlined),
       const _HomeAction(label: 'GALLERY', icon: Icons.badge_outlined),

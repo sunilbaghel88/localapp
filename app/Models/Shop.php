@@ -13,11 +13,6 @@ class Shop extends Model
 {
     use HasFactory;
 
-    public function shopType(): BelongsTo
-    {
-        return $this->belongsTo(ShopType::class);
-    }
-
     protected $fillable = [
         'user_id',
         'shop_type_id',
@@ -62,6 +57,11 @@ class Shop extends Model
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function shopType(): BelongsTo
+    {
+        return $this->belongsTo(ShopType::class);
     }
 
     public function partners(): BelongsToMany
