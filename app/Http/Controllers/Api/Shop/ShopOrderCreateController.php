@@ -73,9 +73,9 @@ class ShopOrderCreateController extends Controller
     }
 
     /**
-     * Electricians attached to the shop with the shop type's electrician user type (same options as Filament order create).
+     * Partners attached to the shop whose types are reward-eligible for this shop type.
      */
-    public function listElectricians(Request $request): JsonResponse
+    public function listPartners(Request $request): JsonResponse
     {
         $this->authorize('create', Order::class);
 
@@ -90,16 +90,16 @@ class ShopOrderCreateController extends Controller
         }
 
         $shop = Shop::query()
-            ->with('shopType')
+            ->with(['shopType.rewardUserTypes'])
             ->findOrFail($shopId);
 
-        $electricianUserTypeId = $shop->shopType?->electrician_user_type_id;
-        if (! $electricianUserTypeId) {
+        $rewardTypeIds = $shop->shopType?->rewardUserTypeIds() ?? [];
+        if (! ($shop->shopType?->supports_partner_rewards) || $rewardTypeIds === []) {
             return response()->json(['data' => []]);
         }
 
-        $rows = $shop->electricians()
-            ->withUserTypeId($electricianUserTypeId)
+        $rows = $shop->partners()
+            ->withAnyUserTypeIds($rewardTypeIds)
             ->where('users.is_active', true)
             ->orderBy('users.first_name')
             ->orderBy('users.last_name')
@@ -137,7 +137,7 @@ class ShopOrderCreateController extends Controller
 
         $shop = Shop::query()->findOrFail($shopId);
 
-        $rows = $shop->electricians()
+        $rows = $shop->partners()
             ->withUserTypeId($deliveryAgentUserTypeId)
             ->where('users.is_active', true)
             ->orderBy('users.first_name')
@@ -268,9 +268,9 @@ class ShopOrderCreateController extends Controller
     }
 
     /**
-     * Create an electrician user for this shop type and attach them to the shop (same pool as listElectricians).
+     * Create a partner user for this shop type and attach them to the shop.
      */
-    public function storeElectrician(Request $request): JsonResponse
+    public function storePartner(Request $request): JsonResponse
     {
         $this->authorize('create', Order::class);
 
@@ -280,6 +280,7 @@ class ShopOrderCreateController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'phone' => ['nullable', 'string', 'max:30'],
             'password' => ['required', 'confirmed', Password::defaults()],
+            'user_type_id' => ['nullable', 'integer', 'exists:user_types,id'],
         ]);
 
         $shopId = (int) $validated['shop_id'];
@@ -289,13 +290,23 @@ class ShopOrderCreateController extends Controller
         }
 
         $shop = Shop::query()
-            ->with('shopType')
+            ->with(['shopType.rewardUserTypes'])
             ->findOrFail($shopId);
 
-        $electricianUserTypeId = $shop->shopType?->electrician_user_type_id;
-        if (! $electricianUserTypeId) {
+        $rewardTypeIds = $shop->shopType?->rewardUserTypeIds() ?? [];
+        if (! ($shop->shopType?->supports_partner_rewards) || $rewardTypeIds === []) {
             throw ValidationException::withMessages([
-                'shop_id' => [__('This shop does not support electricians.')],
+                'shop_id' => [__('This shop does not support partner rewards.')],
+            ]);
+        }
+
+        $partnerTypeId = isset($validated['user_type_id'])
+            ? (int) $validated['user_type_id']
+            : (int) ($rewardTypeIds[0] ?? 0);
+
+        if (! in_array($partnerTypeId, $rewardTypeIds, true)) {
+            throw ValidationException::withMessages([
+                'user_type_id' => [__('Select a reward-eligible user type for this shop.')],
             ]);
         }
 
@@ -306,9 +317,9 @@ class ShopOrderCreateController extends Controller
             'password' => Hash::make($validated['password']),
             'is_active' => true,
         ]);
-        $user->userTypes()->syncWithoutDetaching([$electricianUserTypeId]);
+        $user->userTypes()->syncWithoutDetaching([$partnerTypeId]);
 
-        $shop->electricians()->syncWithoutDetaching([$user->id]);
+        $shop->partners()->syncWithoutDetaching([$user->id]);
 
         return response()->json([
             'data' => [
@@ -356,7 +367,7 @@ class ShopOrderCreateController extends Controller
         $user->userTypes()->syncWithoutDetaching([$deliveryAgentUserTypeId]);
 
         $shop = Shop::query()->findOrFail($shopId);
-        $shop->electricians()->syncWithoutDetaching([$user->id]);
+        $shop->partners()->syncWithoutDetaching([$user->id]);
 
         return response()->json([
             'data' => [
@@ -528,7 +539,7 @@ class ShopOrderCreateController extends Controller
             }
 
             $shopModel = Shop::query()->findOrFail((int) $validated['shop_id']);
-            $validDeliveryAgent = $shopModel->electricians()
+            $validDeliveryAgent = $shopModel->partners()
                 ->where('users.id', $deliveryAgentUserId)
                 ->withUserTypeId($deliveryAgentUserTypeId)
                 ->where('users.is_active', true)
@@ -544,25 +555,25 @@ class ShopOrderCreateController extends Controller
         $electricianUserId = isset($validated['electrician_user_id']) ? (int) $validated['electrician_user_id'] : null;
         if ($electricianUserId !== null) {
             $shopModel = Shop::query()
-                ->with('shopType')
+                ->with(['shopType.rewardUserTypes'])
                 ->findOrFail((int) $validated['shop_id']);
 
-            $electricianUserTypeId = $shopModel->shopType?->electrician_user_type_id;
-            if (! $electricianUserTypeId) {
+            $rewardTypeIds = $shopModel->shopType?->rewardUserTypeIds() ?? [];
+            if (! ($shopModel->shopType?->supports_partner_rewards) || $rewardTypeIds === []) {
                 throw ValidationException::withMessages([
-                    'electrician_user_id' => [__('This shop does not support assigning an electrician.')],
+                    'electrician_user_id' => [__('This shop does not support assigning a partner.')],
                 ]);
             }
 
-            $validElectrician = $shopModel->electricians()
+            $validPartner = $shopModel->partners()
                 ->where('users.id', $electricianUserId)
-                ->withUserTypeId($electricianUserTypeId)
+                ->withAnyUserTypeIds($rewardTypeIds)
                 ->where('users.is_active', true)
                 ->exists();
 
-            if (! $validElectrician) {
+            if (! $validPartner) {
                 throw ValidationException::withMessages([
-                    'electrician_user_id' => [__('The selected electrician is not valid for this shop.')],
+                    'electrician_user_id' => [__('The selected partner is not valid for this shop.')],
                 ]);
             }
         }

@@ -165,6 +165,11 @@ class ShopResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('shopType.name')
+                    ->label('Shop type')
+                    ->badge()
+                    ->placeholder('—')
+                    ->sortable(),
                 Tables\Columns\ImageColumn::make('shop_front_photo')
                     ->label('Front photo')
                     ->disk('public')
@@ -181,6 +186,11 @@ class ShopResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('shop_type_id')
+                    ->label('Shop type')
+                    ->relationship('shopType', 'name')
+                    ->preload()
+                    ->searchable(),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'on' => 'On',
@@ -199,13 +209,14 @@ class ShopResource extends Resource
     public static function getRelations(): array
     {
         return [
-            RelationManagers\ElectriciansRelationManager::class,
+            RelationManagers\PartnersRelationManager::class,
         ];
     }
 
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->with('shopType')
             ->where('user_id', auth()->id());
     }
 

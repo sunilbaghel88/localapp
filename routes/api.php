@@ -18,7 +18,7 @@ use App\Http\Controllers\Api\Shop\ShopOrderController;
 use App\Http\Controllers\Api\Shop\ShopOrderCreateController;
 use App\Http\Controllers\Api\Shop\ShopRewardRedemptionController;
 use App\Http\Controllers\Api\Shop\ShopUserTypeAssignmentController;
-use App\Http\Controllers\Api\Electrician\ElectricianApiController;
+use App\Http\Controllers\Api\Partner\PartnerApiController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login'])->name('api.login');
@@ -72,14 +72,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/products/{product}', [ShopProductController::class, 'update']);
         Route::post('/product-images/upload', [ShopProductImageController::class, 'store']);
 
-        // Orders (create-on-behalf-of-customer — same behaviour as electrician web flow)
+        // Orders (create-on-behalf-of-customer)
         Route::get('/order-create/search-customers', [ShopOrderCreateController::class, 'searchCustomers']);
-        Route::get('/order-create/electricians', [ShopOrderCreateController::class, 'listElectricians']);
+        Route::get('/order-create/partners', [ShopOrderCreateController::class, 'listPartners']);
         Route::get('/order-create/delivery-agents', [ShopOrderCreateController::class, 'listDeliveryAgents']);
         Route::get('/order-create/search-products', [ShopOrderCreateController::class, 'searchProducts']);
         Route::get('/order-create/customers/{customerId}/addresses', [ShopOrderCreateController::class, 'customerAddresses']);
         Route::post('/order-create/customers', [ShopOrderCreateController::class, 'storeCustomer']);
-        Route::post('/order-create/electricians', [ShopOrderCreateController::class, 'storeElectrician']);
+        Route::post('/order-create/partners', [ShopOrderCreateController::class, 'storePartner']);
         Route::post('/order-create/delivery-agents', [ShopOrderCreateController::class, 'storeDeliveryAgent']);
         Route::post('/order-create/customers/{customerId}/addresses', [ShopOrderCreateController::class, 'storeCustomerAddress']);
         Route::post('/order-create/ai-suggest', [ShopOrderCreateController::class, 'aiSuggest']);
@@ -98,17 +98,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/users/{user}/user-types', [ShopUserTypeAssignmentController::class, 'update']);
     });
 
-    // Electrician (Sanctum + electrician user type / shop-type mapping)
-    Route::prefix('electrician')->middleware('electrician')->group(function () {
-        Route::get('/shops', [ElectricianApiController::class, 'shops']);
-        Route::get('/reward-grants', [ElectricianApiController::class, 'rewardGrants']);
-        Route::get('/reward-redemptions', [ElectricianApiController::class, 'rewardRedemptions']);
-        Route::post('/reward-redemptions', [ElectricianApiController::class, 'createRewardRedemption']);
-        Route::get('/order-create/search-customers', [ElectricianApiController::class, 'searchCustomers']);
-        Route::get('/order-create/search-products', [ElectricianApiController::class, 'searchProducts']);
-        Route::get('/order-create/customers/{customerId}/addresses', [ElectricianApiController::class, 'customerAddresses']);
-        Route::post('/order-create/ai-suggest', [ElectricianApiController::class, 'aiSuggest']);
-        Route::post('/orders', [ElectricianApiController::class, 'store']);
+    // Partner (Sanctum + reward-eligible user types / shop-type mapping)
+    Route::prefix('partner')->middleware('partner')->group(function () {
+        Route::get('/shops', [PartnerApiController::class, 'shops']);
+        Route::get('/reward-grants', [PartnerApiController::class, 'rewardGrants']);
+        Route::get('/reward-redemptions', [PartnerApiController::class, 'rewardRedemptions']);
+        Route::post('/reward-redemptions', [PartnerApiController::class, 'createRewardRedemption']);
+        Route::get('/order-create/search-customers', [PartnerApiController::class, 'searchCustomers']);
+        Route::get('/order-create/search-products', [PartnerApiController::class, 'searchProducts']);
+        Route::get('/order-create/customers/{customerId}/addresses', [PartnerApiController::class, 'customerAddresses']);
+        Route::post('/order-create/ai-suggest', [PartnerApiController::class, 'aiSuggest']);
+        Route::post('/orders', [PartnerApiController::class, 'store']);
     });
 
     // Addresses

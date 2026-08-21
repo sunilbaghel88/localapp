@@ -64,9 +64,15 @@ class Order extends Model
         return $this->hasMany(Payment::class);
     }
 
-    public function electricianUser(): BelongsTo
+    public function partnerUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'electrician_user_id');
+    }
+
+    /** @deprecated Use partnerUser() */
+    public function electricianUser(): BelongsTo
+    {
+        return $this->partnerUser();
     }
 
     public function deliveryAgentUser(): BelongsTo

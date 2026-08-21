@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>@yield('title', 'Electrician Dashboard') - {{ config('app.name', 'Laravel') }}</title>
+        <title>@yield('title', 'Partner Dashboard') - {{ config('app.name', 'Laravel') }}</title>
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
@@ -18,16 +18,16 @@
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div class="flex justify-between items-center h-16">
                         <div class="flex items-center space-x-4">
-                            <a href="{{ route('electrician.dashboard') }}"
-                                class="{{ request()->routeIs('electrician.dashboard') ? 'text-amber-700' : 'text-gray-700 hover:text-gray-900' }} text-sm font-medium">
+                            <a href="{{ route('partner.dashboard') }}"
+                                class="{{ request()->routeIs('partner.dashboard') ? 'text-amber-700' : 'text-gray-700 hover:text-gray-900' }} text-sm font-medium">
                                 Dashboard
                             </a>
-                            <a href="{{ route('electrician.rewards.index') }}"
-                                class="{{ request()->routeIs('electrician.rewards.*') ? 'text-amber-700' : 'text-gray-700 hover:text-gray-900' }} text-sm font-medium">
+                            <a href="{{ route('partner.rewards.index') }}"
+                                class="{{ request()->routeIs('partner.rewards.*') ? 'text-amber-700' : 'text-gray-700 hover:text-gray-900' }} text-sm font-medium">
                                 Reward Points
                             </a>
-                            <a href="{{ route('electrician.orders.create') }}"
-                                class="{{ request()->routeIs('electrician.orders.*') ? 'text-amber-700' : 'text-gray-700 hover:text-gray-900' }} text-sm font-medium">
+                            <a href="{{ route('partner.orders.create') }}"
+                                class="{{ request()->routeIs('partner.orders.*') ? 'text-amber-700' : 'text-gray-700 hover:text-gray-900' }} text-sm font-medium">
                                 {{ __('Create order') }}
                             </a>
                         </div>

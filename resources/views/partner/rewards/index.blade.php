@@ -1,4 +1,4 @@
-@extends('layouts.electrician')
+@extends('layouts.partner')
 
 @section('title', 'Reward Points')
 
@@ -11,9 +11,9 @@
             </p>
         </div>
         <div class="rounded-xl bg-white border border-gray-200 px-5 py-4">
-            <div class="text-xs uppercase tracking-wider text-gray-500">Current points</div>
+            <div class="text-xs uppercase tracking-wider text-gray-500">Available points</div>
             <div class="mt-1 text-2xl font-semibold text-gray-900">{{ (int) ($user->reward_points ?? 0) }}</div>
-            <div class="mt-2 text-xs uppercase tracking-wider text-gray-500">Total granted (audit)</div>
+            <div class="mt-2 text-xs uppercase tracking-wider text-gray-500">Total points Earned</div>
             <div class="mt-1 text-xl font-semibold text-gray-900">{{ (int) $totalGranted }}</div>
         </div>
     </div>
@@ -30,7 +30,7 @@
                     You are not attached to any shop yet. Ask a shop owner to link you first.
                 </div>
             @else
-                <form method="POST" action="{{ route('electrician.rewards.redeem.store') }}" class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+                <form method="POST" action="{{ route('partner.rewards.redeem.store') }}" class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
                     @csrf
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Shop</label>

@@ -5,7 +5,6 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ShopTypeResource\Pages;
 use App\Filament\Resources\ShopTypeResource\RelationManagers;
 use App\Models\ShopType;
-use App\Models\UserType;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -49,21 +48,26 @@ class ShopTypeResource extends Resource
                 Forms\Components\TextInput::make('sort_order')
                     ->numeric()
                     ->default(0),
-                Forms\Components\Section::make('Electrician Rewards')
-                    ->description('Enable this for shop types (e.g. Electronic) where electricians can optionally assist customers and receive reward points from the shop owner.')
+                Forms\Components\Section::make('Partner Rewards')
+                    ->description('Enable for shop types where support partners (electrician, plumber, etc.) can assist customers and receive reward points from the shop owner.')
                     ->schema([
-                        Forms\Components\Toggle::make('supports_electrician_rewards')
-                            ->label('Supports electrician rewards')
+                        Forms\Components\Toggle::make('supports_partner_rewards')
+                            ->label('Supports partner rewards')
                             ->live()
-                            ->helperText('When enabled, customers can optionally select an electrician at checkout. Shop owners can grant reward points to electricians associated with orders.'),
-                        Forms\Components\Select::make('electrician_user_type_id')
-                            ->label('Electrician user type')
-                            ->options(fn () => UserType::where('is_active', true)->orderBy('sort_order')->pluck('name', 'id'))
+                            ->helperText('When enabled, customers can optionally select a partner at checkout. Shop owners can grant reward points to partners linked to orders.'),
+                        Forms\Components\Select::make('rewardUserTypes')
+                            ->label('Reward-eligible user types')
+                            ->multiple()
+                            ->relationship(
+                                'rewardUserTypes',
+                                'name',
+                                fn ($query) => $query->where('is_active', true)->orderBy('sort_order')
+                            )
                             ->searchable()
                             ->preload()
-                            ->visible(fn (Get $get): bool => (bool) $get('supports_electrician_rewards'))
-                            ->required(fn (Get $get): bool => (bool) $get('supports_electrician_rewards'))
-                            ->helperText('The user type that represents electricians. Shop owners add users of this type to their shop\'s electrician list.'),
+                            ->visible(fn (Get $get): bool => (bool) $get('supports_partner_rewards'))
+                            ->required(fn (Get $get): bool => (bool) $get('supports_partner_rewards'))
+                            ->helperText('Partners with any of these types can be attached to shops of this type and earn rewards (e.g. Electrician and Plumber).'),
                     ])
                     ->collapsible(),
             ]);
@@ -79,9 +83,14 @@ class ShopTypeResource extends Resource
                     ->label('Attribute fields')
                     ->counts('fields')
                     ->sortable(),
-                Tables\Columns\IconColumn::make('supports_electrician_rewards')
-                    ->label('Electrician rewards')
+                Tables\Columns\IconColumn::make('supports_partner_rewards')
+                    ->label('Partner rewards')
                     ->boolean(),
+                Tables\Columns\TextColumn::make('rewardUserTypes.name')
+                    ->label('Partner types')
+                    ->badge()
+                    ->separator(',')
+                    ->placeholder('—'),
                 Tables\Columns\IconColumn::make('is_active')->boolean(),
                 Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable(),
             ])
@@ -112,4 +121,3 @@ class ShopTypeResource extends Resource
         ];
     }
 }
-

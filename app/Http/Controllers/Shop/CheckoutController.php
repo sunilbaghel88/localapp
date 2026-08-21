@@ -30,15 +30,14 @@ class CheckoutController extends Controller
 
         $addresses = Auth::user()->addresses()->orderBy('is_default', 'desc')->get();
 
-        // Shops in cart that support electrician rewards (for optional electrician select per shop)
-        $shopsWithElectricianSupport = $cart->items
+        // Shops in cart that support partner rewards (optional partner select per shop)
+        $shopsWithPartnerSupport = $cart->items
             ->groupBy(fn ($item) => $item->variant->product->shop_id)
             ->keys()
-            ->map(fn ($shopId) => \App\Models\Shop::with(['shopType', 'electricians'])->find($shopId))
+            ->map(fn ($shopId) => \App\Models\Shop::with(['shopType.rewardUserTypes', 'partners.userTypes'])->find($shopId))
             ->filter(fn ($shop) => $shop
                 && $shop->shopType
-                && $shop->shopType->supports_electrician_rewards
-                && $shop->shopType->electrician_user_type_id)
+                && $shop->shopType->supportsPartnerRewards())
             ->values();
 
         // Calculate totals
@@ -51,7 +50,7 @@ class CheckoutController extends Controller
         $discountTotal = 0; // Can be applied from coupons
         $grandTotal = $subtotal + $shippingTotal + $taxTotal - $discountTotal;
 
-        return view('shop.checkout.index', compact('cart', 'addresses', 'shopsWithElectricianSupport', 'subtotal', 'shippingTotal', 'taxTotal', 'discountTotal', 'grandTotal'));
+        return view('shop.checkout.index', compact('cart', 'addresses', 'shopsWithPartnerSupport', 'subtotal', 'shippingTotal', 'taxTotal', 'discountTotal', 'grandTotal'));
     }
 
     public function storeAddress(Request $request)

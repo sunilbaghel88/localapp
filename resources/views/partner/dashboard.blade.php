@@ -1,4 +1,4 @@
-@extends('layouts.electrician')
+@extends('layouts.partner')
 
 @section('title', 'Dashboard')
 
@@ -12,22 +12,22 @@
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div class="rounded-xl bg-white border border-gray-200 p-4">
-            <div class="text-sm text-gray-600">Current reward points</div>
+            <div class="text-sm text-gray-600">Available reward points</div>
             <div class="mt-1 text-3xl font-semibold text-gray-900">{{ (int) ($user->reward_points ?? 0) }}</div>
         </div>
         <div class="rounded-xl bg-white border border-gray-200 p-4">
-            <div class="text-sm text-gray-600">Total points granted (audit)</div>
+            <div class="text-sm text-gray-600">Total points Earned</div>
             <div class="mt-1 text-3xl font-semibold text-gray-900">{{ (int) $totalGranted }}</div>
         </div>
         <div class="rounded-xl bg-white border border-gray-200 p-4">
             <div class="text-sm text-gray-600">Quick links</div>
             <div class="mt-3 flex flex-col gap-2">
                 <a class="inline-flex items-center rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
-                   href="{{ route('electrician.orders.create') }}">
+                   href="{{ route('partner.orders.create') }}">
                     Create order for customer
                 </a>
                 <a class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
-                   href="{{ route('electrician.rewards.index') }}">
+                   href="{{ route('partner.rewards.index') }}">
                     View reward points (order-wise)
                 </a>
             </div>
@@ -37,7 +37,7 @@
     <div class="rounded-xl bg-white border border-gray-200">
         <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 class="text-base font-semibold text-gray-900">Recent reward grants</h2>
-            <a href="{{ route('electrician.rewards.index') }}" class="text-sm text-amber-700 hover:text-amber-800">
+            <a href="{{ route('partner.rewards.index') }}" class="text-sm text-amber-700 hover:text-amber-800">
                 View all
             </a>
         </div>

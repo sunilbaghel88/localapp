@@ -30,8 +30,8 @@ class AuthenticatedSessionController extends Controller
 
         $user = $request->user();
 
-        if ($user && $user->isElectrician()) {
-            return redirect()->intended(route('electrician.dashboard', absolute: false));
+        if ($user && $user->isPartner()) {
+            return redirect()->intended(route('partner.dashboard', absolute: false));
         }
 
         if ($user->roles()->exists()) {

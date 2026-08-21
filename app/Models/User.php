@@ -129,12 +129,16 @@ class User extends Authenticatable implements FilamentUser, HasName
         return $this->hasMany(RewardRedemptionRequest::class);
     }
 
-    public function electricianShops(): BelongsToMany
+    public function partnerShops(): BelongsToMany
     {
         return $this->belongsToMany(Shop::class, 'shop_user')->withTimestamps();
     }
 
-    public function isElectrician(): bool
+    /**
+     * True when this user has a type that can earn partner rewards
+     * for at least one shop type (electrician, plumber, etc.).
+     */
+    public function isPartner(): bool
     {
         $typeIds = $this->relationLoaded('userTypes')
             ? $this->userTypes->pluck('id')
@@ -145,9 +149,31 @@ class User extends Authenticatable implements FilamentUser, HasName
         }
 
         return ShopType::query()
-            ->where('supports_electrician_rewards', true)
-            ->whereIn('electrician_user_type_id', $typeIds)
+            ->where('supports_partner_rewards', true)
+            ->whereHas(
+                'rewardUserTypes',
+                fn (Builder $q) => $q->whereIn('user_types.id', $typeIds)
+            )
             ->exists();
+    }
+
+    /** @deprecated Use isPartner() */
+    public function isElectrician(): bool
+    {
+        return $this->isPartner();
+    }
+
+    public function scopeWithAnyUserTypeIds(Builder $query, array $userTypeIds): Builder
+    {
+        $userTypeIds = array_values(array_filter(array_map('intval', $userTypeIds)));
+        if ($userTypeIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas(
+            'userTypes',
+            fn (Builder $q) => $q->whereIn('user_types.id', $userTypeIds)
+        );
     }
 
     public function canAssignUserTypes(): bool
@@ -210,7 +236,8 @@ class User extends Authenticatable implements FilamentUser, HasName
         return array_merge($this->toArray(), [
             'role' => $role,
             'permissions' => $permissions,
-            'is_electrician' => $this->isElectrician(),
+            'is_partner' => $this->isPartner(),
+            'is_electrician' => $this->isPartner(), // BC for mobile clients
             'user_types' => $this->userTypesPayload(),
             'can_assign_user_types' => $this->canAssignUserTypes(),
         ]);
@@ -218,6 +245,6 @@ class User extends Authenticatable implements FilamentUser, HasName
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->roles()->exists() && ! $this->isElectrician();
+        return $this->roles()->exists() && ! $this->isPartner();
     }
 }

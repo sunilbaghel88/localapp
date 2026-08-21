@@ -432,11 +432,11 @@ class ApiService {
     return list.map((e) => e as Map<String, dynamic>).toList();
   }
 
-  Future<List<Map<String, dynamic>>> getShopOrderElectricians(
+  Future<List<Map<String, dynamic>>> getShopOrderPartners(
     int shopId,
   ) async {
     final r = await _dio.get(
-      '/shop/order-create/electricians',
+      '/shop/order-create/partners',
       queryParameters: {'shop_id': shopId},
     );
     final list = r.data['data'] as List<dynamic>? ?? [];
@@ -498,7 +498,7 @@ class ApiService {
     return row;
   }
 
-  Future<Map<String, dynamic>> createShopOrderElectrician({
+  Future<Map<String, dynamic>> createShopOrderPartner({
     required int shopId,
     required String name,
     required String email,
@@ -507,7 +507,7 @@ class ApiService {
     required String passwordConfirmation,
   }) async {
     final r = await _dio.post<Map<String, dynamic>>(
-      '/shop/order-create/electricians',
+      '/shop/order-create/partners',
       data: {
         'shop_id': shopId,
         'name': name,
@@ -518,7 +518,7 @@ class ApiService {
       },
     );
     final row = r.data?['data'] as Map<String, dynamic>?;
-    if (row == null) throw StateError('Invalid create electrician response');
+    if (row == null) throw StateError('Invalid create partner response');
     return row;
   }
 
@@ -627,45 +627,45 @@ class ApiService {
   }
 
   // ------------------------------------------------------------
-  // Electrician APIs (auth:sanctum + server-side electrician check)
+  // Partner APIs (auth:sanctum + reward-eligible user types)
   // ------------------------------------------------------------
 
-  Future<List<Shop>> getElectricianShops() async {
-    final r = await _dio.get('/electrician/shops');
+  Future<List<Shop>> getPartnerShops() async {
+    final r = await _dio.get('/partner/shops');
     final list = r.data['shops'] as List<dynamic>? ?? [];
     return list.map((e) => Shop.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  Future<Map<String, dynamic>> getElectricianRewardGrants({
+  Future<Map<String, dynamic>> getPartnerRewardGrants({
     int page = 1,
     int perPage = 50,
   }) async {
     final r = await _dio.get(
-      '/electrician/reward-grants',
+      '/partner/reward-grants',
       queryParameters: {'page': page, 'per_page': perPage},
     );
     return r.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> getElectricianRewardRedemptions({
+  Future<Map<String, dynamic>> getPartnerRewardRedemptions({
     int page = 1,
     int perPage = 20,
   }) async {
     final r = await _dio.get(
-      '/electrician/reward-redemptions',
+      '/partner/reward-redemptions',
       queryParameters: {'page': page, 'per_page': perPage},
     );
     return r.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> createElectricianRewardRedemption({
+  Future<Map<String, dynamic>> createPartnerRewardRedemption({
     required int shopId,
     required int requestedPoints,
     required String redemptionType,
     String? note,
   }) async {
     final r = await _dio.post(
-      '/electrician/reward-redemptions',
+      '/partner/reward-redemptions',
       data: {
         'shop_id': shopId,
         'requested_points': requestedPoints,
@@ -676,59 +676,59 @@ class ApiService {
     return r.data as Map<String, dynamic>;
   }
 
-  Future<List<Map<String, dynamic>>> searchElectricianOrderCustomers(
+  Future<List<Map<String, dynamic>>> searchPartnerOrderCustomers(
     String q,
   ) async {
     final r = await _dio.get(
-      '/electrician/order-create/search-customers',
+      '/partner/order-create/search-customers',
       queryParameters: {'q': q},
     );
     final list = r.data['data'] as List<dynamic>? ?? [];
     return list.map((e) => e as Map<String, dynamic>).toList();
   }
 
-  Future<List<Map<String, dynamic>>> searchElectricianOrderProducts(
+  Future<List<Map<String, dynamic>>> searchPartnerOrderProducts(
     int shopId,
     String q,
   ) async {
     final r = await _dio.get(
-      '/electrician/order-create/search-products',
+      '/partner/order-create/search-products',
       queryParameters: {'shop_id': shopId, 'q': q},
     );
     final list = r.data['data'] as List<dynamic>? ?? [];
     return list.map((e) => e as Map<String, dynamic>).toList();
   }
 
-  Future<List<Map<String, dynamic>>> getElectricianOrderCustomerAddresses(
+  Future<List<Map<String, dynamic>>> getPartnerOrderCustomerAddresses(
     int customerId,
   ) async {
     final r = await _dio.get(
-      '/electrician/order-create/customers/$customerId/addresses',
+      '/partner/order-create/customers/$customerId/addresses',
     );
     final list = r.data['data'] as List<dynamic>? ?? [];
     return list.map((e) => e as Map<String, dynamic>).toList();
   }
 
-  Future<Map<String, dynamic>> electricianOrderAiSuggest(
+  Future<Map<String, dynamic>> partnerOrderAiSuggest(
     int shopId,
     String prompt,
   ) async {
     final r = await _dio.post<Map<String, dynamic>>(
-      '/electrician/order-create/ai-suggest',
+      '/partner/order-create/ai-suggest',
       data: {'shop_id': shopId, 'prompt': prompt},
     );
     return r.data ?? {};
   }
 
-  /// Electrician creates order for customer; server sets `electrician_user_id` to the logged-in user.
-  Future<Order> createElectricianOrderOnBehalf({
+  /// Partner creates order for customer; server sets `electrician_user_id` to the logged-in user.
+  Future<Order> createPartnerOrderOnBehalf({
     required int shopId,
     required int customerUserId,
     int? addressId,
     required List<Map<String, dynamic>> items,
   }) async {
     final r = await _dio.post<Map<String, dynamic>>(
-      '/electrician/orders',
+      '/partner/orders',
       data: {
         'shop_id': shopId,
         'user_id': customerUserId,

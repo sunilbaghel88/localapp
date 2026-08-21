@@ -63,12 +63,12 @@
                                 </svg>
                                 My Orders
                             </a>
-                            @if (Auth::user()->isElectrician())
-                                <a href="{{ route('electrician.dashboard') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                            @if (Auth::user()->isPartner())
+                                <a href="{{ route('partner.dashboard') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
                                     <svg class="h-4 w-4 mr-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                                     </svg>
-                                    Electrician Dashboard
+                                    Partner Dashboard
                                 </a>
                             @endif
                             <a href="{{ route('profile.edit') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">

@@ -1,4 +1,4 @@
-@extends('layouts.electrician')
+@extends('layouts.partner')
 
 @section('title', __('Create order for customer'))
 
@@ -6,11 +6,11 @@
     <div class="mb-6">
         <h1 class="text-2xl font-semibold text-gray-900">{{ __('Create order (on behalf of customer)') }}</h1>
         <p class="mt-1 text-sm text-gray-600">
-            {{ __('Choose your shop, the customer, shipping address, and products. You will be recorded as the electrician on this order.') }}
+            {{ __('Choose your shop, the customer, shipping address, and products. You will be recorded as the partner on this order.') }}
         </p>
     </div>
 
-    <form method="post" action="{{ route('electrician.orders.store') }}" class="space-y-6" id="electrician-order-form">
+    <form method="post" action="{{ route('partner.orders.store') }}" class="space-y-6" id="partner-order-form">
         @csrf
 
         @if ($errors->any())
@@ -120,7 +120,7 @@
                 class="inline-flex items-center rounded-lg bg-amber-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-amber-700">
                 {{ __('Create order') }}
             </button>
-            <a href="{{ route('electrician.dashboard') }}" class="text-sm text-gray-600 hover:text-gray-900">{{ __('Cancel') }}</a>
+            <a href="{{ route('partner.dashboard') }}" class="text-sm text-gray-600 hover:text-gray-900">{{ __('Cancel') }}</a>
         </div>
     </form>
 @endsection
@@ -146,10 +146,10 @@
     let customerTimer = null;
 
     const routes = {
-        customers: @json(route('electrician.orders.search-customers')),
-        products: @json(route('electrician.orders.search-products')),
-        aiSuggest: @json(route('electrician.orders.ai-suggest')),
-        addresses: (id) => @json(url('/electrician/orders/customers')) + '/' + id + '/addresses',
+        customers: @json(route('partner.orders.search-customers')),
+        products: @json(route('partner.orders.search-products')),
+        aiSuggest: @json(route('partner.orders.ai-suggest')),
+        addresses: (id) => @json(url('/partner/orders/customers')) + '/' + id + '/addresses',
     };
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Electrician;
+namespace App\Http\Controllers\Partner;
 
 use App\Http\Controllers\Controller;
 use App\Models\Address;
@@ -16,21 +16,21 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
-class ElectricianOrderController extends Controller
+class PartnerOrderController extends Controller
 {
     public function create(Request $request): View|RedirectResponse
     {
         $user = $request->user();
         $shopTable = (new Shop)->getTable();
-        $shops = $user->electricianShops()->orderBy($shopTable.'.name')->get();
+        $shops = $user->partnerShops()->orderBy($shopTable.'.name')->get();
 
         if ($shops->isEmpty()) {
             return redirect()
-                ->route('electrician.dashboard')
-                ->with('error', __('You are not attached to any shop yet. Ask a shop owner to add you as an electrician.'));
+                ->route('partner.dashboard')
+                ->with('error', __('You are not attached to any shop yet. Ask a shop owner to add you as a partner.'));
         }
 
-        return view('electrician.orders.create', [
+        return view('partner.orders.create', [
             'shops' => $shops,
         ]);
     }
@@ -40,10 +40,10 @@ class ElectricianOrderController extends Controller
         $user = $request->user();
         // Qualify column for PostgreSQL (shops + shop_user join: "id" is ambiguous).
         $shopTable = (new Shop)->getTable();
-        $shops = $user->electricianShops()->pluck($shopTable.'.id');
+        $shops = $user->partnerShops()->pluck($shopTable.'.id');
         if ($shops->isEmpty()) {
             return redirect()
-                ->route('electrician.dashboard')
+                ->route('partner.dashboard')
                 ->with('error', __('You are not attached to any shop.'));
         }
 
@@ -104,7 +104,7 @@ class ElectricianOrderController extends Controller
         }
 
         return redirect()
-            ->route('electrician.dashboard')
+            ->route('partner.dashboard')
             ->with('success', __('Order #:id created for the customer.', ['id' => $order->id]));
     }
 
@@ -152,7 +152,7 @@ class ElectricianOrderController extends Controller
         $user = $request->user();
 
         $shopTable = (new Shop)->getTable();
-        if (! $user->electricianShops()->where($shopTable.'.id', $shopId)->exists()) {
+        if (! $user->partnerShops()->where($shopTable.'.id', $shopId)->exists()) {
             abort(403);
         }
 
@@ -228,7 +228,7 @@ class ElectricianOrderController extends Controller
         $prompt = trim((string) $request->input('prompt'));
 
         $shopTable = (new Shop)->getTable();
-        if (! $request->user()->electricianShops()->where($shopTable.'.id', $shopId)->exists()) {
+        if (! $request->user()->partnerShops()->where($shopTable.'.id', $shopId)->exists()) {
             abort(403);
         }
 

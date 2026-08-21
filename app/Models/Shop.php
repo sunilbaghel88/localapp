@@ -64,7 +64,7 @@ class Shop extends Model
         return $this->hasMany(Order::class);
     }
 
-    public function electricians(): BelongsToMany
+    public function partners(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'shop_user')->withTimestamps();
     }

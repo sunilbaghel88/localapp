@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ShopType extends Model
@@ -17,13 +17,12 @@ class ShopType extends Model
         'description',
         'is_active',
         'sort_order',
-        'supports_electrician_rewards',
-        'electrician_user_type_id',
+        'supports_partner_rewards',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
-        'supports_electrician_rewards' => 'boolean',
+        'supports_partner_rewards' => 'boolean',
     ];
 
     public function shops(): HasMany
@@ -36,8 +35,27 @@ class ShopType extends Model
         return $this->hasMany(ShopTypeField::class, 'shop_type_id')->orderBy('sort_order');
     }
 
-    public function electricianUserType(): BelongsTo
+    /**
+     * User types eligible for partner rewards on shops of this type
+     * (e.g. Electrician, Plumber).
+     */
+    public function rewardUserTypes(): BelongsToMany
     {
-        return $this->belongsTo(UserType::class, 'electrician_user_type_id');
+        return $this->belongsToMany(UserType::class, 'shop_type_user_type')->withTimestamps();
+    }
+
+    public function supportsPartnerRewards(): bool
+    {
+        return (bool) $this->supports_partner_rewards
+            && $this->rewardUserTypes()->exists();
+    }
+
+    public function rewardUserTypeIds(): array
+    {
+        if ($this->relationLoaded('rewardUserTypes')) {
+            return $this->rewardUserTypes->pluck('id')->all();
+        }
+
+        return $this->rewardUserTypes()->pluck('user_types.id')->all();
     }
 }

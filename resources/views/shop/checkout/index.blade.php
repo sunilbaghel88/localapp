@@ -141,22 +141,29 @@
                         </form>
                     </div>
 
-                    @if($shopsWithElectricianSupport->isNotEmpty())
-                    <!-- Electrician (optional, for shops that support it) -->
+                    @if($shopsWithPartnerSupport->isNotEmpty())
+                    <!-- Partner (optional, for shops that support rewards) -->
                     <div class="bg-white rounded-lg shadow-sm p-6 mt-6">
-                        <h2 class="text-xl font-bold text-gray-900 mb-4">Electrician (Optional)</h2>
-                        <p class="text-sm text-gray-600 mb-4">If an electrician helped you with this purchase, you can select them below. The shop owner may choose to reward them with points.</p>
-                        @foreach($shopsWithElectricianSupport as $shop)
+                        <h2 class="text-xl font-bold text-gray-900 mb-4">Partner (Optional)</h2>
+                        <p class="text-sm text-gray-600 mb-4">If a support partner (electrician, plumber, etc.) helped you with this purchase, you can select them below. The shop owner may choose to reward them with points.</p>
+                        @foreach($shopsWithPartnerSupport as $shop)
+                        @php
+                            $rewardTypeIds = $shop->shopType?->rewardUserTypeIds() ?? [];
+                            $partners = $shop->partners->filter(function ($user) use ($rewardTypeIds) {
+                                return $user->is_active
+                                    && $user->userTypes->pluck('id')->intersect($rewardTypeIds)->isNotEmpty();
+                            });
+                        @endphp
                         <div class="mb-4">
                             <label for="electrician_{{ $shop->id }}" class="block text-sm font-medium text-gray-700 mb-2">
-                                Electrician for {{ $shop->name }}
+                                Partner for {{ $shop->name }}
                             </label>
                             <div class="relative">
                                 <select name="electrician[{{ $shop->id }}]" id="electrician_{{ $shop->id }}" form="checkout-form" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500">
                                     <option value="">— None (I ordered directly) —</option>
-                                    @foreach($shop->electricians as $electrician)
-                                    <option value="{{ $electrician->id }}" data-search="{{ strtolower($electrician->name . ' ' . ($electrician->email ?? '') . ' ' . ($electrician->phone ?? '')) }}">
-                                        {{ $electrician->name }}{{ $electrician->phone ? ' (' . $electrician->phone . ')' : '' }}
+                                    @foreach($partners as $partner)
+                                    <option value="{{ $partner->id }}" data-search="{{ strtolower($partner->name . ' ' . ($partner->email ?? '') . ' ' . ($partner->phone ?? '')) }}">
+                                        {{ $partner->name }}{{ $partner->phone ? ' (' . $partner->phone . ')' : '' }}
                                     </option>
                                     @endforeach
                                 </select>

@@ -7,13 +7,13 @@ import 'package:go_router/go_router.dart';
 import '../models/shop.dart';
 import '../services/api_service.dart';
 
-/// Create an order on behalf of a customer — same flow as the electrician web page
+/// Create an order on behalf of a customer — same flow as the partner web page
 /// (shop, customer search, address, product lines with search, AI prompt).
-class ElectricianCreateOrderScreen extends StatefulWidget {
-  const ElectricianCreateOrderScreen({super.key});
+class PartnerCreateOrderScreen extends StatefulWidget {
+  const PartnerCreateOrderScreen({super.key});
 
   @override
-  State<ElectricianCreateOrderScreen> createState() => _ElectricianCreateOrderScreenState();
+  State<PartnerCreateOrderScreen> createState() => _PartnerCreateOrderScreenState();
 }
 
 class _OrderLineEditor {
@@ -63,7 +63,7 @@ class _OrderLineEditor {
   }
 }
 
-class _ElectricianCreateOrderScreenState extends State<ElectricianCreateOrderScreen> {
+class _PartnerCreateOrderScreenState extends State<PartnerCreateOrderScreen> {
   final ApiService _api = ApiService();
 
   List<Shop> _shops = [];
@@ -102,7 +102,7 @@ class _ElectricianCreateOrderScreenState extends State<ElectricianCreateOrderScr
       _error = null;
     });
     try {
-      final shops = await _api.getElectricianShops();
+      final shops = await _api.getPartnerShops();
       if (!mounted) return;
       final sid = shops.isNotEmpty ? shops.first.id : null;
       setState(() {
@@ -140,7 +140,7 @@ class _ElectricianCreateOrderScreenState extends State<ElectricianCreateOrderScr
     }
     _customerDebounce = Timer(const Duration(milliseconds: 300), () async {
       try {
-        final rows = await _api.searchElectricianOrderCustomers(trimmed);
+        final rows = await _api.searchPartnerOrderCustomers(trimmed);
         if (!mounted) return;
         setState(() => _customerResults = rows);
       } catch (_) {
@@ -161,7 +161,7 @@ class _ElectricianCreateOrderScreenState extends State<ElectricianCreateOrderScr
       _addresses = [];
     });
     try {
-      final addrs = await _api.getElectricianOrderCustomerAddresses(id);
+      final addrs = await _api.getPartnerOrderCustomerAddresses(id);
       if (!mounted) return;
       setState(() {
         _addresses = addrs;
@@ -196,7 +196,7 @@ class _ElectricianCreateOrderScreenState extends State<ElectricianCreateOrderScr
     _productSearchLineIndex = lineIndex;
     _productDebounce = Timer(const Duration(milliseconds: 300), () async {
       try {
-        final products = await _api.searchElectricianOrderProducts(shopId, trimmed);
+        final products = await _api.searchPartnerOrderProducts(shopId, trimmed);
         if (!mounted || _productSearchLineIndex != lineIndex) return;
         setState(() {
           _lines[lineIndex].productSearchResults = products;
@@ -295,7 +295,7 @@ class _ElectricianCreateOrderScreenState extends State<ElectricianCreateOrderScr
 
     setState(() => _aiBusy = true);
     try {
-      final json = await _api.electricianOrderAiSuggest(shopId, prompt);
+      final json = await _api.partnerOrderAiSuggest(shopId, prompt);
       final items = (json['data'] as List<dynamic>? ?? []).map((e) => e as Map<String, dynamic>).toList();
       final missing = (json['missing'] as List<dynamic>? ?? []).map((e) => e.toString()).toList();
 
@@ -382,7 +382,7 @@ class _ElectricianCreateOrderScreenState extends State<ElectricianCreateOrderScr
 
     setState(() => _submitting = true);
     try {
-      final order = await _api.createElectricianOrderOnBehalf(
+      final order = await _api.createPartnerOrderOnBehalf(
         shopId: shopId,
         customerUserId: customerId,
         addressId: _addressId,

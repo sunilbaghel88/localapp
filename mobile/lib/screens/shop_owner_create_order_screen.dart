@@ -67,10 +67,10 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
   List<Shop> _shops = [];
   int? _shopId;
 
-  /// Same pool as Filament `electrician_user_id` (shop type’s electrician user type, active, attached).
-  List<Map<String, dynamic>> _electricians = [];
-  int? _electricianId;
-  bool _loadingElectricians = false;
+  /// Same pool as Filament `electrician_user_id` (shop type’s reward user types, active, attached).
+  List<Map<String, dynamic>> _partners = [];
+  int? _partnerId;
+  bool _loadingPartners = false;
   List<Map<String, dynamic>> _deliveryAgents = [];
   int? _deliveryAgentId;
   bool _loadingDeliveryAgents = false;
@@ -118,7 +118,7 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
         _shopId = sid;
         _loadingShops = false;
       });
-      await _loadElectricians(sid);
+      await _loadPartners(sid);
       await _loadDeliveryAgents(sid);
     } catch (e) {
       if (!mounted) return;
@@ -129,39 +129,39 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
     }
   }
 
-  Future<void> _loadElectricians(int? shopId, {int? preferElectricianId}) async {
+  Future<void> _loadPartners(int? shopId, {int? preferPartnerId}) async {
     if (shopId == null) {
       if (!mounted) return;
       setState(() {
-        _electricians = [];
-        _electricianId = null;
-        _loadingElectricians = false;
+        _partners = [];
+        _partnerId = null;
+        _loadingPartners = false;
       });
       return;
     }
-    setState(() => _loadingElectricians = true);
+    setState(() => _loadingPartners = true);
     try {
-      final rows = await _api.getShopOrderElectricians(shopId);
+      final rows = await _api.getShopOrderPartners(shopId);
       if (!mounted) return;
       setState(() {
-        _electricians = rows;
-        final want = preferElectricianId;
+        _partners = rows;
+        final want = preferPartnerId;
         bool sameId(dynamic a, dynamic b) {
           if (a == b) return true;
           if (a is num && b is num) return a.toInt() == b.toInt();
           return false;
         }
 
-        _electricianId =
+        _partnerId =
             want != null && rows.any((e) => sameId(e['id'], want)) ? want : null;
-        _loadingElectricians = false;
+        _loadingPartners = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _electricians = [];
-        _electricianId = null;
-        _loadingElectricians = false;
+        _partners = [];
+        _partnerId = null;
+        _loadingPartners = false;
       });
     }
   }
@@ -491,7 +491,7 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
         customerUserId: customerId,
         deliveryMethod: _deliveryMethod,
         addressId: _deliveryMethod == 'home_delivery' ? _addressId : null,
-        electricianUserId: _electricianId,
+        electricianUserId: _partnerId,
         deliveryAgentUserId: _deliveryMethod == 'home_delivery' ? _deliveryAgentId : null,
         deliveryCharge: _deliveryMethod == 'home_delivery' ? deliveryCharge : 0,
         items: payloadItems,
@@ -684,7 +684,7 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
     _disposeTextControllersNextFrame([name, email, phone, password, password2]);
   }
 
-  Future<void> _showAddElectricianDialog() async {
+  Future<void> _showAddPartnerDialog() async {
     final shopId = _shopId;
     if (shopId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -724,7 +724,7 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
               }
               setDlg(() => saving = true);
               try {
-                final row = await _api.createShopOrderElectrician(
+                final row = await _api.createShopOrderPartner(
                   shopId: shopId,
                   name: n,
                   email: em,
@@ -737,10 +737,10 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
                 if (!mounted) return;
                 dialogClosed = true;
                 if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-                await _loadElectricians(shopId, preferElectricianId: newId);
+                await _loadPartners(shopId, preferPartnerId: newId);
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Electrician added and linked to this shop.')),
+                  const SnackBar(content: Text('Partner added and linked to this shop.')),
                 );
               } on DioException catch (e) {
                 if (mounted) {
@@ -760,7 +760,7 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
             }
 
             return AlertDialog(
-              title: const Text('Add new electrician'),
+              title: const Text('Add new partner'),
               content: SingleChildScrollView(
                 child: SizedBox(
                   width: MediaQuery.sizeOf(context).width < 560 ? double.maxFinite : 400,
@@ -769,7 +769,7 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Creates an account with this shop\'s electrician role and attaches them to the selected shop.',
+                        'Creates an account with a reward-eligible type for this shop and attaches them.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context).colorScheme.outline,
                             ),
@@ -1384,11 +1384,11 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
                     l.productSearchController.clear();
                   }
                 });
-                _loadElectricians(v);
+                _loadPartners(v);
                 _loadDeliveryAgents(v);
               },
             ),
-            if (_loadingElectricians)
+            if (_loadingPartners)
               const Padding(
                 padding: EdgeInsets.only(top: 12),
                 child: LinearProgressIndicator(),
@@ -1396,12 +1396,12 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
             else ...[
               const SizedBox(height: 12),
               Text(
-                'Electrician (optional)',
+                'Partner (optional)',
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 4),
               Text(
-                'Linked electricians for this shop type (same as admin order form).',
+                'Linked partners for this shop type (electrician, plumber, etc.).',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.outline,
                     ),
@@ -1409,9 +1409,9 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
               const SizedBox(height: 8),
               DropdownButtonFormField<int?>(
                 // ignore: deprecated_member_use
-                value: _electricianId,
+                value: _partnerId,
                 decoration: const InputDecoration(
-                  labelText: 'Electrician',
+                  labelText: 'Partner',
                   border: OutlineInputBorder(),
                 ),
                 items: [
@@ -1419,21 +1419,21 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
                     value: null,
                     child: Text('None'),
                   ),
-                  ..._electricians.map((e) {
+                  ..._partners.map((e) {
                     return DropdownMenuItem<int?>(
                       value: e['id'] as int,
                       child: Text(e['label'] as String? ?? e['name'] as String? ?? ''),
                     );
                   }),
                 ],
-                onChanged: (v) => setState(() => _electricianId = v),
+                onChanged: (v) => setState(() => _partnerId = v),
               ),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
-                  onPressed: _loadingElectricians ? null : _showAddElectricianDialog,
+                  onPressed: _loadingPartners ? null : _showAddPartnerDialog,
                   icon: const Icon(Icons.person_add_alt_1_outlined, size: 20),
-                  label: const Text('Add new electrician'),
+                  label: const Text('Add new partner'),
                 ),
               ),
             ],

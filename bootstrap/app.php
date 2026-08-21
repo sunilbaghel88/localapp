@@ -16,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(HandleCors::class);
 
         $middleware->alias([
-            'electrician' => \App\Http\Middleware\EnsureElectrician::class,
+            'partner' => \App\Http\Middleware\EnsurePartner::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

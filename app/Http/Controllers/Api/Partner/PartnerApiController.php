@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\Electrician;
+namespace App\Http\Controllers\Api\Partner;
 
 use App\Http\Controllers\Controller;
 use App\Models\Address;
@@ -16,13 +16,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class ElectricianApiController extends Controller
+class PartnerApiController extends Controller
 {
     public function shops(Request $request): JsonResponse
     {
         $user = $request->user();
         $shopTable = (new Shop)->getTable();
-        $shops = $user->electricianShops()->orderBy($shopTable.'.name')->get();
+        $shops = $user->partnerShops()->orderBy($shopTable.'.name')->get();
 
         return response()->json([
             'shops' => $shops->map(fn (Shop $s) => [
@@ -76,7 +76,7 @@ class ElectricianApiController extends Controller
     {
         $user = $request->user();
         $shopTable = (new Shop)->getTable();
-        $allowedShopIds = $user->electricianShops()->pluck($shopTable.'.id');
+        $allowedShopIds = $user->partnerShops()->pluck($shopTable.'.id');
 
         if ($allowedShopIds->isEmpty()) {
             return response()->json([
@@ -164,7 +164,7 @@ class ElectricianApiController extends Controller
         $user = $request->user();
 
         $shopTable = (new Shop)->getTable();
-        if (! $user->electricianShops()->where($shopTable.'.id', $shopId)->exists()) {
+        if (! $user->partnerShops()->where($shopTable.'.id', $shopId)->exists()) {
             abort(403);
         }
 
@@ -240,7 +240,7 @@ class ElectricianApiController extends Controller
         $prompt = trim((string) $request->input('prompt'));
 
         $shopTable = (new Shop)->getTable();
-        if (! $request->user()->electricianShops()->where($shopTable.'.id', $shopId)->exists()) {
+        if (! $request->user()->partnerShops()->where($shopTable.'.id', $shopId)->exists()) {
             abort(403);
         }
 
@@ -260,7 +260,7 @@ class ElectricianApiController extends Controller
     {
         $user = $request->user();
         $shopTable = (new Shop)->getTable();
-        $shops = $user->electricianShops()->pluck($shopTable.'.id');
+        $shops = $user->partnerShops()->pluck($shopTable.'.id');
         if ($shops->isEmpty()) {
             return response()->json(['message' => __('You are not attached to any shop.')], 403);
         }

@@ -35,14 +35,34 @@ class CheckoutController extends Controller
 
         $addresses = Auth::user()->addresses()->orderBy('is_default', 'desc')->get();
 
-        $shopsWithElectricianSupport = $cart->items
+        $shopsWithPartnerSupport = $cart->items
             ->groupBy(fn ($item) => $item->variant->product->shop_id)
             ->keys()
-            ->map(fn ($shopId) => \App\Models\Shop::with(['shopType', 'electricians'])->find($shopId))
+            ->map(fn ($shopId) => \App\Models\Shop::with(['shopType.rewardUserTypes', 'partners.userTypes'])->find($shopId))
             ->filter(fn ($shop) => $shop
                 && $shop->shopType
-                && $shop->shopType->supports_electrician_rewards
-                && $shop->shopType->electrician_user_type_id)
+                && $shop->shopType->supportsPartnerRewards())
+            ->map(function ($shop) {
+                $rewardTypeIds = $shop->shopType->rewardUserTypeIds();
+                $partners = $shop->partners
+                    ->filter(fn ($user) => $user->is_active
+                        && $user->userTypes->pluck('id')->intersect($rewardTypeIds)->isNotEmpty())
+                    ->values()
+                    ->map(fn ($user) => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'phone' => $user->phone,
+                    ]);
+
+                return [
+                    'id' => $shop->id,
+                    'name' => $shop->name,
+                    'partners' => $partners,
+                    // BC for older mobile clients
+                    'electricians' => $partners,
+                ];
+            })
             ->values();
 
         $subtotal = $cart->items->sum(fn ($item) => $item->quantity * (float) $item->price);
@@ -54,7 +74,8 @@ class CheckoutController extends Controller
         return response()->json([
             'cart' => $cart,
             'addresses' => $addresses,
-            'shops_with_electrician_support' => $shopsWithElectricianSupport,
+            'shops_with_partner_support' => $shopsWithPartnerSupport,
+            'shops_with_electrician_support' => $shopsWithPartnerSupport,
             'subtotal' => round($subtotal, 2),
             'shipping_total' => $shippingTotal,
             'tax_total' => $taxTotal,

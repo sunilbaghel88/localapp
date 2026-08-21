@@ -23,8 +23,8 @@ import 'screens/shop_owner_order_detail_screen.dart';
 import 'screens/shop_owner_create_order_screen.dart';
 import 'screens/shop_owner_reward_redemptions_screen.dart';
 import 'screens/shop_owner_user_types_screen.dart';
-import 'screens/electrician_rewards_screen.dart';
-import 'screens/electrician_create_order_screen.dart';
+import 'screens/partner_rewards_screen.dart';
+import 'screens/partner_create_order_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -35,10 +35,10 @@ GoRouter createRouter(BuildContext context) {
     initialLocation: '/',
     redirect: (context, state) {
       final isAuth = auth.isAuthenticated;
+      final isPartnerRoute =
+          state.matchedLocation.startsWith('/partner') ||
+          state.matchedLocation.startsWith('/electrician');
       final isOwnerRoute = state.matchedLocation.startsWith('/owner');
-      final isElectricianRoute = state.matchedLocation.startsWith(
-        '/electrician',
-      );
       final isAuthRoute =
           state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
@@ -52,6 +52,7 @@ GoRouter createRouter(BuildContext context) {
               state.matchedLocation.startsWith('/checkout') ||
               state.matchedLocation.startsWith('/orders') ||
               state.matchedLocation.startsWith('/owner') ||
+              state.matchedLocation.startsWith('/partner') ||
               state.matchedLocation.startsWith('/electrician') ||
               state.matchedLocation.startsWith('/profile') ||
               state.matchedLocation.startsWith('/addresses'))) {
@@ -76,9 +77,9 @@ GoRouter createRouter(BuildContext context) {
         }
       }
 
-      if (isElectricianRoute && isAuth) {
-        final isElectrician = auth.user?.isElectrician ?? false;
-        if (!isElectrician) return '/home';
+      if (isPartnerRoute && isAuth) {
+        final isPartner = auth.user?.isPartner ?? false;
+        if (!isPartner) return '/home';
       }
       return null;
     },
@@ -165,12 +166,20 @@ GoRouter createRouter(BuildContext context) {
         },
       ),
       GoRoute(
+        path: '/partner/rewards',
+        builder: (context, state) => const PartnerRewardsScreen(),
+      ),
+      GoRoute(
+        path: '/partner/orders/create',
+        builder: (context, state) => const PartnerCreateOrderScreen(),
+      ),
+      GoRoute(
         path: '/electrician/rewards',
-        builder: (context, state) => const ElectricianRewardsScreen(),
+        redirect: (context, state) => '/partner/rewards',
       ),
       GoRoute(
         path: '/electrician/orders/create',
-        builder: (context, state) => const ElectricianCreateOrderScreen(),
+        redirect: (context, state) => '/partner/orders/create',
       ),
     ],
   );

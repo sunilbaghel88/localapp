@@ -102,7 +102,7 @@ class ViewOrder extends ViewRecord
                                     ->dateTime(),
                             ]),
                     ]),
-                Infolists\Components\Section::make('Electrician')
+                Infolists\Components\Section::make('Partner')
                     ->schema([
                         Infolists\Components\Grid::make(2)
                             ->schema([

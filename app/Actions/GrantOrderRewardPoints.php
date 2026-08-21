@@ -30,7 +30,7 @@ class GrantOrderRewardPoints
     {
         if (! $order->electrician_user_id) {
             Notification::make()
-                ->title('This order has no electrician associated.')
+                ->title(__('This order has no partner associated.'))
                 ->danger()
                 ->send();
 
@@ -45,20 +45,20 @@ class GrantOrderRewardPoints
             'notes' => $data['notes'] ?? null,
         ]);
 
-        $order->electricianUser->increment('reward_points', $data['points']);
+        $order->partnerUser->increment('reward_points', $data['points']);
 
         $order->loadMissing(['shop', 'user', 'items']);
-        $electrician = $order->electricianUser->fresh();
+        $partner = $order->partnerUser->fresh();
         $points = (int) $data['points'];
 
-        if (filled($electrician->email)) {
+        if (filled($partner->email)) {
             try {
-                Mail::to($electrician->email)->send(new RewardPointsGrantedMail(
+                Mail::to($partner->email)->send(new RewardPointsGrantedMail(
                     order: $order,
                     points: $points,
                     notes: $data['notes'] ?? null,
-                    newRewardBalance: (int) $electrician->reward_points,
-                    electricianName: $electrician->name,
+                    newRewardBalance: (int) $partner->reward_points,
+                    electricianName: $partner->name,
                     grantedByName: Auth::user()?->name,
                 ));
             } catch (\Throwable $e) {
@@ -71,7 +71,7 @@ class GrantOrderRewardPoints
         }
 
         Notification::make()
-            ->title('Granted '.$points.' reward points to '.$electrician->name)
+            ->title('Granted '.$points.' reward points to '.$partner->name)
             ->success()
             ->send();
     }

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Electrician;
+namespace App\Http\Controllers\Partner;
 
 use App\Http\Controllers\Controller;
 use App\Models\RewardRedemptionRequest;
@@ -16,7 +16,7 @@ class RewardPointsController extends Controller
         $user = $request->user();
         $shopTable = (new Shop)->getTable();
 
-        $shops = $user->electricianShops()
+        $shops = $user->partnerShops()
             ->orderBy($shopTable.'.name')
             ->get([$shopTable.'.id', $shopTable.'.name']);
 
@@ -38,7 +38,7 @@ class RewardPointsController extends Controller
             ->where('user_id', $user->id)
             ->sum('points');
 
-        return view('electrician.rewards.index', [
+        return view('partner.rewards.index', [
             'user' => $user,
             'shops' => $shops,
             'grants' => $grants,
@@ -51,11 +51,11 @@ class RewardPointsController extends Controller
     {
         $user = $request->user();
         $shopTable = (new Shop)->getTable();
-        $allowedShopIds = $user->electricianShops()->pluck($shopTable.'.id');
+        $allowedShopIds = $user->partnerShops()->pluck($shopTable.'.id');
 
         if ($allowedShopIds->isEmpty()) {
             return redirect()
-                ->route('electrician.rewards.index')
+                ->route('partner.rewards.index')
                 ->with('error', __('You are not attached to any shop yet.'));
         }
 
@@ -72,7 +72,7 @@ class RewardPointsController extends Controller
 
         if ((int) $validated['requested_points'] > (int) $user->reward_points) {
             return redirect()
-                ->route('electrician.rewards.index')
+                ->route('partner.rewards.index')
                 ->with('error', __('Requested points exceed your available balance.'));
         }
 
@@ -86,7 +86,7 @@ class RewardPointsController extends Controller
         ]);
 
         return redirect()
-            ->route('electrician.rewards.index')
+            ->route('partner.rewards.index')
             ->with('success', __('Redemption request submitted. Shop owner approval is pending.'));
     }
 }

@@ -17,7 +17,7 @@ class AppDrawer extends StatelessWidget {
     final canManageProducts = permissions.contains('view_any_product');
     final canManageOrders = permissions.contains('view_any_order');
     final canCreateOrder = permissions.contains('create_order');
-    final isElectrician = user?.isElectrician ?? false;
+    final isPartner = user?.isPartner ?? false;
     final canAssignUserTypes = user?.canAssignUserTypes ?? false;
     final currentPath = GoRouterState.of(context).uri.path;
 
@@ -77,7 +77,7 @@ class AppDrawer extends StatelessWidget {
                     context,
                     icon: Icons.workspace_premium_outlined,
                     label: 'Redeem Points',
-                    route: isElectrician ? '/electrician/rewards' : null,
+                    route: isPartner ? '/partner/rewards' : null,
                     currentPath: currentPath,
                   ),
                   _item(
@@ -126,7 +126,7 @@ class AppDrawer extends StatelessWidget {
                   if (canManageProducts ||
                       canManageOrders ||
                       canCreateOrder ||
-                      isElectrician ||
+                      isPartner ||
                       canAssignUserTypes) ...[
                     const Padding(
                       padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -180,14 +180,14 @@ class AppDrawer extends StatelessWidget {
                         route: '/owner/user-types',
                         currentPath: currentPath,
                       ),
-                    if (isElectrician)
+                    if (isPartner)
                       _item(
                         context,
                         icon: Icons.assignment_outlined,
                         label: canCreateOrder
                             ? 'Create Field Order'
                             : 'Create Order',
-                        route: '/electrician/orders/create',
+                        route: '/partner/orders/create',
                         currentPath: currentPath,
                       ),
                   ],

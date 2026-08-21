@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Electrician;
+namespace App\Http\Controllers\Partner;
 
 use App\Http\Controllers\Controller;
 use App\Models\UserRewardGrant;
@@ -23,7 +23,7 @@ class DashboardController extends Controller
             ->where('user_id', $user->id)
             ->sum('points');
 
-        return view('electrician.dashboard', [
+        return view('partner.dashboard', [
             'user' => $user,
             'recentGrants' => $recentGrants,
             'totalGranted' => $totalGranted,

@@ -5,15 +5,15 @@ import 'package:intl/intl.dart';
 
 import '../services/api_service.dart';
 
-/// Reward points history (order-wise grants) for the logged-in electrician.
-class ElectricianRewardsScreen extends StatefulWidget {
-  const ElectricianRewardsScreen({super.key});
+/// Reward points history (order-wise grants) for the logged-in partner.
+class PartnerRewardsScreen extends StatefulWidget {
+  const PartnerRewardsScreen({super.key});
 
   @override
-  State<ElectricianRewardsScreen> createState() => _ElectricianRewardsScreenState();
+  State<PartnerRewardsScreen> createState() => _PartnerRewardsScreenState();
 }
 
-class _ElectricianRewardsScreenState extends State<ElectricianRewardsScreen> {
+class _PartnerRewardsScreenState extends State<PartnerRewardsScreen> {
   final ApiService _api = ApiService();
   List<Map<String, dynamic>> _rows = [];
   List<Map<String, dynamic>> _redemptions = [];
@@ -56,9 +56,9 @@ class _ElectricianRewardsScreenState extends State<ElectricianRewardsScreen> {
       _error = null;
     });
     try {
-      final grantsJson = await _api.getElectricianRewardGrants(page: 1, perPage: 50);
-      final redemptionJson = await _api.getElectricianRewardRedemptions(page: 1, perPage: 20);
-      final shops = await _api.getElectricianShops();
+      final grantsJson = await _api.getPartnerRewardGrants(page: 1, perPage: 50);
+      final redemptionJson = await _api.getPartnerRewardRedemptions(page: 1, perPage: 20);
+      final shops = await _api.getPartnerShops();
       if (!mounted) return;
       final list = (grantsJson['data'] as List<dynamic>? ?? []).map((e) => e as Map<String, dynamic>).toList();
       final redemptionList = (redemptionJson['data'] as List<dynamic>? ?? []).map((e) => e as Map<String, dynamic>).toList();
@@ -261,7 +261,7 @@ class _ElectricianRewardsScreenState extends State<ElectricianRewardsScreen> {
 
     setState(() => _submittingRedeem = true);
     try {
-      await _api.createElectricianRewardRedemption(
+      await _api.createPartnerRewardRedemption(
         shopId: selectedShopId,
         requestedPoints: int.parse(pointsController.text.trim()),
         redemptionType: redemptionType,
@@ -344,7 +344,7 @@ class _ElectricianRewardsScreenState extends State<ElectricianRewardsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Current points',
+                    'Available points',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
                           color: scheme.onSurfaceVariant,
                         ),
@@ -371,7 +371,7 @@ class _ElectricianRewardsScreenState extends State<ElectricianRewardsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Total granted (audit)',
+                    'Total points Earned',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
                           color: scheme.onSurfaceVariant,
                         ),

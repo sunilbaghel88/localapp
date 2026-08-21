@@ -47,7 +47,7 @@ class OrderResource extends Resource
                             ->afterStateUpdated(fn ($state, Forms\Set $set) => $set('electrician_user_id', null))
                             ->required(),
                         Forms\Components\Select::make('electrician_user_id')
-                            ->label('Electrician')
+                            ->label('Partner')
                             ->options(function (Forms\Get $get): array {
                                 $shopId = $get('shop_id');
                                 if (! $shopId) {
@@ -55,16 +55,16 @@ class OrderResource extends Resource
                                 }
 
                                 $shop = Shop::query()
-                                    ->with('shopType')
+                                    ->with(['shopType.rewardUserTypes'])
                                     ->find($shopId);
 
-                                $electricianUserTypeId = $shop?->shopType?->electrician_user_type_id;
-                                if (! $shop || ! $electricianUserTypeId) {
+                                $rewardTypeIds = $shop?->shopType?->rewardUserTypeIds() ?? [];
+                                if (! $shop || ! ($shop->shopType?->supports_partner_rewards) || $rewardTypeIds === []) {
                                     return [];
                                 }
 
-                                return $shop->electricians()
-                                    ->withUserTypeId($electricianUserTypeId)
+                                return $shop->partners()
+                                    ->withAnyUserTypeIds($rewardTypeIds)
                                     ->where('users.is_active', true)
                                     ->orderBy('users.first_name')
                                     ->orderBy('users.last_name')
@@ -75,6 +75,7 @@ class OrderResource extends Resource
                             ->searchable()
                             ->preload()
                             ->disabled(fn (Forms\Get $get): bool => blank($get('shop_id')))
+                            ->helperText('Support partner on this order (electrician, plumber, etc.).')
                             ->nullable(),
                         Forms\Components\Select::make('status')
                             ->label('Order Status')
@@ -293,7 +294,7 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('shop.name')->label('Shop'),
                 Tables\Columns\TextColumn::make('user.name')->label('Customer'),
                 Tables\Columns\TextColumn::make('electricianUser.name')
-                    ->label('Electrician')
+                    ->label('Partner')
                     ->placeholder('—')
                     ->toggleable(),
                 Tables\Columns\BadgeColumn::make('status'),

@@ -32,7 +32,7 @@ class User {
   final String? role;
   final List<String>? permissions;
   final List<UserTypeInfo> userTypes;
-  final bool isElectrician;
+  final bool isPartner;
   final bool canAssignUserTypes;
   final int rewardPoints;
 
@@ -44,10 +44,13 @@ class User {
     this.role,
     this.permissions,
     this.userTypes = const [],
-    this.isElectrician = false,
+    this.isPartner = false,
     this.canAssignUserTypes = false,
     this.rewardPoints = 0,
   });
+
+  /// BC alias for screens that still say electrician.
+  bool get isElectrician => isPartner;
 
   factory User.fromJson(Map<String, dynamic> json) {
     final permissionsRaw = json['permissions'];
@@ -63,6 +66,9 @@ class User {
               .toList()
         : const <UserTypeInfo>[];
 
+    final isPartner =
+        json['is_partner'] == true || json['is_electrician'] == true;
+
     return User(
       id: json['id'] as int,
       name: _fullNameFromJson(json),
@@ -71,7 +77,7 @@ class User {
       role: json['role'] as String?,
       permissions: permissions,
       userTypes: userTypes,
-      isElectrician: json['is_electrician'] == true,
+      isPartner: isPartner,
       canAssignUserTypes: json['can_assign_user_types'] == true,
       rewardPoints: _intFromJson(json['reward_points']),
     );
@@ -101,7 +107,8 @@ class User {
     'role': role,
     'permissions': permissions,
     'user_types': userTypes.map((t) => t.toJson()).toList(),
-    'is_electrician': isElectrician,
+    'is_partner': isPartner,
+    'is_electrician': isPartner,
     'can_assign_user_types': canAssignUserTypes,
     'reward_points': rewardPoints,
   };

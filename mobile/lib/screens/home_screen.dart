@@ -143,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
         : user!.name.trim();
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
     final points = user?.rewardPoints ?? 0;
-    final isElectrician = user?.isElectrician ?? false;
+    final isPartner = user?.isPartner ?? false;
 
     return MainScaffold(
       body: CustomScrollView(
@@ -170,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 10),
                   _PageDots(count: _slides.length, index: _slideIndex),
                   const SizedBox(height: 22),
-                  _ActionGrid(isElectrician: isElectrician),
+                  _ActionGrid(isPartner: isPartner),
                 ],
               ),
             ),
@@ -467,9 +467,9 @@ class _PageDots extends StatelessWidget {
 }
 
 class _ActionGrid extends StatelessWidget {
-  const _ActionGrid({required this.isElectrician});
+  const _ActionGrid({required this.isPartner});
 
-  final bool isElectrician;
+  final bool isPartner;
 
   @override
   Widget build(BuildContext context) {
@@ -486,7 +486,7 @@ class _ActionGrid extends StatelessWidget {
       _HomeAction(
         label: 'REDEEM POINTS',
         icon: Icons.workspace_premium_outlined,
-        route: isElectrician ? '/electrician/rewards' : null,
+        route: isPartner ? '/partner/rewards' : null,
       ),
       const _HomeAction(label: 'EVENT', icon: Icons.event_outlined),
       const _HomeAction(label: 'CONTACT US', icon: Icons.phone_outlined),
