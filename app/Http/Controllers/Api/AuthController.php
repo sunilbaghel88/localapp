@@ -32,14 +32,7 @@ class AuthController extends Controller
      */
     protected function authUserPayload(User $user): array
     {
-        $role = $user->roles()->pluck('name')->first();
-        $permissions = $user->getAllPermissions()->pluck('name') ?? collect();
-
-        return array_merge($user->toArray(), [
-            'role' => $role,
-            'permissions' => $permissions,
-            'is_electrician' => $user->isElectrician(),
-        ]);
+        return $user->toAuthArray();
     }
 
     protected function normalizePhone(string $phone): string
@@ -261,7 +254,6 @@ class AuthController extends Controller
             'otp' => ['required', 'digits:6'],
             'phone' => ['required', 'string', 'min:10', 'max:15'],
             'device_name' => ['required', 'string', 'max:255'],
-            'user_type_id' => ['nullable', 'exists:user_types,id'],
             'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
         ]);
 
@@ -289,7 +281,6 @@ class AuthController extends Controller
             'email' => $email,
             'phone' => $phone,
             'password' => Hash::make(Str::random(32)),
-            'user_type_id' => $request->user_type_id ?: null,
         ]);
 
         $this->forgetSmsOtp($phone);
@@ -308,7 +299,6 @@ class AuthController extends Controller
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Password::defaults()],
             'device_name' => 'required|string|max:255',
-            'user_type_id' => 'nullable|exists:user_types,id',
         ]);
 
         $user = User::create([
@@ -316,7 +306,6 @@ class AuthController extends Controller
             'last_name' => $request->last_name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'user_type_id' => $request->user_type_id ?: null,
         ]);
 
         return response()->json([
@@ -327,7 +316,10 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $token = $request->user()?->currentAccessToken();
+        if ($token) {
+            $token->delete();
+        }
 
         return response()->json(['message' => 'Logged out successfully']);
     }

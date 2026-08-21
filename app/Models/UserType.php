@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class UserType extends Model
 {
@@ -23,8 +22,8 @@ class UserType extends Model
         'is_active' => 'boolean',
     ];
 
-    public function users(): HasMany
+    public function users(): BelongsToMany
     {
-        return $this->hasMany(User::class, 'user_type_id');
+        return $this->belongsToMany(User::class, 'user_user_type')->withTimestamps();
     }
 }

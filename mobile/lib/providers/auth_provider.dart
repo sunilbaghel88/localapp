@@ -168,7 +168,6 @@ class AuthProvider with ChangeNotifier {
     required String lastName,
     required String phone,
     required String otp,
-    int? userTypeId,
     String? email,
   }) async {
     _error = null;
@@ -180,7 +179,6 @@ class AuthProvider with ChangeNotifier {
         lastName: lastName,
         phone: phone,
         otp: otp,
-        userTypeId: userTypeId,
         email: email,
       );
       final prefs = await SharedPreferences.getInstance();
@@ -210,9 +208,8 @@ class AuthProvider with ChangeNotifier {
     String lastName,
     String email,
     String password,
-    String passwordConfirmation, {
-    int? userTypeId,
-  }) async {
+    String passwordConfirmation,
+  ) async {
     _error = null;
     _isLoading = true;
     notifyListeners();
@@ -223,7 +220,6 @@ class AuthProvider with ChangeNotifier {
         email,
         password,
         passwordConfirmation,
-        userTypeId: userTypeId,
       );
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(tokenKey, data['token'] as String);

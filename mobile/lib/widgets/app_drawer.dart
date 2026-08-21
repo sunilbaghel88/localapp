@@ -18,6 +18,7 @@ class AppDrawer extends StatelessWidget {
     final canManageOrders = permissions.contains('view_any_order');
     final canCreateOrder = permissions.contains('create_order');
     final isElectrician = user?.isElectrician ?? false;
+    final canAssignUserTypes = user?.canAssignUserTypes ?? false;
     final currentPath = GoRouterState.of(context).uri.path;
 
     return Drawer(
@@ -125,7 +126,8 @@ class AppDrawer extends StatelessWidget {
                   if (canManageProducts ||
                       canManageOrders ||
                       canCreateOrder ||
-                      isElectrician) ...[
+                      isElectrician ||
+                      canAssignUserTypes) ...[
                     const Padding(
                       padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
                       child: Text(
@@ -168,6 +170,14 @@ class AppDrawer extends StatelessWidget {
                         icon: Icons.add_shopping_cart_outlined,
                         label: 'Create Order',
                         route: '/owner/orders/create',
+                        currentPath: currentPath,
+                      ),
+                    if (canAssignUserTypes)
+                      _item(
+                        context,
+                        icon: Icons.sell_outlined,
+                        label: 'Assign User Types',
+                        route: '/owner/user-types',
                         currentPath: currentPath,
                       ),
                     if (isElectrician)

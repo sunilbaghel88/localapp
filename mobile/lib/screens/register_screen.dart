@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../services/api_service.dart';
 import '../widgets/app_brand_logo.dart';
 
 const _buttonGrey = Color(0xFF8E8E8E);
@@ -29,35 +28,11 @@ class _SmsRegisterBody extends StatefulWidget {
 
 class _SmsRegisterBodyState extends State<_SmsRegisterBody> {
   final _formKey = GlobalKey<FormState>();
-  final _api = ApiService();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
   bool _otpRequested = false;
-  List<Map<String, dynamic>> _userTypes = [];
-  int? _selectedUserTypeId;
-  bool _loadingTypes = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserTypes();
-  }
-
-  Future<void> _loadUserTypes() async {
-    try {
-      final types = await _api.getUserTypes();
-      if (mounted) {
-        setState(() {
-          _userTypes = types;
-          _loadingTypes = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loadingTypes = false);
-    }
-  }
 
   @override
   void dispose() {
@@ -108,7 +83,6 @@ class _SmsRegisterBodyState extends State<_SmsRegisterBody> {
       lastName: _lastNameController.text.trim(),
       phone: phone,
       otp: _otpController.text.trim(),
-      userTypeId: _selectedUserTypeId,
     );
     if (!mounted) return;
     if (ok) context.go('/home');
@@ -224,36 +198,6 @@ class _SmsRegisterBodyState extends State<_SmsRegisterBody> {
                                   if (v.trim().length != 6) return 'OTP must be 6 digits';
                                   return null;
                                 },
-                              ),
-                            ],
-                            if (!_loadingTypes && _userTypes.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              DropdownButtonFormField<int?>(
-                                initialValue: _selectedUserTypeId,
-                                decoration: InputDecoration(
-                                  hintText: 'User type (optional)',
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                ),
-                                items: _userTypes
-                                    .where((t) => t['id'] != null)
-                                    .map((t) {
-                                      final id = t['id'] as int;
-                                      final name = (t['name'] ?? '').toString();
-                                      return DropdownMenuItem<int?>(
-                                        value: id,
-                                        child: Text(name),
-                                      );
-                                    })
-                                    .toList(),
-                                onChanged: auth.isLoading
-                                    ? null
-                                    : (v) => setState(() => _selectedUserTypeId = v),
                               ),
                             ],
                             if (auth.error != null) ...[

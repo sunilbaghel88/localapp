@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -30,7 +29,6 @@ class User extends Authenticatable implements FilamentUser, HasName
         'email',
         'password',
         'phone',
-        'user_type_id',
         'is_active',
         'reward_points',
     ];
@@ -116,9 +114,9 @@ class User extends Authenticatable implements FilamentUser, HasName
         return $this->hasMany(Order::class);
     }
 
-    public function userType(): BelongsTo
+    public function userTypes(): BelongsToMany
     {
-        return $this->belongsTo(UserType::class);
+        return $this->belongsToMany(UserType::class, 'user_user_type')->withTimestamps();
     }
 
     public function rewardGrants(): HasMany
@@ -138,14 +136,84 @@ class User extends Authenticatable implements FilamentUser, HasName
 
     public function isElectrician(): bool
     {
-        if (! $this->user_type_id) {
+        $typeIds = $this->relationLoaded('userTypes')
+            ? $this->userTypes->pluck('id')
+            : $this->userTypes()->pluck('user_types.id');
+
+        if ($typeIds->isEmpty()) {
             return false;
         }
 
         return ShopType::query()
             ->where('supports_electrician_rewards', true)
-            ->where('electrician_user_type_id', $this->user_type_id)
+            ->whereIn('electrician_user_type_id', $typeIds)
             ->exists();
+    }
+
+    public function canAssignUserTypes(): bool
+    {
+        return $this->hasRole('super_admin')
+            || $this->hasRole('shop_owner')
+            || $this->can('update_user')
+            || $this->shops()->exists();
+    }
+
+    public function canAssignUserTypesTo(User $target): bool
+    {
+        if (! $this->canAssignUserTypes()) {
+            return false;
+        }
+
+        if ($target->hasRole('super_admin') && ! $this->hasRole('super_admin')) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function scopeWithUserTypeId(Builder $query, ?int $userTypeId): Builder
+    {
+        if (! $userTypeId) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas(
+            'userTypes',
+            fn (Builder $q) => $q->where('user_types.id', $userTypeId)
+        );
+    }
+
+    public function userTypesPayload(): array
+    {
+        $types = $this->relationLoaded('userTypes')
+            ? $this->userTypes
+            : $this->userTypes()->orderBy('user_types.sort_order')->get();
+
+        return $types
+            ->sortBy('sort_order')
+            ->map(fn (UserType $type) => [
+                'id' => $type->id,
+                'name' => $type->name,
+                'slug' => $type->slug,
+            ])
+            ->values()
+            ->all();
+    }
+
+    public function toAuthArray(): array
+    {
+        $this->loadMissing('userTypes');
+
+        $role = $this->roles()->pluck('name')->first();
+        $permissions = $this->getAllPermissions()->pluck('name') ?? collect();
+
+        return array_merge($this->toArray(), [
+            'role' => $role,
+            'permissions' => $permissions,
+            'is_electrician' => $this->isElectrician(),
+            'user_types' => $this->userTypesPayload(),
+            'can_assign_user_types' => $this->canAssignUserTypes(),
+        ]);
     }
 
     public function canAccessPanel(Panel $panel): bool

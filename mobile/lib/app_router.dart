@@ -22,6 +22,7 @@ import 'screens/shop_owner_orders_screen.dart';
 import 'screens/shop_owner_order_detail_screen.dart';
 import 'screens/shop_owner_create_order_screen.dart';
 import 'screens/shop_owner_reward_redemptions_screen.dart';
+import 'screens/shop_owner_user_types_screen.dart';
 import 'screens/electrician_rewards_screen.dart';
 import 'screens/electrician_create_order_screen.dart';
 
@@ -62,8 +63,13 @@ GoRouter createRouter(BuildContext context) {
         final permissions = auth.user?.permissions ?? const [];
         final canAccessOwner =
             permissions.contains('view_any_product') ||
-            permissions.contains('view_any_order');
+            permissions.contains('view_any_order') ||
+            (auth.user?.canAssignUserTypes ?? false);
         if (!canAccessOwner) return '/home';
+        if (state.matchedLocation == '/owner/user-types' &&
+            !(auth.user?.canAssignUserTypes ?? false)) {
+          return '/home';
+        }
         if (state.matchedLocation == '/owner/orders/create' &&
             !permissions.contains('create_order')) {
           return '/owner/orders';
@@ -142,6 +148,10 @@ GoRouter createRouter(BuildContext context) {
       GoRoute(
         path: '/owner/reward-redemptions',
         builder: (context, state) => const ShopOwnerRewardRedemptionsScreen(),
+      ),
+      GoRoute(
+        path: '/owner/user-types',
+        builder: (context, state) => const ShopOwnerUserTypesScreen(),
       ),
       GoRoute(
         path: '/owner/orders/create',

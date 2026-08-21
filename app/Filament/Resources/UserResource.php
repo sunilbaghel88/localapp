@@ -4,7 +4,6 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
-use App\Models\UserType;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -45,11 +44,17 @@ class UserResource extends Resource
                         Forms\Components\TextInput::make('phone')
                             ->tel()
                             ->maxLength(255),
-                        Forms\Components\Select::make('user_type_id')
-                            ->label('User Type')
-                            ->relationship('userType', 'name', fn ($query) => $query->where('is_active', true)->orderBy('sort_order'))
+                        Forms\Components\Select::make('userTypes')
+                            ->label('User Types')
+                            ->multiple()
+                            ->relationship(
+                                'userTypes',
+                                'name',
+                                fn ($query) => $query->where('is_active', true)->orderBy('sort_order')
+                            )
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->helperText('Leave empty to treat this user as a Customer. A user can have multiple types, e.g. Electrician and Plumber.'),
                         Forms\Components\TextInput::make('password')
                             ->password()
                             ->dehydrateStateUsing(fn ($state) => filled($state) ? Hash::make($state) : null)
@@ -99,11 +104,11 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('email')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('userType.name')
-                    ->label('User Type')
+                Tables\Columns\TextColumn::make('userTypes.name')
+                    ->label('User Types')
                     ->badge()
-                    ->placeholder('—')
-                    ->sortable(),
+                    ->placeholder('Customer')
+                    ->separator(','),
                 Tables\Columns\TextColumn::make('roles.name')
                     ->badge()
                     ->formatStateUsing(fn ($state) => str($state)->headline()),
@@ -129,6 +134,11 @@ class UserResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('userTypes')
+                    ->label('User Type')
+                    ->relationship('userTypes', 'name')
+                    ->preload()
+                    ->multiple(),
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Active')
                     ->placeholder('All')
@@ -173,6 +183,11 @@ class UserResource extends Resource
             'create' => Pages\CreateUser::route('/create'),
             'edit' => Pages\EditUser::route('/{record}/edit'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['userTypes', 'roles']);
     }
 
     public static function getGloballySearchableAttributes(): array

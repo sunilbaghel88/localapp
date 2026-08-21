@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\Shop\ShopProductImageController;
 use App\Http\Controllers\Api\Shop\ShopOrderController;
 use App\Http\Controllers\Api\Shop\ShopOrderCreateController;
 use App\Http\Controllers\Api\Shop\ShopRewardRedemptionController;
+use App\Http\Controllers\Api\Shop\ShopUserTypeAssignmentController;
 use App\Http\Controllers\Api\Electrician\ElectricianApiController;
 
 // Public routes
@@ -30,23 +31,17 @@ Route::post('/register', [AuthController::class, 'register'])->name('api.registe
 
 Route::get('/app-branding', [AppBrandingController::class, 'show'])->name('api.app-branding.show');
 Route::get('/home', [HomeController::class, 'index'])->name('api.home');
-Route::get('/user-types', [UserTypeController::class, 'index'])->name('api.user-types.index');
 Route::get('/products', [ProductController::class, 'index'])->name('api.products.index');
 Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('api.products.show');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         $user = $request->user();
-        $role = $user?->roles()->pluck('name')->first();
-        $permissions = $user?->getAllPermissions()->pluck('name') ?? collect();
 
-        return array_merge($user?->toArray() ?? [], [
-            'role' => $role,
-            'permissions' => $permissions,
-            'is_electrician' => $user ? $user->isElectrician() : false,
-        ]);
+        return $user ? $user->toAuthArray() : [];
     });
     Route::post('/logout', [AuthController::class, 'logout'])->name('api.logout');
+    Route::get('/user-types', [UserTypeController::class, 'index'])->name('api.user-types.index');
 
     // Cart
     Route::get('/cart', [CartController::class, 'index'])->name('api.cart.index');
@@ -98,6 +93,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reward-redemptions', [ShopRewardRedemptionController::class, 'index']);
         Route::post('/reward-redemptions/{rewardRedemptionRequest}/approve', [ShopRewardRedemptionController::class, 'approve']);
         Route::post('/reward-redemptions/{rewardRedemptionRequest}/reject', [ShopRewardRedemptionController::class, 'reject']);
+
+        Route::get('/assignable-users', [ShopUserTypeAssignmentController::class, 'users']);
+        Route::put('/users/{user}/user-types', [ShopUserTypeAssignmentController::class, 'update']);
     });
 
     // Electrician (Sanctum + electrician user type / shop-type mapping)

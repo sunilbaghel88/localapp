@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\HasSafePageShield;
 use App\Models\SmsSetting;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -13,7 +14,8 @@ use Filament\Forms\Contracts\HasForms;
 class SmsSettings extends Page implements HasForms
 {
     use InteractsWithForms;
-
+    use HasSafePageShield;
+    
     protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
 
     protected static ?string $navigationGroup = 'Settings';

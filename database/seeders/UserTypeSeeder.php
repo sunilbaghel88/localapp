@@ -12,7 +12,8 @@ class UserTypeSeeder extends Seeder
         $types = [
             ['name' => 'Customer', 'slug' => 'customer', 'sort_order' => 1],
             ['name' => 'Electrician', 'slug' => 'electrician', 'sort_order' => 2],
-            ['name' => 'Delivery Agent', 'slug' => 'delivery-agent', 'sort_order' => 3],
+            ['name' => 'Plumber', 'slug' => 'plumber', 'sort_order' => 3],
+            ['name' => 'Delivery Agent', 'slug' => 'delivery-agent', 'sort_order' => 4],
         ];
 
         foreach ($types as $type) {

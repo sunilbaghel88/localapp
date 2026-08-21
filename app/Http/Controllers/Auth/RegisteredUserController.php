@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\UserType;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,9 +19,7 @@ class RegisteredUserController extends Controller
      */
     public function create(): View
     {
-        $userTypes = UserType::where('is_active', true)->orderBy('sort_order')->get();
-
-        return view('auth.register', compact('userTypes'));
+        return view('auth.register');
     }
 
     /**
@@ -37,7 +34,6 @@ class RegisteredUserController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'user_type_id' => ['nullable', 'exists:user_types,id'],
         ]);
 
         $user = User::create([
@@ -45,7 +41,6 @@ class RegisteredUserController extends Controller
             'last_name' => $request->last_name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'user_type_id' => $request->user_type_id ?: null,
         ]);
 
         event(new Registered($user));

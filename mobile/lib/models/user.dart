@@ -1,3 +1,29 @@
+class UserTypeInfo {
+  final int id;
+  final String name;
+  final String slug;
+
+  const UserTypeInfo({
+    required this.id,
+    required this.name,
+    required this.slug,
+  });
+
+  factory UserTypeInfo.fromJson(Map<String, dynamic> json) {
+    return UserTypeInfo(
+      id: json['id'] as int,
+      name: (json['name'] ?? '').toString(),
+      slug: (json['slug'] ?? '').toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'slug': slug,
+  };
+}
+
 class User {
   final int id;
   final String name;
@@ -5,7 +31,9 @@ class User {
   final String? phone;
   final String? role;
   final List<String>? permissions;
+  final List<UserTypeInfo> userTypes;
   final bool isElectrician;
+  final bool canAssignUserTypes;
   final int rewardPoints;
 
   User({
@@ -15,7 +43,9 @@ class User {
     this.phone,
     this.role,
     this.permissions,
+    this.userTypes = const [],
     this.isElectrician = false,
+    this.canAssignUserTypes = false,
     this.rewardPoints = 0,
   });
 
@@ -25,6 +55,14 @@ class User {
         ? permissionsRaw.map((e) => e.toString()).toList()
         : null;
 
+    final typesRaw = json['user_types'];
+    final userTypes = typesRaw is List
+        ? typesRaw
+              .whereType<Map>()
+              .map((e) => UserTypeInfo.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
+        : const <UserTypeInfo>[];
+
     return User(
       id: json['id'] as int,
       name: _fullNameFromJson(json),
@@ -32,7 +70,9 @@ class User {
       phone: json['phone'] as String?,
       role: json['role'] as String?,
       permissions: permissions,
+      userTypes: userTypes,
       isElectrician: json['is_electrician'] == true,
+      canAssignUserTypes: json['can_assign_user_types'] == true,
       rewardPoints: _intFromJson(json['reward_points']),
     );
   }
@@ -60,7 +100,9 @@ class User {
     'phone': phone,
     'role': role,
     'permissions': permissions,
+    'user_types': userTypes.map((t) => t.toJson()).toList(),
     'is_electrician': isElectrician,
+    'can_assign_user_types': canAssignUserTypes,
     'reward_points': rewardPoints,
   };
 }

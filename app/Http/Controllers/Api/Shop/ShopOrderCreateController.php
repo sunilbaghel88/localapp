@@ -99,7 +99,7 @@ class ShopOrderCreateController extends Controller
         }
 
         $rows = $shop->electricians()
-            ->where('users.user_type_id', $electricianUserTypeId)
+            ->withUserTypeId($electricianUserTypeId)
             ->where('users.is_active', true)
             ->orderBy('users.first_name')
             ->orderBy('users.last_name')
@@ -138,7 +138,7 @@ class ShopOrderCreateController extends Controller
         $shop = Shop::query()->findOrFail($shopId);
 
         $rows = $shop->electricians()
-            ->where('users.user_type_id', $deliveryAgentUserTypeId)
+            ->withUserTypeId($deliveryAgentUserTypeId)
             ->where('users.is_active', true)
             ->orderBy('users.first_name')
             ->orderBy('users.last_name')
@@ -234,7 +234,8 @@ class ShopOrderCreateController extends Controller
     }
 
     /**
-     * Register-style customer record for order-on-behalf (customer user type when configured).
+     * Register-style customer record for order-on-behalf.
+     * New customers are left without user types so they default to Customer.
      */
     public function storeCustomer(Request $request): JsonResponse
     {
@@ -247,17 +248,11 @@ class ShopOrderCreateController extends Controller
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
-        $customerTypeId = UserType::query()
-            ->where('slug', 'customer')
-            ->where('is_active', true)
-            ->value('id');
-
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
             'password' => Hash::make($validated['password']),
-            'user_type_id' => $customerTypeId,
             'is_active' => true,
         ]);
 
@@ -309,9 +304,9 @@ class ShopOrderCreateController extends Controller
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
             'password' => Hash::make($validated['password']),
-            'user_type_id' => $electricianUserTypeId,
             'is_active' => true,
         ]);
+        $user->userTypes()->syncWithoutDetaching([$electricianUserTypeId]);
 
         $shop->electricians()->syncWithoutDetaching([$user->id]);
 
@@ -356,9 +351,9 @@ class ShopOrderCreateController extends Controller
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
             'password' => Hash::make($validated['password']),
-            'user_type_id' => $deliveryAgentUserTypeId,
             'is_active' => true,
         ]);
+        $user->userTypes()->syncWithoutDetaching([$deliveryAgentUserTypeId]);
 
         $shop = Shop::query()->findOrFail($shopId);
         $shop->electricians()->syncWithoutDetaching([$user->id]);
@@ -535,7 +530,7 @@ class ShopOrderCreateController extends Controller
             $shopModel = Shop::query()->findOrFail((int) $validated['shop_id']);
             $validDeliveryAgent = $shopModel->electricians()
                 ->where('users.id', $deliveryAgentUserId)
-                ->where('users.user_type_id', $deliveryAgentUserTypeId)
+                ->withUserTypeId($deliveryAgentUserTypeId)
                 ->where('users.is_active', true)
                 ->exists();
 
@@ -561,7 +556,7 @@ class ShopOrderCreateController extends Controller
 
             $validElectrician = $shopModel->electricians()
                 ->where('users.id', $electricianUserId)
-                ->where('users.user_type_id', $electricianUserTypeId)
+                ->withUserTypeId($electricianUserTypeId)
                 ->where('users.is_active', true)
                 ->exists();
 

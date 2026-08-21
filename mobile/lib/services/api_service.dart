@@ -67,7 +67,6 @@ class ApiService {
     required String lastName,
     required String phone,
     required String otp,
-    int? userTypeId,
     String? email,
   }) async {
     final data = <String, dynamic>{
@@ -77,7 +76,6 @@ class ApiService {
       'otp': otp,
       'device_name': 'flutter-mobile',
     };
-    if (userTypeId != null) data['user_type_id'] = userTypeId;
     if (email != null && email.isNotEmpty) data['email'] = email;
     final r = await _dio.post('/register/sms/otp/verify', data: data);
     return r.data as Map<String, dynamic>;
@@ -88,9 +86,8 @@ class ApiService {
     String lastName,
     String email,
     String password,
-    String passwordConfirmation, {
-    int? userTypeId,
-  }) async {
+    String passwordConfirmation,
+  ) async {
     final data = <String, dynamic>{
       'first_name': firstName,
       'last_name': lastName,
@@ -99,7 +96,6 @@ class ApiService {
       'password_confirmation': passwordConfirmation,
       'device_name': 'flutter-mobile',
     };
-    if (userTypeId != null) data['user_type_id'] = userTypeId;
     final r = await _dio.post('/register', data: data);
     return r.data as Map<String, dynamic>;
   }
@@ -108,6 +104,33 @@ class ApiService {
     final r = await _dio.get('/user-types');
     final list = r.data['user_types'] as List<dynamic>? ?? [];
     return list.map((e) => e as Map<String, dynamic>).toList();
+  }
+
+  Future<Map<String, dynamic>> getAssignableUsers({
+    String? q,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final r = await _dio.get(
+      '/shop/assignable-users',
+      queryParameters: {
+        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+        'page': page,
+        'per_page': perPage,
+      },
+    );
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> updateUserTypes({
+    required int userId,
+    required List<int> userTypeIds,
+  }) async {
+    final r = await _dio.put(
+      '/shop/users/$userId/user-types',
+      data: {'user_type_ids': userTypeIds},
+    );
+    return r.data as Map<String, dynamic>;
   }
 
   Future<void> logout() async {

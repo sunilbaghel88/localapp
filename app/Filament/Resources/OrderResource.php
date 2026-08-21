@@ -64,7 +64,7 @@ class OrderResource extends Resource
                                 }
 
                                 return $shop->electricians()
-                                    ->where('users.user_type_id', $electricianUserTypeId)
+                                    ->withUserTypeId($electricianUserTypeId)
                                     ->where('users.is_active', true)
                                     ->orderBy('users.first_name')
                                     ->orderBy('users.last_name')

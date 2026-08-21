@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\HasSafePageShield;
 use App\Models\AppBranding;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 class AppBrandingSettings extends Page implements HasForms
 {
     use InteractsWithForms;
+    use HasSafePageShield;
 
     protected static ?string $navigationIcon = 'heroicon-o-photo';
 

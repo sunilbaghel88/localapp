@@ -61,7 +61,7 @@ class ElectriciansRelationManager extends RelationManager
                         if (! $electricianUserTypeId) {
                             return $query->whereRaw('1 = 0');
                         }
-                        return $query->where('user_type_id', $electricianUserTypeId)
+                        return $query->withUserTypeId($electricianUserTypeId)
                             ->where('is_active', true)
                             ->orderBy('first_name')
                             ->orderBy('last_name');

@@ -14,6 +14,10 @@ class StatsOverview extends BaseWidget
     protected function getStats(): array
     {
         $user = auth()->user();
+        if (! $user) {
+            return [];
+        }
+
         $shopIds = $user->shops()->pluck('id');
 
         $totalOrders = Order::whereIn('shop_id', $shopIds)->count();
