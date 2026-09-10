@@ -18,6 +18,7 @@ import 'screens/addresses_screen.dart';
 import 'screens/shop_owner_products_screen.dart';
 import 'screens/shop_owner_product_detail_screen.dart';
 import 'screens/shop_owner_product_form_screen.dart';
+import 'screens/shop_owner_import_invoice_screen.dart';
 import 'screens/shop_owner_orders_screen.dart';
 import 'screens/shop_owner_order_detail_screen.dart';
 import 'screens/shop_owner_create_order_screen.dart';
@@ -127,6 +128,10 @@ GoRouter createRouter(BuildContext context) {
         path: '/owner/products/create',
         builder: (context, state) =>
             const ShopOwnerProductFormScreen(productId: null),
+      ),
+      GoRoute(
+        path: '/owner/products/import',
+        builder: (context, state) => const ShopOwnerImportInvoiceScreen(),
       ),
       GoRoute(
         path: '/owner/products/:id',

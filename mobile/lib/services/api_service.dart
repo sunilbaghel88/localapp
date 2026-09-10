@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
 
 import '../core/api_client.dart';
 import '../models/address.dart';
@@ -343,6 +344,49 @@ class ApiService {
       throw StateError('Invalid upload response');
     }
     return data['url'] as String;
+  }
+
+  Future<Map<String, dynamic>> extractPurchaseInvoice({
+    required int shopId,
+    required Uint8List bytes,
+    required String filename,
+  }) async {
+    final formData = FormData.fromMap({
+      'shop_id': shopId,
+      'file': MultipartFile.fromBytes(
+        bytes,
+        filename: filename,
+        contentType: MediaType('application', 'pdf'),
+      ),
+    });
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/purchase-invoices/extract',
+      data: formData,
+      options: Options(
+        receiveTimeout: const Duration(seconds: 120),
+        sendTimeout: const Duration(seconds: 60),
+      ),
+    );
+    return r.data ?? {};
+  }
+
+  Future<Map<String, dynamic>> bulkCreateProductsFromInvoice({
+    required int shopId,
+    required int categoryId,
+    required String status,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/purchase-invoices/bulk-create',
+      data: {
+        'shop_id': shopId,
+        'category_id': categoryId,
+        'status': status,
+        'items': items,
+      },
+      options: Options(receiveTimeout: const Duration(seconds: 60)),
+    );
+    return r.data ?? {};
   }
 
   Future<Map<String, dynamic>> getShopOrders({

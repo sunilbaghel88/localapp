@@ -82,6 +82,12 @@ class _ShopOwnerProductsScreenState extends State<ShopOwnerProductsScreen> {
         ),
         actions: [
           IconButton(
+            tooltip: 'Import invoice',
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            onPressed: () => context.push('/owner/products/import'),
+          ),
+          IconButton(
+            tooltip: 'Add product',
             icon: const Icon(Icons.add),
             onPressed: () => context.push('/owner/products/create'),
           ),

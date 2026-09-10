@@ -129,6 +129,14 @@ class AppDrawer extends StatelessWidget {
                         route: '/owner/products',
                         currentPath: currentPath,
                       ),
+                    if (canManageProducts)
+                      _item(
+                        context,
+                        icon: Icons.picture_as_pdf_outlined,
+                        label: 'Import Invoice',
+                        route: '/owner/products/import',
+                        currentPath: currentPath,
+                      ),
                     if (canManageOrders)
                       _item(
                         context,
