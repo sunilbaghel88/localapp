@@ -21,6 +21,7 @@ class PurchaseInvoiceAiService
      * @return array{
      *   supplier: ?string,
      *   invoice_number: ?string,
+     *   products: array<int, array<string, mixed>>,
      *   items: array<int, array<string, mixed>>
      * }
      */
@@ -43,30 +44,57 @@ class PurchaseInvoiceAiService
             ->all();
 
         $parsed = $this->parseInvoiceWithAi($text, $catalog, $user);
-        if ($parsed['items'] === []) {
+        $parsed['products'] = $this->groupProductsWithVariants($parsed['products']);
+        if ($parsed['products'] === []) {
             throw ValidationException::withMessages([
                 'file' => __('AI could not find product lines on this invoice. Try another PDF or add products manually.'),
             ]);
         }
 
-        $items = [];
-        foreach ($parsed['items'] as $row) {
+        $products = [];
+        foreach ($parsed['products'] as $row) {
             $name = trim((string) ($row['name'] ?? ''));
             if ($name === '') {
                 continue;
             }
 
-            $cost = $this->toMoney($row['cost_price'] ?? 0);
-            $qty = max(1, (int) ($row['quantity'] ?? 1));
+            $variants = [];
+            foreach ($row['variants'] ?? [] as $variant) {
+                if (! is_array($variant)) {
+                    continue;
+                }
+                $variantName = $this->nullableString($variant['name'] ?? null)
+                    ?? $this->nullableString($variant['spec'] ?? null);
+                $cost = $this->toMoney($variant['cost_price'] ?? 0);
+                $qty = max(1, (int) ($variant['quantity'] ?? 1));
+                $attributes = is_array($variant['attributes'] ?? null) ? $variant['attributes'] : [];
+                $variants[] = [
+                    'name' => $variantName,
+                    'quantity' => $qty,
+                    'unit' => $this->nullableString($variant['unit'] ?? null) ?? 'pcs',
+                    'cost_price' => $cost,
+                    'sku' => $this->nullableString($variant['sku'] ?? null),
+                    'attributes' => $this->normalizeAttributes($attributes),
+                ];
+            }
+
+            if ($variants === []) {
+                $variants[] = [
+                    'name' => null,
+                    'quantity' => max(1, (int) ($row['quantity'] ?? 1)),
+                    'unit' => $this->nullableString($row['unit'] ?? null) ?? 'pcs',
+                    'cost_price' => $this->toMoney($row['cost_price'] ?? 0),
+                    'sku' => $this->nullableString($row['sku'] ?? null),
+                    'attributes' => [],
+                ];
+            }
+
             $match = $this->findDuplicate($shop->id, $name, $row['matched_existing_name'] ?? null);
 
-            $items[] = [
+            $products[] = [
                 'name' => Str::limit($name, 255, ''),
                 'brand' => $this->nullableString($row['brand'] ?? null),
-                'quantity' => $qty,
-                'unit' => $this->nullableString($row['unit'] ?? null) ?? 'pcs',
-                'cost_price' => $cost,
-                'sku' => $this->nullableString($row['sku'] ?? null),
+                'variants' => $variants,
                 'duplicate' => $match !== null,
                 'duplicate_match' => $match['match'] ?? null,
                 'duplicate_product_id' => $match['product_id'] ?? null,
@@ -75,7 +103,7 @@ class PurchaseInvoiceAiService
             ];
         }
 
-        if ($items === []) {
+        if ($products === []) {
             throw ValidationException::withMessages([
                 'file' => __('No usable product lines were found on this invoice.'),
             ]);
@@ -84,7 +112,8 @@ class PurchaseInvoiceAiService
         return [
             'supplier' => $this->nullableString($parsed['supplier'] ?? null),
             'invoice_number' => $this->nullableString($parsed['invoice_number'] ?? null),
-            'items' => $items,
+            'products' => $products,
+            'items' => $products,
         ];
     }
 
@@ -125,9 +154,17 @@ class PurchaseInvoiceAiService
 
                 $brandId = $this->resolveBrandId($row['brand'] ?? null, $user);
                 $slug = $this->uniqueProductSlug(Str::slug($name) ?: 'product');
-                $sku = $this->uniqueSku($shop->id, $row['sku'] ?? null, $name);
-                $qty = max(0, (int) ($row['quantity'] ?? 0));
-                $price = $this->toMoney($row['selling_price'] ?? 0);
+
+                $incomingVariants = $row['variants'] ?? [];
+                if (! is_array($incomingVariants) || $incomingVariants === []) {
+                    $incomingVariants = [[
+                        'name' => null,
+                        'quantity' => $row['quantity'] ?? 0,
+                        'selling_price' => $row['selling_price'] ?? 0,
+                        'sku' => $row['sku'] ?? null,
+                        'attributes' => [],
+                    ]];
+                }
 
                 $product = Product::create([
                     'shop_id' => $shop->id,
@@ -139,23 +176,54 @@ class PurchaseInvoiceAiService
                     'status' => $status,
                 ]);
 
-                ProductVariant::create([
-                    'product_id' => $product->id,
-                    'sku' => $sku,
-                    'name' => null,
-                    'stock' => $qty,
-                    'price' => $price,
-                    'compare_at_price' => null,
-                    'attributes' => [],
-                    'is_active' => true,
-                ]);
+                $createdVariants = [];
+                foreach ($incomingVariants as $variant) {
+                    if (! is_array($variant)) {
+                        continue;
+                    }
+                    $variantName = $this->nullableString($variant['name'] ?? null);
+                    $sku = $this->uniqueSku(
+                        $shop->id,
+                        $variant['sku'] ?? null,
+                        trim($name.' '.($variantName ?? ''))
+                    );
+                    $qty = max(0, (int) ($variant['quantity'] ?? 0));
+                    $price = $this->toMoney($variant['selling_price'] ?? $variant['price'] ?? 0);
+                    $attributes = $this->normalizeAttributes($variant['attributes'] ?? []);
+                    $unit = $this->nullableString($variant['unit'] ?? null);
+                    if ($unit !== null && ! isset($attributes['unit'])) {
+                        $attributes['unit'] = $unit;
+                    }
+
+                    ProductVariant::create([
+                        'product_id' => $product->id,
+                        'sku' => $sku,
+                        'name' => $variantName,
+                        'stock' => $qty,
+                        'price' => $price,
+                        'compare_at_price' => null,
+                        'attributes' => $attributes,
+                        'is_active' => true,
+                    ]);
+
+                    $createdVariants[] = [
+                        'sku' => $sku,
+                        'name' => $variantName,
+                        'stock' => $qty,
+                        'price' => $price,
+                    ];
+                }
+
+                if ($createdVariants === []) {
+                    $product->delete();
+                    $skipped[] = ['name' => $name, 'reason' => 'no_variants'];
+                    continue;
+                }
 
                 $created[] = [
                     'id' => $product->id,
                     'name' => $product->name,
-                    'sku' => $sku,
-                    'stock' => $qty,
-                    'price' => $price,
+                    'variants' => $createdVariants,
                 ];
             }
         });
@@ -190,7 +258,7 @@ class PurchaseInvoiceAiService
 
     /**
      * @param  array<int, string>  $catalogNames
-     * @return array{supplier:?string, invoice_number:?string, items: array<int, array<string, mixed>>}
+     * @return array{supplier:?string, invoice_number:?string, products: array<int, array<string, mixed>>}
      */
     protected function parseInvoiceWithAi(string $text, array $catalogNames, User $user): array
     {
@@ -222,23 +290,227 @@ class PurchaseInvoiceAiService
             ]);
         }
 
-        $items = $decoded['items'] ?? $decoded;
-        if (! is_array($items)) {
-            $items = [];
+        $groups = $decoded['products'] ?? $decoded['items'] ?? [];
+        if (! is_array($groups)) {
+            $groups = [];
         }
 
         $rows = [];
-        foreach ($items as $row) {
-            if (is_array($row) && ! empty($row['name'])) {
-                $rows[] = $row;
+        foreach ($groups as $row) {
+            if (! is_array($row) || empty($row['name'])) {
+                continue;
             }
+            $variants = [];
+            if (isset($row['variants']) && is_array($row['variants'])) {
+                foreach ($row['variants'] as $variant) {
+                    if (is_array($variant)) {
+                        $variants[] = $variant;
+                    }
+                }
+            }
+            $row['variants'] = $variants;
+            $rows[] = $row;
         }
 
         return [
             'supplier' => is_string($decoded['supplier'] ?? null) ? $decoded['supplier'] : null,
             'invoice_number' => is_string($decoded['invoice_number'] ?? null) ? $decoded['invoice_number'] : null,
-            'items' => $rows,
+            'products' => $rows,
         ];
+    }
+
+    /**
+     * Collapse invoice rows into catalog products with size/spec variants.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    protected function groupProductsWithVariants(array $rows): array
+    {
+        $buckets = [];
+
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $productName = trim((string) ($row['name'] ?? ''));
+            if ($productName === '') {
+                continue;
+            }
+
+            $incoming = $row['variants'] ?? [];
+            if (! is_array($incoming) || $incoming === []) {
+                $incoming = [[
+                    'name' => null,
+                    'quantity' => $row['quantity'] ?? 1,
+                    'unit' => $row['unit'] ?? null,
+                    'cost_price' => $row['cost_price'] ?? 0,
+                    'sku' => $row['sku'] ?? null,
+                    'attributes' => $row['attributes'] ?? [],
+                ]];
+            }
+
+            foreach ($incoming as $variant) {
+                if (! is_array($variant)) {
+                    continue;
+                }
+
+                $variantName = trim((string) ($variant['name'] ?? $variant['spec'] ?? ''));
+                $lineDescription = $productName;
+                if ($variantName !== '') {
+                    if ($this->isSpecLike($variantName)) {
+                        $lineDescription = trim($productName.' '.$variantName);
+                    } elseif (mb_strlen($variantName) >= mb_strlen($productName)) {
+                        $lineDescription = $variantName;
+                    }
+                }
+
+                $family = $this->isSpecLike($variantName)
+                    ? $this->familyName($productName)
+                    : $this->familyName($lineDescription);
+
+                if (mb_strlen($family) < 6) {
+                    $family = $lineDescription;
+                }
+
+                $spec = $this->isSpecLike($variantName)
+                    ? $this->tidySpec($variantName)
+                    : $this->specFromName($lineDescription);
+
+                $key = mb_strtolower($family);
+                if (! isset($buckets[$key])) {
+                    $buckets[$key] = [
+                        'name' => $this->prettyProductName($family),
+                        'brand' => $this->nullableString($row['brand'] ?? null),
+                        'matched_existing_name' => $this->nullableString($row['matched_existing_name'] ?? null),
+                        'variants' => [],
+                    ];
+                } elseif ($buckets[$key]['brand'] === null) {
+                    $buckets[$key]['brand'] = $this->nullableString($row['brand'] ?? null);
+                }
+
+                $attributes = is_array($variant['attributes'] ?? null) ? $variant['attributes'] : [];
+                $attributes = array_merge($this->attributesFromName($lineDescription), $attributes);
+                $unit = $this->nullableString($variant['unit'] ?? $row['unit'] ?? null);
+                if ($unit !== null) {
+                    $attributes['unit'] = $unit;
+                }
+
+                $buckets[$key]['variants'][] = [
+                    'name' => $spec,
+                    'quantity' => $variant['quantity'] ?? $row['quantity'] ?? 1,
+                    'unit' => $unit,
+                    'cost_price' => $variant['cost_price'] ?? $row['cost_price'] ?? 0,
+                    'sku' => $variant['sku'] ?? $row['sku'] ?? null,
+                    'attributes' => $attributes,
+                ];
+            }
+        }
+
+        return array_values($buckets);
+    }
+
+    protected function familyName(string $name): string
+    {
+        $s = $name;
+        $s = preg_replace('/\(\s*\d+(?:\.\d+)?(?:\s*[xX×]\s*\d+(?:\.\d+)?)?\s*(mm|cm)\s*\)/i', ' ', $s) ?? $s;
+        $s = preg_replace('/\(\s*\d+\s*\/\s*\d+\s*(?:"|”|inch|in)?\s*\)/i', ' ', $s) ?? $s;
+        $s = preg_replace('/\(\s*\d+(?:\.\d+)?\s*(?:"|”|inch|in)\s*\)/i', ' ', $s) ?? $s;
+        $s = preg_replace('/\b\d+(?:\.\d+)?(?:\s*[xX×]\s*\d+(?:\.\d+)?)?\s*(mm|cm)\b/i', ' ', $s) ?? $s;
+        $s = preg_replace('/\b\d+\s*(?:"|”)?\s*[xX×]\s*\d+\s*\/\s*\d+\s*(?:"|”)?/i', ' ', $s) ?? $s;
+        $s = preg_replace('/\b\d+\s*\/\s*\d+\s*(?:"|”|\'\'|inch\b|in\b)/i', ' ', $s) ?? $s;
+        $s = preg_replace('/\b\d+(?:\.\d+)?\s*(?:"|”|\'\')/i', ' ', $s) ?? $s;
+        $s = preg_replace('/\(\s*\)/', ' ', $s) ?? $s;
+        $s = preg_replace('/\s+/', ' ', $s) ?? $s;
+        $family = trim($s, " \t-/,");
+
+        return $family === '' ? trim($name) : $family;
+    }
+
+    protected function specFromName(string $name): ?string
+    {
+        $pattern = '/\d+(?:\.\d+)?\s*[xX×]\s*\d+(?:\.\d+)?\s*(?:mm|cm)|\d+(?:\.\d+)?\s*(?:mm|cm)|\d+\s*(?:"|”)?\s*[xX×]\s*\d+\s*\/\s*\d+\s*(?:"|”)?|\d+\s*\/\s*\d+\s*(?:"|”)|(?<![.\d\/])\d+\s*(?:"|”)/i';
+        if (! preg_match_all($pattern, $name, $matches) || $matches[0] === []) {
+            return null;
+        }
+
+        $tokens = array_map(fn ($token) => $this->tidySpec((string) $token), $matches[0]);
+        $tokens = array_values(array_filter($tokens));
+        if ($tokens === []) {
+            return null;
+        }
+
+        $primary = array_shift($tokens);
+
+        return $tokens === [] ? $primary : $primary.' ('.implode(', ', $tokens).')';
+    }
+
+    protected function tidySpec(?string $spec): ?string
+    {
+        $spec = trim((string) $spec);
+        if ($spec === '') {
+            return null;
+        }
+
+        $spec = preg_replace('/\s+/', ' ', $spec) ?? $spec;
+        $spec = preg_replace('/\s*(mm|cm)\b/i', ' $1', $spec) ?? $spec;
+        $spec = preg_replace_callback('/\b\d+(?:\.\d+)?(?:\s*[xX×]\s*\d+(?:\.\d+)?)?\s*mm\b/i', function ($m) {
+            return strtoupper(preg_replace('/\s+/', '', str_ireplace('mm', 'MM', $m[0])) ?? $m[0]);
+        }, $spec) ?? $spec;
+
+        return trim($spec, " \t-/,");
+    }
+
+    protected function isSpecLike(string $name): bool
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return false;
+        }
+
+        if (preg_match('/\b(pipe|elbow|tee|mta|coupler|coupling|bend|valve|tank|wire|cable|switch|socket|union|adaptor|adapter|nipple|bush|flange|clamp|reducer|faucet|tap|pump|motor|sheet|board)\b/i', $name)) {
+            return false;
+        }
+
+        return (bool) preg_match('/\d/', $name);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function attributesFromName(string $name): array
+    {
+        $attributes = [];
+        if (preg_match('/(\d+(?:\.\d+)?(?:\s*[xX×]\s*\d+(?:\.\d+)?)?)\s*mm/i', $name, $m)) {
+            $attributes['size'] = strtoupper(preg_replace('/\s+/', '', $m[1]).'MM');
+        }
+        if (preg_match('/(\d+\s*(?:"|”)?\s*[xX×]\s*\d+\s*\/\s*\d+\s*(?:"|”)?)/i', $name, $m)) {
+            $attributes['inch'] = $this->tidySpec($m[1]) ?? trim($m[1]);
+        } elseif (preg_match('/(\d+\s*\/\s*\d+|\d+)\s*(?:"|”)/', $name, $m)) {
+            $attributes['inch'] = trim($m[1]).'"';
+        }
+        if (preg_match('/\bSDR\s*(\d+(?:\.\d+)?)/i', $name, $m)) {
+            $attributes['sdr'] = $m[1];
+        }
+
+        return $attributes;
+    }
+
+    protected function prettyProductName(string $name): string
+    {
+        $name = trim(preg_replace('/\s+/', ' ', $name) ?? $name);
+        $titled = mb_convert_case(mb_strtolower($name), MB_CASE_TITLE, 'UTF-8');
+        $acronyms = ['CPVC', 'UPVC', 'PVC', 'SWR', 'SDR', 'MTA', 'MI', 'GI', 'PPR', 'HDPE', 'MS', 'SS'];
+        foreach ($acronyms as $acronym) {
+            $titled = preg_replace(
+                '/\b'.preg_quote(mb_convert_case(mb_strtolower($acronym), MB_CASE_TITLE, 'UTF-8'), '/').'\b/u',
+                $acronym,
+                $titled
+            ) ?? $titled;
+        }
+
+        return $titled;
     }
 
     /**
@@ -416,26 +688,37 @@ Output format:
 {
   "supplier": "optional supplier name or null",
   "invoice_number": "optional invoice/order no or null",
-  "items": [
+  "products": [
     {
-      "name": "clean product name for a shop catalog",
+      "name": "catalog product name WITHOUT size/spec",
       "brand": "brand if clearly present else null",
-      "quantity": 10,
-      "unit": "pcs",
-      "cost_price": 125.5,
-      "sku": "supplier sku/hsn/code if present else null",
-      "matched_existing_name": "exact catalog name if this is the same product else null"
+      "matched_existing_name": "exact catalog name if this is the same product else null",
+      "variants": [
+        {
+          "name": "size / spec only, e.g. 20MM (3/4\") SDR 13.5",
+          "quantity": 50,
+          "unit": "PIPE",
+          "cost_price": 403.0,
+          "sku": "supplier sku/hsn/code if present else null",
+          "attributes": { "size": "20MM", "inch": "3/4\"", "sdr": "13.5" }
+        }
+      ]
     }
   ]
 }
 
-Rules:
-- "name" must be a sellable product title (brand + item + key specs). Drop invoice-only noise (HSN columns, tax %, amounts as names).
+Grouping rules:
+- Do NOT create one product per invoice row.
+- Same brand + same item type (pipe, elbow, tee, MTA, etc.) = ONE product with multiple variants.
+- Put size, diameter, inch, length, SDR, color, pack size into the variant name and attributes.
+- Product "name" is the shared title, e.g. "Supreme CPVC Pipe SDR 13.5", not "Supreme CPVC PIPE 20MM".
+- Example: "SUPREME CPVC PIPE 20MM (3/4\") SDR 13.5" and "SUPREME CPVC PIPE 25MM (1\") SDR 13.5" are two variants of one product.
+- Different fittings stay different products: pipe, elbow, tee, MTA, Y, coupler, etc.
+- If a line has no size/spec, still include one variant with name null.
 - "quantity" is purchased units (integer). If missing, use 1.
-- "cost_price" is the unit purchase/rate from the invoice (not line total, not selling price). Parse numbers like 1,250.00.
-- Merge obvious duplicate lines of the same product by summing quantity.
-- If a CATALOG section is provided, set matched_existing_name when the invoice line is clearly the same product (even if wording differs slightly). Otherwise null.
+- "cost_price" is the unit list/purchase rate (not line total). Parse numbers like 1,250.00.
 - Skip freight, packing, round-off, and tax-only rows.
+- If a CATALOG section is provided, set matched_existing_name when the product (not a single size) already exists.
 PROMPT;
     }
 
@@ -502,5 +785,31 @@ PROMPT;
         $value = trim((string) $value);
 
         return $value === '' || strtolower($value) === 'null' ? null : Str::limit($value, 255, '');
+    }
+
+    /**
+     * @param  mixed  $attributes
+     * @return array<string, string>
+     */
+    protected function normalizeAttributes(mixed $attributes): array
+    {
+        if (! is_array($attributes)) {
+            return [];
+        }
+
+        $clean = [];
+        foreach ($attributes as $key => $value) {
+            if (! is_string($key) && ! is_numeric($key)) {
+                continue;
+            }
+            $label = trim((string) $key);
+            $text = $this->nullableString($value);
+            if ($label === '' || $text === null) {
+                continue;
+            }
+            $clean[Str::limit($label, 40, '')] = Str::limit($text, 80, '');
+        }
+
+        return $clean;
     }
 }

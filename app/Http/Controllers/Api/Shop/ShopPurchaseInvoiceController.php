@@ -70,11 +70,18 @@ class ShopPurchaseInvoiceController extends Controller
             'items' => ['required', 'array', 'min:1', 'max:200'],
             'items.*.name' => ['required', 'string', 'max:255'],
             'items.*.brand' => ['nullable', 'string', 'max:255'],
-            'items.*.quantity' => ['required', 'integer', 'min:0'],
-            'items.*.selling_price' => ['required', 'numeric', 'min:0'],
-            'items.*.cost_price' => ['nullable', 'numeric', 'min:0'],
-            'items.*.sku' => ['nullable', 'string', 'max:255'],
             'items.*.skip_if_duplicate' => ['nullable', 'boolean'],
+            'items.*.quantity' => ['nullable', 'integer', 'min:0'],
+            'items.*.selling_price' => ['nullable', 'numeric', 'min:0'],
+            'items.*.sku' => ['nullable', 'string', 'max:255'],
+            'items.*.variants' => ['nullable', 'array', 'min:1'],
+            'items.*.variants.*.name' => ['nullable', 'string', 'max:255'],
+            'items.*.variants.*.quantity' => ['required_with:items.*.variants', 'integer', 'min:0'],
+            'items.*.variants.*.selling_price' => ['required_with:items.*.variants', 'numeric', 'min:0'],
+            'items.*.variants.*.cost_price' => ['nullable', 'numeric', 'min:0'],
+            'items.*.variants.*.sku' => ['nullable', 'string', 'max:255'],
+            'items.*.variants.*.unit' => ['nullable', 'string', 'max:40'],
+            'items.*.variants.*.attributes' => ['nullable', 'array'],
         ]);
 
         $shop = $this->ownedShop((int) $data['shop_id']);

@@ -38,7 +38,7 @@ class _ShopOwnerImportInvoiceScreenState
 
   String? _supplier;
   String? _invoiceNumber;
-  final List<_InvoiceLine> _lines = [];
+  final List<_InvoiceProduct> _lines = [];
 
   final TextEditingController _globalMarginController =
       TextEditingController(text: '20');
@@ -153,15 +153,17 @@ class _ShopOwnerImportInvoiceScreenState
         line.dispose();
       }
       _lines.clear();
-      final items = data['items'] as List<dynamic>? ?? [];
+      final items = (data['products'] ?? data['items']) as List<dynamic>? ?? [];
       final margin = _globalMargin;
       for (final raw in items) {
+        Map<String, dynamic>? map;
         if (raw is Map<String, dynamic>) {
-          _lines.add(_InvoiceLine.fromJson(raw, margin));
+          map = raw;
         } else if (raw is Map) {
-          _lines.add(
-            _InvoiceLine.fromJson(Map<String, dynamic>.from(raw), margin),
-          );
+          map = Map<String, dynamic>.from(raw);
+        }
+        if (map != null) {
+          _lines.add(_InvoiceProduct.fromJson(map, margin));
         }
       }
       setState(() {
@@ -193,9 +195,8 @@ class _ShopOwnerImportInvoiceScreenState
     final margin = _globalMargin;
     setState(() {
       for (final line in _lines) {
-        if (!line.priceManual) {
-          line.applyMargin(margin);
-        }
+        if (!line.include) continue;
+        line.applyMargin(margin);
       }
     });
   }
@@ -203,7 +204,9 @@ class _ShopOwnerImportInvoiceScreenState
   Future<void> _createProducts() async {
     final shopId = _shopId;
     final categoryId = _categoryId;
-    final selected = _lines.where((l) => l.include).toList();
+    final selected = _lines
+        .where((l) => l.include && l.selectedVariants.isNotEmpty)
+        .toList();
     if (shopId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Select a shop first.')),
@@ -293,7 +296,7 @@ class _ShopOwnerImportInvoiceScreenState
                     'No shop found for this account. Create a shop in admin first.',
                   ),
                 Text(
-                  'Upload a purchase invoice PDF. AI will read the goods list so you can set selling prices and create products together.',
+                  'Upload a purchase invoice PDF. Matching sizes of the same item are grouped as one product with variants. Set selling prices, then create them together.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -438,7 +441,7 @@ class _ShopOwnerImportInvoiceScreenState
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    '${_lines.where((l) => l.include).length} of ${_lines.length} selected',
+                    '${_lines.where((l) => l.include && l.selectedVariants.isNotEmpty).length} of ${_lines.length} products selected',
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
                   const SizedBox(height: 8),
@@ -453,7 +456,7 @@ class _ShopOwnerImportInvoiceScreenState
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : Text(
-                            'Create ${_lines.where((l) => l.include).length} products',
+                            'Create ${_lines.where((l) => l.include && l.selectedVariants.isNotEmpty).length} products',
                           ),
                   ),
                 ],
@@ -462,7 +465,7 @@ class _ShopOwnerImportInvoiceScreenState
     );
   }
 
-  Widget _lineCard(_InvoiceLine line) {
+  Widget _lineCard(_InvoiceProduct line) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -474,7 +477,12 @@ class _ShopOwnerImportInvoiceScreenState
               children: [
                 Checkbox(
                   value: line.include,
-                  onChanged: (v) => setState(() => line.include = v ?? false),
+                  onChanged: (v) => setState(() {
+                    line.include = v ?? false;
+                    for (final variant in line.variants) {
+                      variant.include = line.include;
+                    }
+                  }),
                 ),
                 Expanded(
                   child: TextField(
@@ -502,67 +510,108 @@ class _ShopOwnerImportInvoiceScreenState
               ),
             if ((line.brand ?? '').isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(left: 12, bottom: 8),
+                padding: const EdgeInsets.only(left: 12, bottom: 4),
                 child: Text(
                   'Brand: ${line.brand}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
-            Padding(
-              padding: const EdgeInsets.only(left: 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: line.qtyController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Qty',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: line.costController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Purchase rate',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      onChanged: (_) {
-                        if (!line.priceManual) {
-                          line.applyMargin(_globalMargin);
-                          setState(() {});
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: line.priceController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Selling price',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      onChanged: (_) => line.priceManual = true,
-                    ),
-                  ),
-                ],
+            if (line.variants.length > 1)
+              Padding(
+                padding: const EdgeInsets.only(left: 12, bottom: 4),
+                child: Text(
+                  '${line.variants.length} variants',
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
               ),
-            ),
+            ...line.variants.map((variant) => _variantRow(line, variant)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _variantRow(_InvoiceProduct product, _InvoiceVariant variant) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Checkbox(
+                value: variant.include,
+                onChanged: product.include
+                    ? (v) => setState(() => variant.include = v ?? false)
+                    : null,
+              ),
+              Expanded(
+                child: TextField(
+                  controller: variant.nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Variant / size',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(left: 40),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: variant.qtyController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Qty',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: variant.costController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Purchase rate',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    onChanged: (_) {
+                      if (!variant.priceManual) {
+                        variant.applyMargin(_globalMargin);
+                        setState(() {});
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: variant.priceController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Selling price',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    onChanged: (_) => variant.priceManual = true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -572,14 +621,11 @@ extension _FirstOrNullExt<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
 }
 
-class _InvoiceLine {
-  _InvoiceLine({
+class _InvoiceProduct {
+  _InvoiceProduct({
     required this.nameController,
-    required this.qtyController,
-    required this.costController,
-    required this.priceController,
+    required this.variants,
     this.brand,
-    this.sku,
     this.include = true,
     this.duplicate = false,
     this.duplicateMatch,
@@ -587,20 +633,26 @@ class _InvoiceLine {
     this.duplicateProductName,
   });
 
-  factory _InvoiceLine.fromJson(Map<String, dynamic> json, double margin) {
-    final cost = _toDouble(json['cost_price']);
-    final qty = _toInt(json['quantity']);
-    final selling = _sellingFrom(cost, margin);
+  factory _InvoiceProduct.fromJson(Map<String, dynamic> json, double margin) {
     final duplicate = json['duplicate'] == true;
-    return _InvoiceLine(
+    final rawVariants = json['variants'];
+    final variants = <_InvoiceVariant>[];
+    if (rawVariants is List && rawVariants.isNotEmpty) {
+      for (final raw in rawVariants) {
+        if (raw is Map) {
+          variants.add(
+            _InvoiceVariant.fromJson(Map<String, dynamic>.from(raw), margin),
+          );
+        }
+      }
+    }
+    if (variants.isEmpty) {
+      variants.add(_InvoiceVariant.fromJson(json, margin));
+    }
+    return _InvoiceProduct(
       nameController: TextEditingController(text: (json['name'] ?? '').toString()),
-      qtyController: TextEditingController(text: qty.toString()),
-      costController: TextEditingController(text: cost.toStringAsFixed(2)),
-      priceController: TextEditingController(text: selling.toStringAsFixed(2)),
-      brand: (json['brand'] as String?)?.trim().isEmpty == true
-          ? null
-          : json['brand'] as String?,
-      sku: json['sku'] as String?,
+      variants: variants,
+      brand: _nullableText(json['brand']),
       include: json['include'] == true || !duplicate,
       duplicate: duplicate,
       duplicateMatch: json['duplicate_match'] as String?,
@@ -610,17 +662,96 @@ class _InvoiceLine {
   }
 
   final TextEditingController nameController;
-  final TextEditingController qtyController;
-  final TextEditingController costController;
-  final TextEditingController priceController;
+  final List<_InvoiceVariant> variants;
   final String? brand;
-  final String? sku;
   bool include;
-  bool priceManual = false;
   final bool duplicate;
   final String? duplicateMatch;
   final int? duplicateProductId;
   final String? duplicateProductName;
+
+  List<_InvoiceVariant> get selectedVariants =>
+      variants.where((v) => v.include).toList();
+
+  void applyMargin(double margin) {
+    for (final variant in variants) {
+      if (!variant.priceManual) {
+        variant.applyMargin(margin);
+      }
+    }
+  }
+
+  Map<String, dynamic> toPayload() {
+    return {
+      'name': nameController.text.trim(),
+      'brand': brand,
+      'skip_if_duplicate': false,
+      'variants': selectedVariants.map((v) => v.toPayload()).toList(),
+    };
+  }
+
+  void dispose() {
+    nameController.dispose();
+    for (final variant in variants) {
+      variant.dispose();
+    }
+  }
+
+  static String? _nullableText(dynamic value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    if (text.isEmpty || text.toLowerCase() == 'null') return null;
+    return text;
+  }
+}
+
+class _InvoiceVariant {
+  _InvoiceVariant({
+    required this.nameController,
+    required this.qtyController,
+    required this.costController,
+    required this.priceController,
+    this.sku,
+    this.unit,
+    this.attributes = const {},
+  });
+
+  factory _InvoiceVariant.fromJson(Map<String, dynamic> json, double margin) {
+    final cost = _toDouble(json['cost_price']);
+    final qty = _toInt(json['quantity']);
+    final attributesRaw = json['attributes'];
+    final attributes = <String, String>{};
+    if (attributesRaw is Map) {
+      attributesRaw.forEach((key, value) {
+        if (value != null) {
+          attributes[key.toString()] = value.toString();
+        }
+      });
+    }
+    return _InvoiceVariant(
+      nameController: TextEditingController(
+        text: (json['name'] ?? json['spec'] ?? '').toString(),
+      ),
+      qtyController: TextEditingController(text: qty.toString()),
+      costController: TextEditingController(text: cost.toStringAsFixed(2)),
+      priceController: TextEditingController(
+        text: _sellingFrom(cost, margin).toStringAsFixed(2),
+      ),
+      sku: json['sku']?.toString(),
+      unit: json['unit']?.toString(),
+      attributes: attributes,
+    );
+  }
+
+  final TextEditingController nameController;
+  final TextEditingController qtyController;
+  final TextEditingController costController;
+  final TextEditingController priceController;
+  final String? sku;
+  final String? unit;
+  final Map<String, String> attributes;
+  bool include = true;
+  bool priceManual = false;
 
   void applyMargin(double margin) {
     final cost = double.tryParse(costController.text.trim()) ?? 0;
@@ -628,14 +759,21 @@ class _InvoiceLine {
   }
 
   Map<String, dynamic> toPayload() {
+    final attrs = Map<String, String>.from(attributes);
+    final unit = this.unit?.trim();
+    if (unit != null && unit.isNotEmpty) {
+      attrs.putIfAbsent('unit', () => unit);
+    }
     return {
-      'name': nameController.text.trim(),
-      'brand': brand,
+      'name': nameController.text.trim().isEmpty
+          ? null
+          : nameController.text.trim(),
       'quantity': int.tryParse(qtyController.text.trim()) ?? 0,
       'cost_price': double.tryParse(costController.text.trim()) ?? 0,
       'selling_price': double.tryParse(priceController.text.trim()) ?? 0,
       'sku': sku,
-      'skip_if_duplicate': false,
+      'unit': unit,
+      'attributes': attrs,
     };
   }
 
