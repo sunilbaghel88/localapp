@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Services\Sms\SmsSender;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -47,7 +48,7 @@ class CreateOrderWithItemsService
         $taxTotal = 0;
         $grandTotal = round($subtotal + $shippingTotal + $taxTotal - $discountTotal, 2);
 
-        return DB::transaction(function () use (
+        $order = DB::transaction(function () use (
             $customerUserId,
             $shopId,
             $addressId,
@@ -110,8 +111,12 @@ class CreateOrderWithItemsService
                 $variant->decrement('stock', $qty);
             }
 
-            return $order->fresh(['items', 'shop', 'user']);
+            return $order->fresh(['items', 'shop', 'user', 'address']);
         });
+
+        app(SmsSender::class)->notifyOrderPlaced($order);
+
+        return $order;
     }
 
     protected function resolveVariant(int $productId, ?int $variantId, int $shopId): ProductVariant

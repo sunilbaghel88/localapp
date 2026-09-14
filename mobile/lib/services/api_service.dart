@@ -282,6 +282,73 @@ class ApiService {
     return list.map((e) => Shop.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  Future<Shop> getMyShop(int id) async {
+    final r = await _dio.get('/shop/shops/$id');
+    return Shop.fromJson(r.data['shop'] as Map<String, dynamic>);
+  }
+
+  Future<List<ShopTypeOption>> getShopTypes() async {
+    final r = await _dio.get('/shop/shop-types');
+    final list = r.data['shop_types'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => ShopTypeOption.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<String>> getShopStates() async {
+    final r = await _dio.get('/shop/states');
+    final list = r.data['states'] as List<dynamic>? ?? [];
+    return list
+        .map((e) {
+          if (e is Map<String, dynamic>) {
+            return (e['name'] as String?) ?? '';
+          }
+          return e.toString();
+        })
+        .where((name) => name.isNotEmpty)
+        .toList();
+  }
+
+  Future<Shop> createShop(Map<String, dynamic> payload) async {
+    final r = await _dio.post('/shop/shops', data: payload);
+    return Shop.fromJson(r.data['shop'] as Map<String, dynamic>);
+  }
+
+  Future<Shop> updateShop(int id, Map<String, dynamic> payload) async {
+    final r = await _dio.patch('/shop/shops/$id', data: payload);
+    return Shop.fromJson(r.data['shop'] as Map<String, dynamic>);
+  }
+
+  Future<Shop> uploadShopDocumentBytes(
+    int shopId, {
+    required String field,
+    required Uint8List bytes,
+    required String filename,
+  }) async {
+    final lower = filename.toLowerCase();
+    final mediaType = lower.endsWith('.pdf')
+        ? MediaType('application', 'pdf')
+        : lower.endsWith('.png')
+            ? MediaType('image', 'png')
+            : lower.endsWith('.webp')
+                ? MediaType('image', 'webp')
+                : MediaType('image', 'jpeg');
+    final formData = FormData.fromMap({
+      'field': field,
+      'file': MultipartFile.fromBytes(
+        bytes,
+        filename: filename,
+        contentType: mediaType,
+      ),
+    });
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/shops/$shopId/documents',
+      data: formData,
+      options: Options(receiveTimeout: const Duration(seconds: 60)),
+    );
+    return Shop.fromJson(r.data!['shop'] as Map<String, dynamic>);
+  }
+
   Future<List<Category>> getShopCategories() async {
     final r = await _dio.get('/shop/categories');
     final list = r.data['categories'] as List<dynamic>? ?? [];

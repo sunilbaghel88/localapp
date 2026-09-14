@@ -135,6 +135,7 @@ class CheckoutController extends Controller
                 return $item->variant->product->shop_id;
             });
 
+            $createdOrders = [];
             foreach ($itemsByShop as $shopId => $items) {
                 // Calculate totals for this shop
                 $subtotal = $items->sum(function ($item) {
@@ -181,6 +182,8 @@ class CheckoutController extends Controller
                     // Update stock
                     $cartItem->variant->decrement('stock', $cartItem->quantity);
                 }
+
+                $createdOrders[] = $order;
             }
 
             // Clear cart
@@ -188,10 +191,12 @@ class CheckoutController extends Controller
 
             DB::commit();
 
-            // Redirect to first order success page (or create a combined success page)
-            $firstOrder = Order::where('user_id', Auth::id())
-                ->latest()
-                ->first();
+            $sms = app(\App\Services\Sms\SmsSender::class);
+            foreach ($createdOrders as $placed) {
+                $sms->notifyOrderPlaced($placed->loadMissing(['items', 'shop', 'user', 'address']));
+            }
+
+            $firstOrder = $createdOrders[0] ?? Order::where('user_id', Auth::id())->latest()->first();
 
             return redirect()->route('checkout.success', $firstOrder)->with('success', 'Order placed successfully!');
         } catch (\Exception $e) {

@@ -26,6 +26,8 @@ import 'screens/shop_owner_order_detail_screen.dart';
 import 'screens/shop_owner_create_order_screen.dart';
 import 'screens/shop_owner_reward_redemptions_screen.dart';
 import 'screens/shop_owner_user_types_screen.dart';
+import 'screens/shop_owner_shops_screen.dart';
+import 'screens/shop_owner_shop_form_screen.dart';
 import 'screens/partner_rewards_screen.dart';
 import 'screens/partner_create_order_screen.dart';
 
@@ -68,11 +70,23 @@ GoRouter createRouter(BuildContext context) {
         final canAccessOwner =
             permissions.contains('view_any_product') ||
             permissions.contains('view_any_order') ||
+            permissions.contains('view_any_shop') ||
+            permissions.contains('create_shop') ||
             (auth.user?.canAssignUserTypes ?? false);
         if (!canAccessOwner) return '/home';
         if (state.matchedLocation == '/owner/user-types' &&
             !(auth.user?.canAssignUserTypes ?? false)) {
           return '/home';
+        }
+        if (state.matchedLocation.startsWith('/owner/shops') &&
+            !permissions.contains('view_any_shop') &&
+            !permissions.contains('create_shop') &&
+            !permissions.contains('update_shop')) {
+          return '/home';
+        }
+        if (state.matchedLocation == '/owner/shops/create' &&
+            !permissions.contains('create_shop')) {
+          return '/owner/shops';
         }
         if (state.matchedLocation == '/owner/orders/create' &&
             !permissions.contains('create_order')) {
@@ -122,6 +136,22 @@ GoRouter createRouter(BuildContext context) {
       ),
       GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
       GoRoute(path: '/addresses', builder: (_, _) => const AddressesScreen()),
+      GoRoute(
+        path: '/owner/shops',
+        builder: (context, state) => const ShopOwnerShopsScreen(),
+      ),
+      GoRoute(
+        path: '/owner/shops/create',
+        builder: (context, state) =>
+            const ShopOwnerShopFormScreen(shopId: null),
+      ),
+      GoRoute(
+        path: '/owner/shops/:id/edit',
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
+          return ShopOwnerShopFormScreen(shopId: id);
+        },
+      ),
       GoRoute(
         path: '/owner/products',
         builder: (context, state) => const ShopOwnerProductsScreen(),

@@ -224,6 +224,8 @@ class CreateOrder extends CreateRecord
                 $variant->decrement('stock', $qty);
             }
         });
+
+        app(\App\Services\Sms\SmsSender::class)->notifyOrderPlaced($order->fresh(['items', 'shop', 'user', 'address']));
     }
 
     protected function getRedirectUrl(): string

@@ -36,10 +36,12 @@ class SmsSettings extends Page implements HasForms
 
         $this->form->fill([
             'is_enabled' => $setting->is_enabled,
+            'order_sms_enabled' => $setting->order_sms_enabled,
             'endpoint' => $setting->endpoint,
             'http_method' => $setting->http_method,
             'payload_params' => $setting->payload_params ?? [],
             'message_template' => $setting->message_template,
+            'order_message_template' => $setting->order_message_template,
             'otp_ttl_minutes' => $setting->otp_ttl_minutes,
         ]);
     }
@@ -49,11 +51,14 @@ class SmsSettings extends Page implements HasForms
         return $form
             ->schema([
                 Forms\Components\Section::make('Provider')
-                    ->description('Configure the global SMS gateway used for OTP login and registration. Use placeholders {{mobile}}, {{message}}, and {{otp}} in payload values.')
+                    ->description('Configure the global SMS gateway used for OTP and order alerts. Use placeholders {{mobile}} and {{message}} in payload values. OTP also supports {{otp}}.')
                     ->schema([
                         Forms\Components\Toggle::make('is_enabled')
                             ->label('Enable SMS sending')
-                            ->helperText('When disabled, OTP SMS will not be sent.'),
+                            ->helperText('Master switch. When disabled, neither OTP nor order SMS will be sent.'),
+                        Forms\Components\Toggle::make('order_sms_enabled')
+                            ->label('Send SMS when an order is created')
+                            ->helperText('Customer receives a confirmation if they have a mobile number. Order create still succeeds if SMS fails.'),
                         Forms\Components\TextInput::make('endpoint')
                             ->label('Endpoint URL')
                             ->url()
@@ -81,6 +86,12 @@ class SmsSettings extends Page implements HasForms
                             ->maxLength(255)
                             ->helperText('Use {{otp}} for the code. Example: Your OTP is {{otp}}.')
                             ->default('Your OTP is {{otp}}.'),
+                        Forms\Components\Textarea::make('order_message_template')
+                            ->label('Order confirmation template')
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->helperText('Placeholders: {{order_id}}, {{shop}}, {{total}}, {{customer}}, {{items_count}}, {{mobile}}.')
+                            ->default('Your order #{{order_id}} at {{shop}} is placed. Amount Rs {{total}}. Thank you.'),
                         Forms\Components\TextInput::make('otp_ttl_minutes')
                             ->label('OTP expiry (minutes)')
                             ->numeric()
@@ -100,10 +111,12 @@ class SmsSettings extends Page implements HasForms
 
         $setting->update([
             'is_enabled' => (bool) ($data['is_enabled'] ?? false),
+            'order_sms_enabled' => (bool) ($data['order_sms_enabled'] ?? true),
             'endpoint' => $data['endpoint'] ?? null,
             'http_method' => strtoupper((string) ($data['http_method'] ?? 'GET')),
             'payload_params' => $data['payload_params'] ?? [],
             'message_template' => $data['message_template'] ?? 'Your OTP is {{otp}}.',
+            'order_message_template' => $data['order_message_template'] ?? 'Your order #{{order_id}} at {{shop}} is placed. Amount Rs {{total}}. Thank you.',
             'otp_ttl_minutes' => (int) ($data['otp_ttl_minutes'] ?? 10),
         ]);
 

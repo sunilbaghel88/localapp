@@ -146,6 +146,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final isPartner = user?.isPartner ?? false;
     final canCreateOrder =
         user?.permissions?.contains('create_order') ?? false;
+    final canManageShops =
+        user?.permissions?.contains('view_any_shop') == true ||
+        user?.permissions?.contains('create_shop') == true;
 
     return MainScaffold(
       body: CustomScrollView(
@@ -175,6 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _ActionGrid(
                     isPartner: isPartner,
                     canCreateOrder: canCreateOrder,
+                    canManageShops: canManageShops,
                   ),
                 ],
               ),
@@ -475,10 +479,12 @@ class _ActionGrid extends StatelessWidget {
   const _ActionGrid({
     required this.isPartner,
     required this.canCreateOrder,
+    required this.canManageShops,
   });
 
   final bool isPartner;
   final bool canCreateOrder;
+  final bool canManageShops;
 
   @override
   Widget build(BuildContext context) {
@@ -488,6 +494,12 @@ class _ActionGrid extends StatelessWidget {
         icon: Icons.shopping_cart_outlined,
         route: '/orders',
       ),
+      if (canManageShops)
+        const _HomeAction(
+          label: 'MANAGE SHOPS',
+          icon: Icons.storefront_outlined,
+          route: '/owner/shops',
+        ),
       if (canCreateOrder || isPartner)
         _HomeAction(
           label: 'CREATE ORDER',

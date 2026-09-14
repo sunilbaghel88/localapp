@@ -49,5 +49,9 @@
 	<string>The microphone is used to add products to an order by speaking.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Speech recognition is used to turn what you say into order items.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>The camera is used to take photos of your shop and documents.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Photos are used for shop front pictures and documents.</string>
 </dict>
 </plist>

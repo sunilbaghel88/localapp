@@ -200,6 +200,11 @@ class CheckoutController extends Controller
             $cart->items()->delete();
             DB::commit();
 
+            $sms = app(\App\Services\Sms\SmsSender::class);
+            foreach ($createdOrders as $placed) {
+                $sms->notifyOrderPlaced($placed->loadMissing(['items', 'shop', 'user', 'address']));
+            }
+
             return response()->json([
                 'message' => 'Order placed successfully.',
                 'orders' => $createdOrders,

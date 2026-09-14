@@ -16,6 +16,8 @@ class AppDrawer extends StatelessWidget {
     final permissions = user?.permissions ?? const [];
     final canManageProducts = permissions.contains('view_any_product');
     final canManageOrders = permissions.contains('view_any_order');
+    final canManageShops = permissions.contains('view_any_shop') ||
+        permissions.contains('create_shop');
     final canCreateOrder = permissions.contains('create_order');
     final isPartner = user?.isPartner ?? false;
     final canAssignUserTypes = user?.canAssignUserTypes ?? false;
@@ -106,6 +108,7 @@ class AppDrawer extends StatelessWidget {
                   ),
                   if (canManageProducts ||
                       canManageOrders ||
+                      canManageShops ||
                       canCreateOrder ||
                       isPartner ||
                       canAssignUserTypes) ...[
@@ -121,6 +124,14 @@ class AppDrawer extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (canManageShops)
+                      _item(
+                        context,
+                        icon: Icons.storefront_outlined,
+                        label: 'Manage Shops',
+                        route: '/owner/shops',
+                        currentPath: currentPath,
+                      ),
                     if (canManageProducts)
                       _item(
                         context,

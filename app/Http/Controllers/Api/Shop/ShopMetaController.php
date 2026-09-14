@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Shop;
+use App\Models\ShopType;
+use App\Models\State;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,11 +17,37 @@ class ShopMetaController extends Controller
     {
         $shops = Shop::query()
             ->where('user_id', Auth::id())
+            ->with('shopType:id,name,slug')
             ->orderBy('name')
             ->get();
 
         return response()->json([
             'shops' => $shops,
+        ]);
+    }
+
+    public function shopTypes(): JsonResponse
+    {
+        $shopTypes = ShopType::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug']);
+
+        return response()->json([
+            'shop_types' => $shopTypes,
+        ]);
+    }
+
+    public function states(): JsonResponse
+    {
+        $states = State::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json([
+            'states' => $states,
         ]);
     }
 

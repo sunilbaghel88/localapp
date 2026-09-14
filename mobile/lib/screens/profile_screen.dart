@@ -31,6 +31,8 @@ class ProfileScreen extends StatelessWidget {
     final permissions = user.permissions ?? const [];
     final canManageProducts = permissions.contains('view_any_product');
     final canManageOrders = permissions.contains('view_any_order');
+    final canManageShops = permissions.contains('view_any_shop') ||
+        permissions.contains('create_shop');
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: ListView(
@@ -61,6 +63,13 @@ class ProfileScreen extends StatelessWidget {
             onTap: () =>
                 context.push(canManageOrders ? '/owner/orders' : '/orders'),
           ),
+          if (canManageShops)
+            ListTile(
+              leading: const Icon(Icons.storefront_outlined),
+              title: const Text('Manage Shops'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/owner/shops'),
+            ),
           if (canManageProducts) ...[
             const SizedBox(height: 16),
             ListTile(

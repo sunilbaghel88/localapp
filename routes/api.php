@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\UserTypeController;
 use App\Http\Controllers\Api\Shop\ShopMetaController;
+use App\Http\Controllers\Api\Shop\ShopOwnerShopController;
 use App\Http\Controllers\Api\Shop\ShopProductController;
 use App\Http\Controllers\Api\Shop\ShopProductImageController;
 use App\Http\Controllers\Api\Shop\ShopPurchaseInvoiceController;
@@ -63,6 +64,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('shop')->group(function () {
         // Metadata
         Route::get('/shops', [ShopMetaController::class, 'shops']);
+        Route::get('/shop-types', [ShopMetaController::class, 'shopTypes']);
+        Route::get('/states', [ShopMetaController::class, 'states']);
+        Route::post('/shops', [ShopOwnerShopController::class, 'store']);
+        Route::get('/shops/{shop}', [ShopOwnerShopController::class, 'show']);
+        Route::patch('/shops/{shop}', [ShopOwnerShopController::class, 'update']);
+        Route::post('/shops/{shop}/documents', [ShopOwnerShopController::class, 'uploadDocument']);
         Route::get('/categories', [ShopMetaController::class, 'categories']);
         Route::get('/brands', [ShopMetaController::class, 'brands']);
 

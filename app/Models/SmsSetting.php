@@ -8,10 +8,12 @@ class SmsSetting extends Model
 {
     protected $fillable = [
         'is_enabled',
+        'order_sms_enabled',
         'endpoint',
         'http_method',
         'payload_params',
         'message_template',
+        'order_message_template',
         'otp_ttl_minutes',
     ];
 
@@ -19,6 +21,7 @@ class SmsSetting extends Model
     {
         return [
             'is_enabled' => 'boolean',
+            'order_sms_enabled' => 'boolean',
             'payload_params' => 'array',
             'otp_ttl_minutes' => 'integer',
         ];
@@ -33,7 +36,8 @@ class SmsSetting extends Model
         }
 
         return static::query()->create([
-            'is_enabled' => false,
+                'is_enabled' => false,
+            'order_sms_enabled' => true,
             'endpoint' => 'http://sms.endmile.in/WebServiceSMS.aspx',
             'http_method' => 'GET',
             'payload_params' => [
@@ -45,6 +49,7 @@ class SmsSetting extends Model
                 'mtype' => 'N',
             ],
             'message_template' => 'Your OTP is {{otp}}.',
+            'order_message_template' => 'Your order #{{order_id}} at {{shop}} is placed. Amount Rs {{total}}. Thank you.',
             'otp_ttl_minutes' => 10,
         ]);
     }
