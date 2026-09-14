@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../models/shop.dart';
 import '../services/api_service.dart';
+import '../widgets/voice_order_prompt.dart';
 
 class ShopOwnerCreateOrderScreen extends StatefulWidget {
   const ShopOwnerCreateOrderScreen({super.key});
@@ -21,7 +22,7 @@ class _OrderLineEditor {
 
   factory _OrderLineEditor.fromAi(Map<String, dynamic> item) {
     final line = _OrderLineEditor();
-    line.productId = item['product_id'] as int?;
+    line.productId = aiInt(item['product_id']);
     final name = item['product_name'] as String? ?? '';
     final brand = item['brand'] as String?;
     line.productSearchController.text =
@@ -30,11 +31,11 @@ class _OrderLineEditor {
     final vars = (item['variants'] as List<dynamic>? ?? []).map((e) => e as Map<String, dynamic>).toList();
     line.variants = vars;
     line.selectedProduct = {'id': line.productId, 'name': name, 'variants': vars};
-    final vid = item['variant_id'];
+    final vid = aiInt(item['variant_id']);
     if (vid != null) {
-      line.variantId = vid as int;
+      line.variantId = vid;
     } else if (vars.length == 1) {
-      line.variantId = vars.first['id'] as int;
+      line.variantId = aiInt(vars.first['id']);
     }
     return line;
   }
@@ -385,17 +386,19 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
       final missing = (json['missing'] as List<dynamic>? ?? []).map((e) => e.toString()).toList();
 
       if (!mounted) return;
-      if (items.isNotEmpty) {
+      final resolved = await resolveAiSuggestItems(context, items);
+      if (!mounted) return;
+      if (resolved.isNotEmpty) {
         _removeEmptyLinesForAi();
-        final newLines = items.map(_OrderLineEditor.fromAi).toList();
+        final newLines = resolved.map(_OrderLineEditor.fromAi).toList();
         setState(() {
           _lines.addAll(newLines);
         });
       }
 
-      var msg = items.isEmpty
+      var msg = resolved.isEmpty
           ? 'No products matched your request.'
-          : 'Added ${items.length} item(s).';
+          : 'Added ${resolved.length} item(s).';
       if (missing.isNotEmpty) {
         msg += ' Not found: ${missing.join(', ')}';
       }
@@ -1243,20 +1246,15 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
             ),
             const SizedBox(height: 4),
             Text(
-              'Example: 2 Havells 5A MCB and 1 Finolex 1.5mm wire',
+              'Type or speak what to add. Example: two 32 ampere MCB Havells',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.outline,
                   ),
             ),
             const SizedBox(height: 8),
-            TextField(
+            VoiceOrderPrompt(
               controller: _aiPromptController,
-              minLines: 2,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                hintText: 'Type what you want to add',
-                border: OutlineInputBorder(),
-              ),
+              enabled: !_aiBusy,
             ),
             const SizedBox(height: 8),
             FilledButton.icon(

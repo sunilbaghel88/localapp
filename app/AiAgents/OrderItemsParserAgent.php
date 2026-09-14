@@ -11,20 +11,22 @@ class OrderItemsParserAgent extends Agent
     public function instructions()
     {
         return <<<'PROMPT'
-You convert a shop owner's free-form order sentence into structured line items.
+You convert a shop owner's or partner's spoken/typed order sentence into structured line items.
 
 Return ONLY valid JSON. No markdown. No extra text.
 
 Output format:
 [
-  { "quantity": 2, "term": "Havells 5A MCB" },
-  { "quantity": 1, "term": "Finolex 1.5mm wire (1 coil)" }
+  { "quantity": 2, "term": "Havells MCB 32A" },
+  { "quantity": 1, "term": "Finolex 1.5mm wire" }
 ]
 
 Rules:
-- Keep "term" short and searchable (brand + item + key specs).
+- Keep "term" short and searchable: brand + item type + compact spec.
+- Convert spoken numbers to digits: two/do → 2, three/teen → 3.
+- Compact specs: "32 ampere" / "32 amp" / "32A" → "32A"; "1.5 mm" → "1.5mm"; "3/4 inch" → "3/4inch".
 - If quantity is unclear, use 1.
-- Split combined requests (using "and", commas, etc.) into multiple items.
+- Split combined requests (using "and", commas, plus) into multiple items.
 PROMPT;
     }
 
@@ -33,4 +35,3 @@ PROMPT;
         return $message;
     }
 }
-

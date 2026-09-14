@@ -6,6 +6,8 @@ use App\Filament\Resources\OrderResource;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\User;
+use App\Services\Orders\OrderOnBehalfAiService;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
@@ -42,45 +44,40 @@ class CreateOrder extends CreateRecord
             return;
         }
 
-        $requested = $this->parsePromptIntoItems($prompt);
-        if ($requested === []) {
+        $user = auth()->user();
+        if (! $user instanceof User) {
+            Notification::make()
+                ->title('Please sign in again')
+                ->danger()
+                ->send();
+            return;
+        }
+
+        try {
+            $result = app(OrderOnBehalfAiService::class)->suggest((int) $shopId, $prompt, $user);
+        } catch (ValidationException $e) {
             Notification::make()
                 ->title('Could not understand the text')
-                ->body('Try something like: "2 Havells MCB 5A, 1 Finolex wire 1.5mm"')
+                ->body($e->getMessage())
                 ->danger()
                 ->send();
             return;
         }
 
         $orderItems = [];
-        $missing = [];
-
-        foreach ($requested as $req) {
-            $term = $req['term'];
-            $qty = max(1, (int) $req['quantity']);
-
-            $match = $this->findBestProductMatch(shopId: (int) $shopId, term: $term);
-
-            if (! $match) {
-                $missing[] = $term;
-                continue;
-            }
-
-            $product = Product::with('brand')->find($match['product_id']);
-            $variant = ProductVariant::find($match['product_variant_id']);
-
-            $unitPrice = $variant ? (float) $variant->price : null;
-            $lineTotal = $unitPrice !== null ? $unitPrice * $qty : null;
-
+        foreach ($result['data'] as $row) {
+            $qty = max(1, (int) ($row['quantity'] ?? 1));
+            $unitPrice = isset($row['price']) ? (float) $row['price'] : null;
             $orderItems[] = [
-                'product_id' => $match['product_id'],
-                'product_variant_id' => $match['product_variant_id'],
+                'product_id' => $row['product_id'],
+                'product_variant_id' => $row['variant_id'],
                 'quantity' => $qty,
-                'brand_name' => $product?->brand?->name,
+                'brand_name' => $row['brand'] ?? null,
                 'unit_price' => $unitPrice,
-                'line_total' => $lineTotal,
+                'line_total' => $unitPrice !== null ? $unitPrice * $qty : null,
             ];
         }
+        $missing = $result['missing'] ?? [];
 
         if ($orderItems === []) {
             Notification::make()
@@ -131,126 +128,6 @@ class CreateOrder extends CreateRecord
             ->body($message)
             ->success()
             ->send();
-    }
-
-    /**
-     * @return array<int, array{quantity:int, term:string}>
-     */
-    protected function parsePromptIntoItems(string $prompt): array
-    {
-        if (class_exists(\LarAgent\Agent::class) && class_exists(\App\AiAgents\OrderItemsParserAgent::class)) {
-            try {
-                /** @var string $raw */
-                $raw = \App\AiAgents\OrderItemsParserAgent::forUser(auth()->user())->respond($prompt);
-                $decoded = json_decode($raw, true);
-                if (is_array($decoded)) {
-                    return collect($decoded)
-                        ->filter(fn ($row) => is_array($row) && isset($row['term']))
-                        ->map(fn ($row) => [
-                            'quantity' => max(1, (int) ($row['quantity'] ?? 1)),
-                            'term' => trim((string) ($row['term'] ?? '')),
-                        ])
-                        ->filter(fn ($row) => $row['term'] !== '')
-                        ->values()
-                        ->all();
-                }
-            } catch (\Throwable $e) {
-                Notification::make()
-                    ->title('AI error')
-                    ->body($e->getMessage())
-                    ->danger()
-                    ->send();
-            }
-        }
-
-        $normalized = preg_replace('/\s+/', ' ', trim($prompt)) ?? $prompt;
-        $normalized = preg_replace('/^add\s+/i', '', $normalized) ?? $normalized;
-
-        // Split by " and " / "," / "&"
-        $parts = preg_split('/\s*(?:,|&|\band\b|\+)\s*/i', $normalized) ?: [];
-        $items = [];
-
-        foreach ($parts as $part) {
-            $part = trim((string) $part);
-            if ($part === '') {
-                continue;
-            }
-
-            // Match: "2 Havells 5A MCB", or "1 coil Finolex wire"
-            if (preg_match('/^(?<qty>\d+)\s+(?<term>.+)$/u', $part, $m)) {
-                $items[] = [
-                    'quantity' => (int) $m['qty'],
-                    'term' => trim((string) $m['term']),
-                ];
-                continue;
-            }
-
-            $items[] = [
-                'quantity' => 1,
-                'term' => $part,
-            ];
-        }
-
-        return array_values(array_filter($items, fn ($i) => ! empty($i['term'])));
-    }
-
-    /**
-     * @return array{product_id:int, product_variant_id:int}|null
-     */
-    protected function findBestProductMatch(int $shopId, string $term): ?array
-    {
-        $term = trim($term);
-        if ($term === '') {
-            return null;
-        }
-
-        $product = Product::query()
-            ->where('shop_id', $shopId)
-            ->whereRaw('LOWER(name) like ?', ['%'.strtolower($term).'%'])
-            ->orderBy('name')
-            ->first();
-
-        if (! $product) {
-            // try tokenized fallback: match any significant tokens
-            $tokens = collect(preg_split('/\s+/', strtolower($term)) ?: [])
-                ->map(fn ($t) => trim($t))
-                ->filter(fn ($t) => $t !== '' && strlen($t) >= 3)
-                ->values()
-                ->all();
-
-            if ($tokens === []) {
-                return null;
-            }
-
-            $product = Product::query()
-                ->where('shop_id', $shopId)
-                ->where(function ($q) use ($tokens) {
-                    foreach ($tokens as $t) {
-                        $q->orWhereRaw('LOWER(name) like ?', ['%'.$t.'%']);
-                    }
-                })
-                ->orderBy('name')
-                ->first();
-        }
-
-        if (! $product) {
-            return null;
-        }
-
-        $variant = ProductVariant::query()
-            ->where('product_id', $product->id)
-            ->where('is_active', true)
-            ->orderBy('id')
-            ->first();
-
-        if (! $variant) {
-            return null;
-        }
-
-        return [
-            'product_id' => (int) $product->id,
-            'product_variant_id' => (int) $variant->id,
-        ];
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array
