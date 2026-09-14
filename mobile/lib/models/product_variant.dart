@@ -5,6 +5,7 @@ class ProductVariant {
   final String? name;
   final int stock;
   final double price;
+  final double? costPrice;
   final double? compareAtPrice;
   final Map<String, dynamic>? attributes;
   final bool isActive;
@@ -16,6 +17,7 @@ class ProductVariant {
     this.name,
     required this.stock,
     required this.price,
+    this.costPrice,
     this.compareAtPrice,
     this.attributes,
     this.isActive = true,
@@ -44,6 +46,7 @@ class ProductVariant {
       name: json['name'] as String?,
       stock: (json['stock'] as num?)?.toInt() ?? 0,
       price: _toDouble(json['price']),
+      costPrice: json['cost_price'] == null ? null : _toDouble(json['cost_price']),
       compareAtPrice: json['compare_at_price'] == null ? null : _toDouble(json['compare_at_price']),
       attributes: _toMap(json['attributes']),
       isActive: json['is_active'] != false,

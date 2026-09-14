@@ -43,6 +43,10 @@ class VariantsRelationManager extends RelationManager
                     ->numeric()
                     ->required()
                     ->prefix('₹'),
+                Forms\Components\TextInput::make('cost_price')
+                    ->label('Last purchase rate')
+                    ->numeric()
+                    ->prefix('₹'),
                 Forms\Components\TextInput::make('compare_at_price')
                     ->label('Compare at Price')
                     ->numeric()

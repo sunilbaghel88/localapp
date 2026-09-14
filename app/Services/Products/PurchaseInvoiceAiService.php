@@ -5,8 +5,11 @@ namespace App\Services\Products;
 use App\Models\Brand;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\PurchaseInvoice;
+use App\Models\PurchaseInvoiceItem;
 use App\Models\Shop;
 use App\Models\User;
+use Carbon\Carbon;
 use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -63,37 +66,28 @@ class PurchaseInvoiceAiService
                 if (! is_array($variant)) {
                     continue;
                 }
-                $variantName = $this->nullableString($variant['name'] ?? null)
-                    ?? $this->nullableString($variant['spec'] ?? null);
-                $cost = $this->toMoney($variant['cost_price'] ?? 0);
-                $qty = max(1, (int) ($variant['quantity'] ?? 1));
-                $attributes = is_array($variant['attributes'] ?? null) ? $variant['attributes'] : [];
-                $variants[] = [
-                    'name' => $variantName,
-                    'quantity' => $qty,
-                    'unit' => $this->nullableString($variant['unit'] ?? null) ?? 'pcs',
-                    'cost_price' => $cost,
-                    'sku' => $this->nullableString($variant['sku'] ?? null),
-                    'attributes' => $this->normalizeAttributes($attributes),
-                ];
+                $variants[] = $this->normalizeExtractedLine($variant, $row);
             }
 
             if ($variants === []) {
-                $variants[] = [
-                    'name' => null,
-                    'quantity' => max(1, (int) ($row['quantity'] ?? 1)),
-                    'unit' => $this->nullableString($row['unit'] ?? null) ?? 'pcs',
-                    'cost_price' => $this->toMoney($row['cost_price'] ?? 0),
-                    'sku' => $this->nullableString($row['sku'] ?? null),
-                    'attributes' => [],
-                ];
+                $variants[] = $this->normalizeExtractedLine($row, $row);
             }
 
             $match = $this->findDuplicate($shop->id, $name, $row['matched_existing_name'] ?? null);
+            $hsn = $this->nullableString($row['hsn_code'] ?? null);
+            if ($hsn === null) {
+                foreach ($variants as $variant) {
+                    if (! empty($variant['hsn_code'])) {
+                        $hsn = $variant['hsn_code'];
+                        break;
+                    }
+                }
+            }
 
             $products[] = [
                 'name' => Str::limit($name, 255, ''),
                 'brand' => $this->nullableString($row['brand'] ?? null),
+                'hsn_code' => $hsn,
                 'variants' => $variants,
                 'duplicate' => $match !== null,
                 'duplicate_match' => $match['match'] ?? null,
@@ -109,9 +103,17 @@ class PurchaseInvoiceAiService
             ]);
         }
 
+        $header = $this->normalizeInvoiceHeader($parsed, $products);
+
         return [
-            'supplier' => $this->nullableString($parsed['supplier'] ?? null),
-            'invoice_number' => $this->nullableString($parsed['invoice_number'] ?? null),
+            'supplier' => $header['supplier_name'],
+            'supplier_name' => $header['supplier_name'],
+            'supplier_gstin' => $header['supplier_gstin'],
+            'invoice_number' => $header['invoice_number'],
+            'invoice_date' => $header['invoice_date'],
+            'cgst_amount' => $header['cgst_amount'],
+            'sgst_amount' => $header['sgst_amount'],
+            'igst_amount' => $header['igst_amount'],
             'products' => $products,
             'items' => $products,
         ];
@@ -119,7 +121,12 @@ class PurchaseInvoiceAiService
 
     /**
      * @param  array<int, array<string, mixed>>  $items
-     * @return array{created: array<int, array<string, mixed>>, skipped: array<int, array<string, mixed>>}
+     * @param  array<string, mixed>  $invoiceMeta
+     * @return array{
+     *   created: array<int, array<string, mixed>>,
+     *   skipped: array<int, array<string, mixed>>,
+     *   purchase_invoice: ?array<string, mixed>
+     * }
      */
     public function bulkCreate(
         Shop $shop,
@@ -127,11 +134,14 @@ class PurchaseInvoiceAiService
         int $categoryId,
         string $status,
         array $items,
+        array $invoiceMeta = [],
     ): array {
         $created = [];
         $skipped = [];
+        $invoice = null;
+        $invoiceItems = [];
 
-        DB::transaction(function () use ($shop, $user, $categoryId, $status, $items, &$created, &$skipped) {
+        DB::transaction(function () use ($shop, $user, $categoryId, $status, $items, $invoiceMeta, &$created, &$skipped, &$invoice, &$invoiceItems) {
             foreach ($items as $row) {
                 $name = trim((string) ($row['name'] ?? ''));
                 if ($name === '') {
@@ -154,6 +164,7 @@ class PurchaseInvoiceAiService
 
                 $brandId = $this->resolveBrandId($row['brand'] ?? null, $user);
                 $slug = $this->uniqueProductSlug(Str::slug($name) ?: 'product');
+                $productHsn = $this->normalizeHsn($row['hsn_code'] ?? null);
 
                 $incomingVariants = $row['variants'] ?? [];
                 if (! is_array($incomingVariants) || $incomingVariants === []) {
@@ -162,8 +173,26 @@ class PurchaseInvoiceAiService
                         'quantity' => $row['quantity'] ?? 0,
                         'selling_price' => $row['selling_price'] ?? 0,
                         'sku' => $row['sku'] ?? null,
+                        'hsn_code' => $row['hsn_code'] ?? null,
+                        'list_price' => $row['list_price'] ?? null,
+                        'discount_percent' => $row['discount_percent'] ?? null,
+                        'cost_price' => $row['cost_price'] ?? 0,
+                        'cgst_amount' => $row['cgst_amount'] ?? 0,
+                        'sgst_amount' => $row['sgst_amount'] ?? 0,
+                        'igst_amount' => $row['igst_amount'] ?? 0,
                         'attributes' => [],
                     ]];
+                }
+
+                if ($productHsn === null) {
+                    foreach ($incomingVariants as $candidate) {
+                        if (is_array($candidate)) {
+                            $productHsn = $this->normalizeHsn($candidate['hsn_code'] ?? null);
+                            if ($productHsn !== null) {
+                                break;
+                            }
+                        }
+                    }
                 }
 
                 $product = Product::create([
@@ -174,6 +203,7 @@ class PurchaseInvoiceAiService
                     'slug' => $slug,
                     'description' => null,
                     'status' => $status,
+                    'hsn_code' => $productHsn,
                 ]);
 
                 $createdVariants = [];
@@ -181,6 +211,7 @@ class PurchaseInvoiceAiService
                     if (! is_array($variant)) {
                         continue;
                     }
+                    $pricing = $this->resolveLinePricing($variant, $row);
                     $variantName = $this->nullableString($variant['name'] ?? null);
                     $sku = $this->uniqueSku(
                         $shop->id,
@@ -195,22 +226,42 @@ class PurchaseInvoiceAiService
                         $attributes['unit'] = $unit;
                     }
 
-                    ProductVariant::create([
+                    $createdVariant = ProductVariant::create([
                         'product_id' => $product->id,
                         'sku' => $sku,
                         'name' => $variantName,
                         'stock' => $qty,
                         'price' => $price,
+                        'cost_price' => $pricing['cost_price'],
                         'compare_at_price' => null,
                         'attributes' => $attributes,
                         'is_active' => true,
                     ]);
 
                     $createdVariants[] = [
+                        'id' => $createdVariant->id,
                         'sku' => $sku,
                         'name' => $variantName,
                         'stock' => $qty,
                         'price' => $price,
+                        'cost_price' => $pricing['cost_price'],
+                    ];
+
+                    $invoiceItems[] = [
+                        'product_id' => $product->id,
+                        'product_variant_id' => $createdVariant->id,
+                        'name' => $product->name,
+                        'variant_name' => $variantName,
+                        'hsn_code' => $pricing['hsn_code'] ?? $productHsn,
+                        'unit' => $unit,
+                        'quantity' => $qty,
+                        'list_price' => $pricing['list_price'],
+                        'discount_percent' => $pricing['discount_percent'],
+                        'cost_price' => $pricing['cost_price'],
+                        'selling_price' => $price,
+                        'cgst_amount' => $pricing['cgst_amount'],
+                        'sgst_amount' => $pricing['sgst_amount'],
+                        'igst_amount' => $pricing['igst_amount'],
                     ];
                 }
 
@@ -223,14 +274,48 @@ class PurchaseInvoiceAiService
                 $created[] = [
                     'id' => $product->id,
                     'name' => $product->name,
+                    'hsn_code' => $product->hsn_code,
                     'variants' => $createdVariants,
                 ];
+            }
+
+            if ($invoiceItems !== []) {
+                $header = $this->normalizeInvoiceHeader($invoiceMeta, []);
+                if ($header['cgst_amount'] <= 0 && $header['sgst_amount'] <= 0 && $header['igst_amount'] <= 0) {
+                    $header['cgst_amount'] = $this->sumMoney(array_column($invoiceItems, 'cgst_amount'));
+                    $header['sgst_amount'] = $this->sumMoney(array_column($invoiceItems, 'sgst_amount'));
+                    $header['igst_amount'] = $this->sumMoney(array_column($invoiceItems, 'igst_amount'));
+                }
+
+                $invoice = PurchaseInvoice::create([
+                    'shop_id' => $shop->id,
+                    'created_by' => $user->id,
+                    'supplier_name' => $header['supplier_name'],
+                    'supplier_gstin' => $header['supplier_gstin'],
+                    'invoice_number' => $header['invoice_number'],
+                    'invoice_date' => $header['invoice_date'],
+                    'cgst_amount' => $header['cgst_amount'],
+                    'sgst_amount' => $header['sgst_amount'],
+                    'igst_amount' => $header['igst_amount'],
+                    'source_filename' => $this->nullableString($invoiceMeta['source_filename'] ?? null),
+                    'status' => 'imported',
+                ]);
+
+                foreach ($invoiceItems as $item) {
+                    PurchaseInvoiceItem::create([
+                        'purchase_invoice_id' => $invoice->id,
+                        ...$item,
+                    ]);
+                }
+
+                $invoice->load(['items.product', 'items.variant', 'shop']);
             }
         });
 
         return [
             'created' => $created,
             'skipped' => $skipped,
+            'purchase_invoice' => $invoice?->toArray(),
         ];
     }
 
@@ -258,7 +343,7 @@ class PurchaseInvoiceAiService
 
     /**
      * @param  array<int, string>  $catalogNames
-     * @return array{supplier:?string, invoice_number:?string, products: array<int, array<string, mixed>>}
+     * @return array<string, mixed>
      */
     protected function parseInvoiceWithAi(string $text, array $catalogNames, User $user): array
     {
@@ -313,8 +398,18 @@ class PurchaseInvoiceAiService
         }
 
         return [
-            'supplier' => is_string($decoded['supplier'] ?? null) ? $decoded['supplier'] : null,
+            'supplier' => is_string($decoded['supplier'] ?? $decoded['supplier_name'] ?? null)
+                ? ($decoded['supplier'] ?? $decoded['supplier_name'])
+                : null,
+            'supplier_name' => is_string($decoded['supplier_name'] ?? $decoded['supplier'] ?? null)
+                ? ($decoded['supplier_name'] ?? $decoded['supplier'])
+                : null,
+            'supplier_gstin' => $decoded['supplier_gstin'] ?? $decoded['gstin'] ?? $decoded['gst_no'] ?? null,
             'invoice_number' => is_string($decoded['invoice_number'] ?? null) ? $decoded['invoice_number'] : null,
+            'invoice_date' => $decoded['invoice_date'] ?? null,
+            'cgst_amount' => $decoded['cgst_amount'] ?? $decoded['cgst'] ?? 0,
+            'sgst_amount' => $decoded['sgst_amount'] ?? $decoded['sgst'] ?? 0,
+            'igst_amount' => $decoded['igst_amount'] ?? $decoded['igst'] ?? 0,
             'products' => $rows,
         ];
     }
@@ -346,6 +441,12 @@ class PurchaseInvoiceAiService
                     'quantity' => $row['quantity'] ?? 1,
                     'unit' => $row['unit'] ?? null,
                     'cost_price' => $row['cost_price'] ?? 0,
+                    'list_price' => $row['list_price'] ?? null,
+                    'discount_percent' => $row['discount_percent'] ?? $row['discount'] ?? null,
+                    'hsn_code' => $row['hsn_code'] ?? $row['hsn'] ?? null,
+                    'cgst_amount' => $row['cgst_amount'] ?? $row['cgst'] ?? 0,
+                    'sgst_amount' => $row['sgst_amount'] ?? $row['sgst'] ?? 0,
+                    'igst_amount' => $row['igst_amount'] ?? $row['igst'] ?? 0,
                     'sku' => $row['sku'] ?? null,
                     'attributes' => $row['attributes'] ?? [],
                 ]];
@@ -397,11 +498,18 @@ class PurchaseInvoiceAiService
                     $attributes['unit'] = $unit;
                 }
 
+                $pricing = $this->resolveLinePricing($variant, $row);
                 $buckets[$key]['variants'][] = [
                     'name' => $spec,
                     'quantity' => $variant['quantity'] ?? $row['quantity'] ?? 1,
                     'unit' => $unit,
-                    'cost_price' => $variant['cost_price'] ?? $row['cost_price'] ?? 0,
+                    'hsn_code' => $pricing['hsn_code'],
+                    'list_price' => $pricing['list_price'],
+                    'discount_percent' => $pricing['discount_percent'],
+                    'cost_price' => $pricing['cost_price'],
+                    'cgst_amount' => $pricing['cgst_amount'],
+                    'sgst_amount' => $pricing['sgst_amount'],
+                    'igst_amount' => $pricing['igst_amount'],
                     'sku' => $variant['sku'] ?? $row['sku'] ?? null,
                     'attributes' => $attributes,
                 ];
@@ -686,20 +794,32 @@ Return ONLY valid JSON. No markdown. No extra text.
 
 Output format:
 {
-  "supplier": "optional supplier name or null",
-  "invoice_number": "optional invoice/order no or null",
+  "supplier": "supplier / billed-from company name or null",
+  "supplier_gstin": "15-char GSTIN of the supplier or null",
+  "invoice_number": "invoice / sales order / bill number or null",
+  "invoice_date": "invoice date as YYYY-MM-DD or null",
+  "cgst_amount": 0,
+  "sgst_amount": 0,
+  "igst_amount": 0,
   "products": [
     {
       "name": "catalog product name WITHOUT size/spec",
       "brand": "brand if clearly present else null",
+      "hsn_code": "HSN/SAC if shared by all variants else null",
       "matched_existing_name": "exact catalog name if this is the same product else null",
       "variants": [
         {
           "name": "size / spec only, e.g. 20MM (3/4\") SDR 13.5",
           "quantity": 50,
           "unit": "PIPE",
-          "cost_price": 403.0,
-          "sku": "supplier sku/hsn/code if present else null",
+          "hsn_code": "39172390",
+          "list_price": 403.0,
+          "discount_percent": 67.0,
+          "cost_price": 132.99,
+          "cgst_amount": 598.45,
+          "sgst_amount": 598.45,
+          "igst_amount": 0,
+          "sku": "supplier sku if present else null",
           "attributes": { "size": "20MM", "inch": "3/4\"", "sdr": "13.5" }
         }
       ]
@@ -716,7 +836,13 @@ Grouping rules:
 - Different fittings stay different products: pipe, elbow, tee, MTA, Y, coupler, etc.
 - If a line has no size/spec, still include one variant with name null.
 - "quantity" is purchased units (integer). If missing, use 1.
-- "cost_price" is the unit list/purchase rate (not line total). Parse numbers like 1,250.00.
+- "list_price" is the unit list/rate column (not line total). Parse numbers like 1,250.00.
+- "discount_percent" is the applied discount on that line (67 or 67%). If missing, 0.
+- "cost_price" is the net unit purchase rate AFTER discount (list_price * (1 - discount/100)). Not the line total.
+- "hsn_code" is the HSN/SAC number for that line. Digits only. Do not put HSN in sku.
+- "cgst_amount", "sgst_amount", "igst_amount" on each variant are the LINE tax amounts (not percentages). Use 0 if that tax is absent.
+- Header "cgst_amount" / "sgst_amount" / "igst_amount" are invoice totals. If only line taxes exist, sum them.
+- Extract supplier name, supplier GSTIN, invoice/order number, and invoice date from the header.
 - Skip freight, packing, round-off, and tax-only rows.
 - If a CATALOG section is provided, set matched_existing_name when the product (not a single size) already exists.
 PROMPT;
@@ -785,6 +911,186 @@ PROMPT;
         $value = trim((string) $value);
 
         return $value === '' || strtolower($value) === 'null' ? null : Str::limit($value, 255, '');
+    }
+
+    /**
+     * @param  array<string, mixed>  $variant
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    protected function normalizeExtractedLine(array $variant, array $row): array
+    {
+        $pricing = $this->resolveLinePricing($variant, $row);
+        $attributes = is_array($variant['attributes'] ?? null) ? $variant['attributes'] : [];
+
+        return [
+            'name' => $this->nullableString($variant['name'] ?? $variant['spec'] ?? null),
+            'quantity' => max(1, (int) ($variant['quantity'] ?? $row['quantity'] ?? 1)),
+            'unit' => $this->nullableString($variant['unit'] ?? $row['unit'] ?? null) ?? 'pcs',
+            'hsn_code' => $pricing['hsn_code'],
+            'list_price' => $pricing['list_price'],
+            'discount_percent' => $pricing['discount_percent'],
+            'cost_price' => $pricing['cost_price'],
+            'cgst_amount' => $pricing['cgst_amount'],
+            'sgst_amount' => $pricing['sgst_amount'],
+            'igst_amount' => $pricing['igst_amount'],
+            'sku' => $this->nullableString($variant['sku'] ?? $row['sku'] ?? null),
+            'attributes' => $this->normalizeAttributes($attributes),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $variant
+     * @param  array<string, mixed>  $row
+     * @return array{hsn_code:?string, list_price:float, discount_percent:float, cost_price:float, cgst_amount:float, sgst_amount:float, igst_amount:float}
+     */
+    protected function resolveLinePricing(array $variant, array $row = []): array
+    {
+        $hsn = $this->normalizeHsn($variant['hsn_code'] ?? $variant['hsn'] ?? $row['hsn_code'] ?? $row['hsn'] ?? null);
+        $list = $this->toMoney($variant['list_price'] ?? $variant['rate'] ?? $row['list_price'] ?? 0);
+        $discount = $this->toPercent($variant['discount_percent'] ?? $variant['discount'] ?? $row['discount_percent'] ?? $row['discount'] ?? 0);
+        $explicitCost = $this->toMoney($variant['cost_price'] ?? $row['cost_price'] ?? 0);
+
+        if ($list <= 0 && $explicitCost > 0) {
+            $list = $explicitCost;
+        }
+
+        if ($list > 0 && $discount > 0) {
+            $cost = round($list * (1 - ($discount / 100)), 2);
+        } elseif ($explicitCost > 0 && $explicitCost < $list) {
+            $cost = $explicitCost;
+        } elseif ($explicitCost > 0 && $list <= 0) {
+            $cost = $explicitCost;
+        } else {
+            $cost = $list;
+        }
+
+        return [
+            'hsn_code' => $hsn,
+            'list_price' => $list,
+            'discount_percent' => $discount,
+            'cost_price' => $cost,
+            'cgst_amount' => $this->toMoney($variant['cgst_amount'] ?? $variant['cgst'] ?? $row['cgst_amount'] ?? 0),
+            'sgst_amount' => $this->toMoney($variant['sgst_amount'] ?? $variant['sgst'] ?? $row['sgst_amount'] ?? 0),
+            'igst_amount' => $this->toMoney($variant['igst_amount'] ?? $variant['igst'] ?? $row['igst_amount'] ?? 0),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $parsed
+     * @param  array<int, array<string, mixed>>  $products
+     * @return array{supplier_name:?string, supplier_gstin:?string, invoice_number:?string, invoice_date:?string, cgst_amount:float, sgst_amount:float, igst_amount:float}
+     */
+    protected function normalizeInvoiceHeader(array $parsed, array $products): array
+    {
+        $cgst = $this->toMoney($parsed['cgst_amount'] ?? $parsed['cgst'] ?? 0);
+        $sgst = $this->toMoney($parsed['sgst_amount'] ?? $parsed['sgst'] ?? 0);
+        $igst = $this->toMoney($parsed['igst_amount'] ?? $parsed['igst'] ?? 0);
+
+        if ($cgst <= 0 && $sgst <= 0 && $igst <= 0 && $products !== []) {
+            foreach ($products as $product) {
+                foreach ($product['variants'] ?? [] as $variant) {
+                    if (! is_array($variant)) {
+                        continue;
+                    }
+                    $cgst += $this->toMoney($variant['cgst_amount'] ?? 0);
+                    $sgst += $this->toMoney($variant['sgst_amount'] ?? 0);
+                    $igst += $this->toMoney($variant['igst_amount'] ?? 0);
+                }
+            }
+            $cgst = round($cgst, 2);
+            $sgst = round($sgst, 2);
+            $igst = round($igst, 2);
+        }
+
+        return [
+            'supplier_name' => $this->nullableString($parsed['supplier_name'] ?? $parsed['supplier'] ?? null),
+            'supplier_gstin' => $this->normalizeGstin($parsed['supplier_gstin'] ?? $parsed['gstin'] ?? $parsed['gst_no'] ?? null),
+            'invoice_number' => $this->nullableString($parsed['invoice_number'] ?? null),
+            'invoice_date' => $this->toDate($parsed['invoice_date'] ?? null),
+            'cgst_amount' => $cgst,
+            'sgst_amount' => $sgst,
+            'igst_amount' => $igst,
+        ];
+    }
+
+    protected function normalizeHsn(mixed $value): ?string
+    {
+        $raw = $this->nullableString($value);
+        if ($raw === null) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', $raw) ?? '';
+        if (strlen($digits) >= 4 && strlen($digits) <= 10) {
+            return $digits;
+        }
+
+        $clean = preg_replace('/\s+/', '', $raw) ?? '';
+
+        return $clean === '' ? null : Str::limit($clean, 16, '');
+    }
+
+    protected function normalizeGstin(mixed $value): ?string
+    {
+        $raw = $this->nullableString($value);
+        if ($raw === null) {
+            return null;
+        }
+
+        $clean = strtoupper(preg_replace('/\s+/', '', $raw) ?? '');
+
+        return $clean === '' ? null : Str::limit($clean, 15, '');
+    }
+
+    protected function toPercent(mixed $value): float
+    {
+        if (is_int($value) || is_float($value)) {
+            return round(max(0, min(100, (float) $value)), 2);
+        }
+
+        $raw = trim((string) $value);
+        $raw = str_replace(['%', ','], ['', ''], $raw);
+
+        return round(max(0, min(100, (float) $raw)), 2);
+    }
+
+    protected function toDate(mixed $value): ?string
+    {
+        $raw = $this->nullableString($value);
+        if ($raw === null) {
+            return null;
+        }
+
+        $formats = ['Y-m-d', 'd/m/Y', 'd-m-Y', 'd.m.Y', 'd M Y', 'd-M-Y', 'd/m/y', 'd-m-y'];
+        foreach ($formats as $format) {
+            try {
+                $date = Carbon::createFromFormat($format, $raw);
+
+                return $date?->toDateString();
+            } catch (\Throwable) {
+                // try next
+            }
+        }
+
+        try {
+            return Carbon::parse($raw)->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * @param  array<int, mixed>  $values
+     */
+    protected function sumMoney(array $values): float
+    {
+        $total = 0.0;
+        foreach ($values as $value) {
+            $total += $this->toMoney($value);
+        }
+
+        return round($total, 2);
     }
 
     /**

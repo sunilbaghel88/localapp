@@ -19,6 +19,7 @@ class Product extends Model
         'slug',
         'description',
         'status',
+        'hsn_code',
     ];
 
     public function shop(): BelongsTo

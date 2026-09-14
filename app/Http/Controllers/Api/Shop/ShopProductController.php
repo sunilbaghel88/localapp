@@ -165,10 +165,12 @@ class ShopProductController extends Controller
             'brand_id' => ['nullable', Rule::exists('brands', 'id')],
             'brand_name' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'hsn_code' => ['nullable', 'string', 'max:16'],
             'variants' => ['required', 'array', 'min:1'],
             'variants.*.sku' => ['required', 'string', 'max:255'],
             'variants.*.name' => ['nullable', 'string', 'max:255'],
             'variants.*.price' => ['required', 'numeric', 'min:0'],
+            'variants.*.cost_price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.compare_at_price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.stock' => ['required', 'integer', 'min:0'],
             'variants.*.is_active' => ['required', 'boolean'],
@@ -206,6 +208,7 @@ class ShopProductController extends Controller
             'slug' => $slug,
             'description' => $data['description'] ?? null,
             'status' => $data['status'],
+            'hsn_code' => $data['hsn_code'] ?? null,
         ]);
 
         foreach ($data['variants'] as $variant) {
@@ -215,6 +218,7 @@ class ShopProductController extends Controller
                 'name' => $variant['name'] ?? null,
                 'stock' => (int) ($variant['stock'] ?? 0),
                 'price' => (float) ($variant['price'] ?? 0),
+                'cost_price' => array_key_exists('cost_price', $variant) ? ($variant['cost_price'] === null ? null : (float) $variant['cost_price']) : null,
                 'compare_at_price' => array_key_exists('compare_at_price', $variant) ? ($variant['compare_at_price'] === null ? null : (float) $variant['compare_at_price']) : null,
                 'attributes' => $variant['attributes'] ?? [],
                 'is_active' => (bool) ($variant['is_active'] ?? true),
@@ -263,11 +267,13 @@ class ShopProductController extends Controller
             'brand_id' => ['nullable', Rule::exists('brands', 'id')],
             'brand_name' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'hsn_code' => ['nullable', 'string', 'max:16'],
             'variants' => ['required', 'array', 'min:1'],
             'variants.*.id' => ['nullable', 'integer'],
             'variants.*.sku' => ['required', 'string', 'max:255'],
             'variants.*.name' => ['nullable', 'string', 'max:255'],
             'variants.*.price' => ['required', 'numeric', 'min:0'],
+            'variants.*.cost_price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.compare_at_price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.stock' => ['required', 'integer', 'min:0'],
             'variants.*.is_active' => ['required', 'boolean'],
@@ -309,6 +315,7 @@ class ShopProductController extends Controller
             'slug' => $slug,
             'description' => $data['description'] ?? null,
             'status' => $data['status'],
+            'hsn_code' => $data['hsn_code'] ?? null,
         ]);
 
         // Variants: update existing by id, create new, and deactivate removed ones (avoid breaking order history).
@@ -342,6 +349,7 @@ class ShopProductController extends Controller
                     'name' => $variant['name'] ?? null,
                     'stock' => (int) ($variant['stock'] ?? 0),
                     'price' => (float) ($variant['price'] ?? 0),
+                    'cost_price' => array_key_exists('cost_price', $variant) ? ($variant['cost_price'] === null ? null : (float) $variant['cost_price']) : $existing->cost_price,
                     'compare_at_price' => array_key_exists('compare_at_price', $variant) ? ($variant['compare_at_price'] === null ? null : (float) $variant['compare_at_price']) : null,
                     'attributes' => $variant['attributes'] ?? [],
                     'is_active' => (bool) ($variant['is_active'] ?? true),
@@ -353,6 +361,7 @@ class ShopProductController extends Controller
                     'name' => $variant['name'] ?? null,
                     'stock' => (int) ($variant['stock'] ?? 0),
                     'price' => (float) ($variant['price'] ?? 0),
+                    'cost_price' => array_key_exists('cost_price', $variant) ? ($variant['cost_price'] === null ? null : (float) $variant['cost_price']) : null,
                     'compare_at_price' => array_key_exists('compare_at_price', $variant) ? ($variant['compare_at_price'] === null ? null : (float) $variant['compare_at_price']) : null,
                     'attributes' => $variant['attributes'] ?? [],
                     'is_active' => (bool) ($variant['is_active'] ?? true),

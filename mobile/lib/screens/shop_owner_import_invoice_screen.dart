@@ -36,12 +36,17 @@ class _ShopOwnerImportInvoiceScreenState
   bool _saving = false;
   String? _error;
 
-  String? _supplier;
-  String? _invoiceNumber;
   final List<_InvoiceProduct> _lines = [];
 
   final TextEditingController _globalMarginController =
       TextEditingController(text: '20');
+  final TextEditingController _supplierController = TextEditingController();
+  final TextEditingController _gstinController = TextEditingController();
+  final TextEditingController _invoiceNumberController = TextEditingController();
+  final TextEditingController _invoiceDateController = TextEditingController();
+  final TextEditingController _cgstTotalController = TextEditingController();
+  final TextEditingController _sgstTotalController = TextEditingController();
+  final TextEditingController _igstTotalController = TextEditingController();
 
   List<Category> get _subcategories {
     final parentId = _parentCategoryId;
@@ -63,6 +68,13 @@ class _ShopOwnerImportInvoiceScreenState
   @override
   void dispose() {
     _globalMarginController.dispose();
+    _supplierController.dispose();
+    _gstinController.dispose();
+    _invoiceNumberController.dispose();
+    _invoiceDateController.dispose();
+    _cgstTotalController.dispose();
+    _sgstTotalController.dispose();
+    _igstTotalController.dispose();
     for (final line in _lines) {
       line.dispose();
     }
@@ -166,9 +178,8 @@ class _ShopOwnerImportInvoiceScreenState
           _lines.add(_InvoiceProduct.fromJson(map, margin));
         }
       }
+      _fillHeader(data);
       setState(() {
-        _supplier = data['supplier'] as String?;
-        _invoiceNumber = data['invoice_number'] as String?;
         _extracting = false;
       });
       if (_lines.isEmpty) {
@@ -236,6 +247,16 @@ class _ShopOwnerImportInvoiceScreenState
         categoryId: categoryId,
         status: _status,
         items: selected.map((l) => l.toPayload()).toList(),
+        invoice: {
+          'supplier_name': _nullable(_supplierController.text),
+          'supplier_gstin': _nullable(_gstinController.text),
+          'invoice_number': _nullable(_invoiceNumberController.text),
+          'invoice_date': _nullable(_invoiceDateController.text),
+          'cgst_amount': double.tryParse(_cgstTotalController.text.trim()) ?? 0,
+          'sgst_amount': double.tryParse(_sgstTotalController.text.trim()) ?? 0,
+          'igst_amount': double.tryParse(_igstTotalController.text.trim()) ?? 0,
+          'source_filename': _fileName,
+        },
       );
       if (!mounted) return;
       final created = result['created_count'] as int? ?? 0;
@@ -249,7 +270,13 @@ class _ShopOwnerImportInvoiceScreenState
           ),
         ),
       );
-      context.go('/owner/products');
+      final invoice = result['purchase_invoice'];
+      final invoiceId = invoice is Map ? invoice['id'] : null;
+      if (invoiceId is num) {
+        context.go('/owner/purchases/${invoiceId.toInt()}');
+      } else {
+        context.go('/owner/products');
+      }
     } on DioException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -278,6 +305,45 @@ class _ShopOwnerImportInvoiceScreenState
       return data['message'].toString();
     }
     return e.message ?? 'Request failed';
+  }
+
+  void _fillHeader(Map<String, dynamic> data) {
+    _supplierController.text =
+        (data['supplier_name'] ?? data['supplier'] ?? '').toString();
+    _gstinController.text = (data['supplier_gstin'] ?? '').toString();
+    _invoiceNumberController.text = (data['invoice_number'] ?? '').toString();
+    _invoiceDateController.text = (data['invoice_date'] ?? '').toString();
+    _cgstTotalController.text =
+        _moneyText(data['cgst_amount']);
+    _sgstTotalController.text =
+        _moneyText(data['sgst_amount']);
+    _igstTotalController.text =
+        _moneyText(data['igst_amount']);
+  }
+
+  static String _moneyText(dynamic value) {
+    if (value is num) return value.toStringAsFixed(2);
+    return double.tryParse(value?.toString() ?? '')?.toStringAsFixed(2) ?? '0.00';
+  }
+
+  static String? _nullable(String value) {
+    final text = value.trim();
+    return text.isEmpty ? null : text;
+  }
+
+  Future<void> _pickInvoiceDate() async {
+    final parsed = DateTime.tryParse(_invoiceDateController.text.trim());
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: parsed ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (picked == null) return;
+    setState(() {
+      _invoiceDateController.text =
+          '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+    });
   }
 
   @override
@@ -351,19 +417,95 @@ class _ShopOwnerImportInvoiceScreenState
                 ],
                 if (_lines.isNotEmpty) ...[
                   const SizedBox(height: 24),
-                  if ((_supplier ?? '').isNotEmpty ||
-                      (_invoiceNumber ?? '').isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        [
-                          if ((_supplier ?? '').isNotEmpty) _supplier,
-                          if ((_invoiceNumber ?? '').isNotEmpty)
-                            'Invoice $_invoiceNumber',
-                        ].join(' • '),
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
+                  Text(
+                    'Invoice details',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Correct anything the AI misread. These stay on the purchase record, not on the storefront product.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _supplierController,
+                    decoration: const InputDecoration(
+                      labelText: 'Supplier name',
+                      border: OutlineInputBorder(),
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _gstinController,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      labelText: 'Supplier GSTIN',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _invoiceNumberController,
+                    decoration: const InputDecoration(
+                      labelText: 'Invoice no.',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _invoiceDateController,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Invoice date',
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.calendar_today_outlined),
+                    ),
+                    onTap: _pickInvoiceDate,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _cgstTotalController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'CGST total',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _sgstTotalController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'SGST total',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _igstTotalController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'IGST total',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
                     // ignore: deprecated_member_use
                     value: _parentCategoryId,
@@ -560,53 +702,155 @@ class _ShopOwnerImportInvoiceScreenState
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.only(left: 40),
-            child: Row(
+            child: Column(
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: variant.qtyController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Qty',
-                      border: OutlineInputBorder(),
-                      isDense: true,
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: variant.hsnController,
+                        decoration: const InputDecoration(
+                          labelText: 'HSN code',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: variant.qtyController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Qty',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: variant.costController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: variant.listController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'List price',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        onChanged: (_) => _recalcVariant(variant),
+                      ),
                     ),
-                    decoration: const InputDecoration(
-                      labelText: 'Purchase rate',
-                      border: OutlineInputBorder(),
-                      isDense: true,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: variant.discountController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Discount %',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                          suffixText: '%',
+                        ),
+                        onChanged: (_) => _recalcVariant(variant),
+                      ),
                     ),
-                    onChanged: (_) {
-                      if (!variant.priceManual) {
-                        variant.applyMargin(_globalMargin);
-                        setState(() {});
-                      }
-                    },
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: variant.priceController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: variant.costController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Net rate',
+                          helperText: 'After discount',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        onChanged: (_) {
+                          variant.costManual = true;
+                          if (!variant.priceManual) {
+                            variant.applyMargin(_globalMargin);
+                            setState(() {});
+                          }
+                        },
+                      ),
                     ),
-                    decoration: const InputDecoration(
-                      labelText: 'Selling price',
-                      border: OutlineInputBorder(),
-                      isDense: true,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: variant.priceController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Selling price',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        onChanged: (_) => variant.priceManual = true,
+                      ),
                     ),
-                    onChanged: (_) => variant.priceManual = true,
-                  ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: variant.cgstController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'CGST',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: variant.sgstController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'SGST',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: variant.igstController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'IGST',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -614,6 +858,16 @@ class _ShopOwnerImportInvoiceScreenState
         ],
       ),
     );
+  }
+
+  void _recalcVariant(_InvoiceVariant variant) {
+    if (!variant.costManual) {
+      variant.recomputeNetRate();
+    }
+    if (!variant.priceManual) {
+      variant.applyMargin(_globalMargin);
+    }
+    setState(() {});
   }
 }
 
@@ -682,11 +936,21 @@ class _InvoiceProduct {
   }
 
   Map<String, dynamic> toPayload() {
+    final selected = selectedVariants;
+    String? hsn;
+    for (final variant in selected) {
+      final value = variant.hsnController.text.trim();
+      if (value.isNotEmpty) {
+        hsn = value;
+        break;
+      }
+    }
     return {
       'name': nameController.text.trim(),
       'brand': brand,
+      'hsn_code': hsn,
       'skip_if_duplicate': false,
-      'variants': selectedVariants.map((v) => v.toPayload()).toList(),
+      'variants': selected.map((v) => v.toPayload()).toList(),
     };
   }
 
@@ -708,16 +972,31 @@ class _InvoiceProduct {
 class _InvoiceVariant {
   _InvoiceVariant({
     required this.nameController,
+    required this.hsnController,
     required this.qtyController,
+    required this.listController,
+    required this.discountController,
     required this.costController,
     required this.priceController,
+    required this.cgstController,
+    required this.sgstController,
+    required this.igstController,
     this.sku,
     this.unit,
     this.attributes = const {},
+    this.costManual = false,
   });
 
   factory _InvoiceVariant.fromJson(Map<String, dynamic> json, double margin) {
-    final cost = _toDouble(json['cost_price']);
+    final list = _toDouble(json['list_price']);
+    final discount = _toDouble(json['discount_percent']);
+    var cost = _toDouble(json['cost_price']);
+    final computed = list > 0
+        ? double.parse((list * (1 - discount / 100)).toStringAsFixed(2))
+        : cost;
+    if (cost <= 0) {
+      cost = computed;
+    }
     final qty = _toInt(json['quantity']);
     final attributesRaw = json['attributes'];
     final attributes = <String, String>{};
@@ -732,26 +1011,57 @@ class _InvoiceVariant {
       nameController: TextEditingController(
         text: (json['name'] ?? json['spec'] ?? '').toString(),
       ),
+      hsnController: TextEditingController(
+        text: (json['hsn_code'] ?? '').toString(),
+      ),
       qtyController: TextEditingController(text: qty.toString()),
+      listController: TextEditingController(
+        text: (list > 0 ? list : cost).toStringAsFixed(2),
+      ),
+      discountController: TextEditingController(text: discount.toStringAsFixed(2)),
       costController: TextEditingController(text: cost.toStringAsFixed(2)),
       priceController: TextEditingController(
         text: _sellingFrom(cost, margin).toStringAsFixed(2),
       ),
+      cgstController: TextEditingController(
+        text: _toDouble(json['cgst_amount']).toStringAsFixed(2),
+      ),
+      sgstController: TextEditingController(
+        text: _toDouble(json['sgst_amount']).toStringAsFixed(2),
+      ),
+      igstController: TextEditingController(
+        text: _toDouble(json['igst_amount']).toStringAsFixed(2),
+      ),
       sku: json['sku']?.toString(),
       unit: json['unit']?.toString(),
       attributes: attributes,
+      costManual: (cost - computed).abs() > 0.05,
     );
   }
 
   final TextEditingController nameController;
+  final TextEditingController hsnController;
   final TextEditingController qtyController;
+  final TextEditingController listController;
+  final TextEditingController discountController;
   final TextEditingController costController;
   final TextEditingController priceController;
+  final TextEditingController cgstController;
+  final TextEditingController sgstController;
+  final TextEditingController igstController;
   final String? sku;
   final String? unit;
   final Map<String, String> attributes;
   bool include = true;
   bool priceManual = false;
+  bool costManual;
+
+  void recomputeNetRate() {
+    final list = double.tryParse(listController.text.trim()) ?? 0;
+    final discount = double.tryParse(discountController.text.trim()) ?? 0;
+    costController.text =
+        (list * (1 - discount / 100)).toStringAsFixed(2);
+  }
 
   void applyMargin(double margin) {
     final cost = double.tryParse(costController.text.trim()) ?? 0;
@@ -764,13 +1074,20 @@ class _InvoiceVariant {
     if (unit != null && unit.isNotEmpty) {
       attrs.putIfAbsent('unit', () => unit);
     }
+    final hsn = hsnController.text.trim();
     return {
       'name': nameController.text.trim().isEmpty
           ? null
           : nameController.text.trim(),
       'quantity': int.tryParse(qtyController.text.trim()) ?? 0,
+      'hsn_code': hsn.isEmpty ? null : hsn,
+      'list_price': double.tryParse(listController.text.trim()) ?? 0,
+      'discount_percent': double.tryParse(discountController.text.trim()) ?? 0,
       'cost_price': double.tryParse(costController.text.trim()) ?? 0,
       'selling_price': double.tryParse(priceController.text.trim()) ?? 0,
+      'cgst_amount': double.tryParse(cgstController.text.trim()) ?? 0,
+      'sgst_amount': double.tryParse(sgstController.text.trim()) ?? 0,
+      'igst_amount': double.tryParse(igstController.text.trim()) ?? 0,
       'sku': sku,
       'unit': unit,
       'attributes': attrs,
@@ -779,9 +1096,15 @@ class _InvoiceVariant {
 
   void dispose() {
     nameController.dispose();
+    hsnController.dispose();
     qtyController.dispose();
+    listController.dispose();
+    discountController.dispose();
     costController.dispose();
     priceController.dispose();
+    cgstController.dispose();
+    sgstController.dispose();
+    igstController.dispose();
   }
 
   static double _toDouble(dynamic value) {

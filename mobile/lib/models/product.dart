@@ -12,6 +12,7 @@ class Product {
   final String slug;
   final String? description;
   final String? brand;
+  final String? hsnCode;
   final String status;
   final List<ProductImage> images;
   final List<ProductVariant> variants;
@@ -27,6 +28,7 @@ class Product {
     required this.slug,
     this.description,
     this.brand,
+    this.hsnCode,
     this.status = 'published',
     this.images = const [],
     this.variants = const [],
@@ -55,6 +57,7 @@ class Product {
       slug: json['slug'] as String,
       description: json['description'] as String?,
       brand: brandValue,
+      hsnCode: json['hsn_code'] as String?,
       status: json['status'] as String? ?? 'published',
       images: (json['images'] as List<dynamic>?) ?.map((e) => ProductImage.fromJson(e as Map<String, dynamic>)).toList() ?? [],
       variants: (json['variants'] as List<dynamic>?) ?.map((e) => ProductVariant.fromJson(e as Map<String, dynamic>)).toList() ?? [],

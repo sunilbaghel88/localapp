@@ -375,6 +375,7 @@ class ApiService {
     required int categoryId,
     required String status,
     required List<Map<String, dynamic>> items,
+    Map<String, dynamic>? invoice,
   }) async {
     final r = await _dio.post<Map<String, dynamic>>(
       '/shop/purchase-invoices/bulk-create',
@@ -383,10 +384,35 @@ class ApiService {
         'category_id': categoryId,
         'status': status,
         'items': items,
+        'invoice': ?invoice,
       },
       options: Options(receiveTimeout: const Duration(seconds: 60)),
     );
     return r.data ?? {};
+  }
+
+  Future<Map<String, dynamic>> getPurchaseInvoices({
+    int page = 1,
+    int perPage = 10,
+  }) async {
+    final r = await _dio.get(
+      '/shop/purchase-invoices',
+      queryParameters: {'page': page, 'per_page': perPage},
+    );
+    return r.data as Map<String, dynamic>? ?? {};
+  }
+
+  Future<Map<String, dynamic>> getPurchaseInvoice(int id) async {
+    final r = await _dio.get('/shop/purchase-invoices/$id');
+    return r.data as Map<String, dynamic>? ?? {};
+  }
+
+  Future<Map<String, dynamic>> updatePurchaseInvoice(
+    int id,
+    Map<String, dynamic> payload,
+  ) async {
+    final r = await _dio.patch('/shop/purchase-invoices/$id', data: payload);
+    return r.data as Map<String, dynamic>? ?? {};
   }
 
   Future<Map<String, dynamic>> getShopOrders({

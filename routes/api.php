@@ -72,6 +72,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/products/{product}', [ShopProductController::class, 'show']);
         Route::patch('/products/{product}', [ShopProductController::class, 'update']);
         Route::post('/product-images/upload', [ShopProductImageController::class, 'store']);
+        Route::get('/purchase-invoices', [ShopPurchaseInvoiceController::class, 'index']);
+        Route::get('/purchase-invoices/{purchaseInvoice}', [ShopPurchaseInvoiceController::class, 'show']);
+        Route::patch('/purchase-invoices/{purchaseInvoice}', [ShopPurchaseInvoiceController::class, 'update']);
         Route::post('/purchase-invoices/extract', [ShopPurchaseInvoiceController::class, 'extract']);
         Route::post('/purchase-invoices/bulk-create', [ShopPurchaseInvoiceController::class, 'bulkCreate']);
 

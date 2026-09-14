@@ -17,6 +17,7 @@ class ProductVariant extends Model
         'name',
         'stock',
         'price',
+        'cost_price',
         'compare_at_price',
         'attributes',
         'is_active',
@@ -26,6 +27,7 @@ class ProductVariant extends Model
         'attributes' => 'array',
         'is_active' => 'boolean',
         'price' => 'decimal:2',
+        'cost_price' => 'decimal:2',
         'compare_at_price' => 'decimal:2',
     ];
 

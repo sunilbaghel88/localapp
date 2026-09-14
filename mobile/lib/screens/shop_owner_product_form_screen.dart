@@ -26,6 +26,7 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
   final ApiService _api = ApiService();
 
   final _nameController = TextEditingController();
+  final _hsnController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _brandNameController = TextEditingController();
 
@@ -120,6 +121,7 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
 
     setState(() {
       _nameController.text = p.name;
+      _hsnController.text = p.hsnCode ?? '';
       _descriptionController.text = p.description ?? '';
       _status = p.status;
       _selectedShopId = p.shopId ?? _selectedShopId;
@@ -201,6 +203,9 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
       final payload = <String, dynamic>{
         'shop_id': _selectedShopId,
         'name': name,
+        'hsn_code': _hsnController.text.trim().isEmpty
+            ? null
+            : _hsnController.text.trim(),
         'status': _status,
         'category_id': _selectedCategoryId,
         'description': desc.isEmpty ? null : desc,
@@ -232,6 +237,7 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
   @override
   void dispose() {
     _nameController.dispose();
+    _hsnController.dispose();
     _descriptionController.dispose();
     _brandNameController.dispose();
     for (final v in _variants) {
@@ -276,6 +282,14 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
                 TextField(
                   controller: _nameController,
                   decoration: const InputDecoration(labelText: 'Product name'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _hsnController,
+                  decoration: const InputDecoration(
+                    labelText: 'HSN code',
+                    helperText: 'Used on sales invoices. Same code for all sizes of this product.',
+                  ),
                 ),
                 const SizedBox(height: 12),
 
@@ -459,6 +473,7 @@ class _VariantRow {
   final TextEditingController skuController;
   final TextEditingController nameController;
   final TextEditingController priceController;
+  final TextEditingController costPriceController;
   final TextEditingController compareAtPriceController;
   final TextEditingController stockController;
   bool isActive;
@@ -469,6 +484,7 @@ class _VariantRow {
     required this.skuController,
     required this.nameController,
     required this.priceController,
+    required this.costPriceController,
     required this.compareAtPriceController,
     required this.stockController,
     required this.isActive,
@@ -481,6 +497,7 @@ class _VariantRow {
       skuController: TextEditingController(),
       nameController: TextEditingController(),
       priceController: TextEditingController(text: '0'),
+      costPriceController: TextEditingController(),
       compareAtPriceController: TextEditingController(),
       stockController: TextEditingController(text: '0'),
       isActive: true,
@@ -494,6 +511,7 @@ class _VariantRow {
       skuController: TextEditingController(text: v.sku ?? ''),
       nameController: TextEditingController(text: v.name ?? ''),
       priceController: TextEditingController(text: v.price.toString()),
+      costPriceController: TextEditingController(text: v.costPrice?.toString() ?? ''),
       compareAtPriceController: TextEditingController(text: v.compareAtPrice?.toString() ?? ''),
       stockController: TextEditingController(text: v.stock.toString()),
       isActive: v.isActive,
@@ -532,6 +550,9 @@ class _VariantRow {
       'sku': skuText,
       'name': nameController.text.trim().isEmpty ? null : nameController.text.trim(),
       'price': parseDouble(priceController),
+      'cost_price': costPriceController.text.trim().isEmpty
+          ? null
+          : parseDouble(costPriceController),
       'compare_at_price': compareAt.isEmpty ? null : parseDouble(compareAtPriceController),
       'stock': parseInt(stockController),
       'is_active': isActive,
@@ -543,6 +564,7 @@ class _VariantRow {
     skuController.dispose();
     nameController.dispose();
     priceController.dispose();
+    costPriceController.dispose();
     compareAtPriceController.dispose();
     stockController.dispose();
     for (final a in attributes) {
@@ -667,12 +689,20 @@ class _VariantCard extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
-                    controller: variant.compareAtPriceController,
+                    controller: variant.costPriceController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Compare at (optional)'),
+                    decoration: const InputDecoration(labelText: 'Last purchase rate'),
                   ),
                 ),
               ],
+            ),
+
+            const SizedBox(height: 12),
+
+            TextField(
+              controller: variant.compareAtPriceController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Compare at (optional)'),
             ),
 
             const SizedBox(height: 12),

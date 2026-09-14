@@ -137,6 +137,9 @@ class ProductResource extends Resource
                         return $brand->getKey();
                     })
                     ->helperText('If you cannot find a brand add it manually by clicking + button. New brands require approval before they appear in the storefront.'),
+                Forms\Components\TextInput::make('hsn_code')
+                    ->label('HSN code')
+                    ->maxLength(16),
                 Forms\Components\Textarea::make('description')
                     ->columnSpanFull(),
                 Forms\Components\Section::make('Shop type attributes')

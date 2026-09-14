@@ -97,6 +97,8 @@ class _ShopOwnerProductDetailScreenState extends State<ShopOwnerProductDetailScr
                                   Text('Category: ${product.category!.name}', style: Theme.of(context).textTheme.bodyMedium),
                                 if ((product.brand ?? '').trim().isNotEmpty)
                                   Text('Brand: ${(product.brand ?? '').trim()}', style: Theme.of(context).textTheme.bodyMedium),
+                                if ((product.hsnCode ?? '').trim().isNotEmpty)
+                                  Text('HSN: ${product.hsnCode}', style: Theme.of(context).textTheme.bodyMedium),
                                 const SizedBox(height: 12),
                                 Text('Slug: ${product.slug}', style: Theme.of(context).textTheme.bodySmall),
                               ],
@@ -161,6 +163,8 @@ class _VariantCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text('SKU: ${variant.sku ?? '—'}', style: Theme.of(context).textTheme.bodySmall),
             Text('Price: ₹${variant.price.toStringAsFixed(2)}', style: Theme.of(context).textTheme.bodyMedium),
+            if (variant.costPrice != null)
+              Text('Last purchase rate: ₹${variant.costPrice!.toStringAsFixed(2)}', style: Theme.of(context).textTheme.bodySmall),
             if (variant.compareAtPrice != null)
               Text('Compare at: ₹${variant.compareAtPrice!.toStringAsFixed(2)}', style: Theme.of(context).textTheme.bodySmall),
             Text('Stock: ${variant.stock}', style: Theme.of(context).textTheme.bodySmall),
