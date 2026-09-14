@@ -349,6 +349,40 @@ class ApiService {
     return Shop.fromJson(r.data!['shop'] as Map<String, dynamic>);
   }
 
+  Future<List<ShopPartner>> getShopPartners(int shopId) async {
+    final r = await _dio.get('/shop/shops/$shopId/partners');
+    final list = r.data['partners'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => ShopPartner.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<ShopPartner>> searchShopPartners(
+    int shopId, {
+    String q = '',
+  }) async {
+    final r = await _dio.get(
+      '/shop/shops/$shopId/partners/search',
+      queryParameters: {if (q.trim().isNotEmpty) 'q': q.trim()},
+    );
+    final list = r.data['data'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => ShopPartner.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<ShopPartner> attachShopPartner(int shopId, int userId) async {
+    final r = await _dio.post(
+      '/shop/shops/$shopId/partners',
+      data: {'user_id': userId},
+    );
+    return ShopPartner.fromJson(r.data['partner'] as Map<String, dynamic>);
+  }
+
+  Future<void> detachShopPartner(int shopId, int userId) async {
+    await _dio.delete('/shop/shops/$shopId/partners/$userId');
+  }
+
   Future<List<Category>> getShopCategories() async {
     final r = await _dio.get('/shop/categories');
     final list = r.data['categories'] as List<dynamic>? ?? [];

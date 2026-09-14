@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Api\Shop;
 
 use App\Http\Controllers\Controller;
 use App\Models\Shop;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ShopOwnerShopController extends Controller
 {
@@ -148,6 +150,124 @@ class ShopOwnerShopController extends Controller
         ]);
     }
 
+    public function partners(Shop $shop): JsonResponse
+    {
+        $this->ensureOwned($shop);
+
+        if (! $this->shopSupportsPartners($shop)) {
+            return response()->json([
+                'supports_partners' => false,
+                'partners' => [],
+            ]);
+        }
+
+        $rows = $shop->partners()
+            ->with('userTypes')
+            ->where('users.is_active', true)
+            ->orderBy('users.first_name')
+            ->orderBy('users.last_name')
+            ->get();
+
+        return response()->json([
+            'supports_partners' => true,
+            'partners' => $rows->map(fn (User $u) => $this->partnerPayload($u))->values(),
+        ]);
+    }
+
+    public function searchPartners(Request $request, Shop $shop): JsonResponse
+    {
+        $this->ensureOwned($shop);
+        $this->authorize('update', $shop);
+
+        if (! $this->shopSupportsPartners($shop)) {
+            return response()->json(['data' => []]);
+        }
+
+        $request->validate([
+            'q' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $rewardTypeIds = $shop->shopType?->rewardUserTypeIds() ?? [];
+        $attachedIds = $shop->partners()->pluck('users.id');
+        $q = trim((string) $request->query('q', ''));
+
+        $query = User::query()
+            ->with('userTypes')
+            ->withAnyUserTypeIds($rewardTypeIds)
+            ->where('is_active', true)
+            ->when(
+                $attachedIds->isNotEmpty(),
+                fn ($q) => $q->whereNotIn('id', $attachedIds),
+            );
+
+        if ($q !== '') {
+            $like = '%'.$q.'%';
+            $query->where(function ($inner) use ($like) {
+                $inner->where('first_name', 'like', $like)
+                    ->orWhere('last_name', 'like', $like)
+                    ->orWhere('email', 'like', $like)
+                    ->orWhere('phone', 'like', $like);
+            });
+        }
+
+        $rows = $query
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->limit(20)
+            ->get();
+
+        return response()->json([
+            'data' => $rows->map(fn (User $u) => $this->partnerPayload($u))->values(),
+        ]);
+    }
+
+    public function attachPartner(Request $request, Shop $shop): JsonResponse
+    {
+        $this->ensureOwned($shop);
+        $this->authorize('update', $shop);
+
+        if (! $this->shopSupportsPartners($shop)) {
+            throw ValidationException::withMessages([
+                'shop_id' => [__('This shop does not support partner rewards.')],
+            ]);
+        }
+
+        $data = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $rewardTypeIds = $shop->shopType?->rewardUserTypeIds() ?? [];
+        $user = User::query()
+            ->with('userTypes')
+            ->withAnyUserTypeIds($rewardTypeIds)
+            ->where('is_active', true)
+            ->find($data['user_id']);
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'user_id' => [__('Select a reward-eligible partner for this shop type.')],
+            ]);
+        }
+
+        $shop->partners()->syncWithoutDetaching([$user->id]);
+
+        return response()->json([
+            'partner' => $this->partnerPayload($user),
+        ]);
+    }
+
+    public function detachPartner(Shop $shop, User $user): JsonResponse
+    {
+        $this->ensureOwned($shop);
+        $this->authorize('update', $shop);
+
+        $shop->partners()->detach($user->id);
+
+        return response()->json([
+            'detached' => true,
+        ]);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -201,6 +321,31 @@ class ShopOwnerShopController extends Controller
 
     protected function withType(Shop $shop): Shop
     {
-        return $shop->loadMissing(['shopType:id,name,slug']);
+        return $shop->loadMissing(['shopType.rewardUserTypes']);
+    }
+
+    protected function shopSupportsPartners(Shop $shop): bool
+    {
+        $shop->loadMissing(['shopType.rewardUserTypes']);
+
+        return (bool) $shop->shopType?->supportsPartnerRewards();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function partnerPayload(User $user): array
+    {
+        $user->loadMissing('userTypes');
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'reward_points' => (int) ($user->reward_points ?? 0),
+            'user_types' => $user->userTypes->pluck('name')->values()->all(),
+            'label' => $user->name.($user->phone ? ' ('.$user->phone.')' : ''),
+        ];
     }
 }

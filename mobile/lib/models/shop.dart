@@ -2,20 +2,72 @@ class ShopTypeOption {
   final int id;
   final String name;
   final String? slug;
+  final bool supportsPartnerRewards;
+  final List<String> rewardUserTypeNames;
 
   ShopTypeOption({
     required this.id,
     required this.name,
     this.slug,
+    this.supportsPartnerRewards = false,
+    this.rewardUserTypeNames = const [],
   });
 
   factory ShopTypeOption.fromJson(Map<String, dynamic> json) {
+    final typesRaw = json['reward_user_types'] as List<dynamic>? ?? [];
     return ShopTypeOption(
       id: _asInt(json['id']) ?? 0,
       name: json['name'] as String? ?? '',
       slug: json['slug'] as String?,
+      supportsPartnerRewards: json['supports_partner_rewards'] == true ||
+          json['supports_partner_rewards'] == 1,
+      rewardUserTypeNames: typesRaw
+          .map((e) {
+            if (e is Map<String, dynamic>) {
+              return (e['name'] as String?) ?? '';
+            }
+            return '';
+          })
+          .where((name) => name.isNotEmpty)
+          .toList(),
     );
   }
+
+  bool get supportsPartners =>
+      supportsPartnerRewards && rewardUserTypeNames.isNotEmpty;
+}
+
+class ShopPartner {
+  final int id;
+  final String name;
+  final String? email;
+  final String? phone;
+  final int rewardPoints;
+  final List<String> userTypes;
+
+  ShopPartner({
+    required this.id,
+    required this.name,
+    this.email,
+    this.phone,
+    this.rewardPoints = 0,
+    this.userTypes = const [],
+  });
+
+  factory ShopPartner.fromJson(Map<String, dynamic> json) {
+    final typesRaw = json['user_types'] as List<dynamic>? ?? [];
+    return ShopPartner(
+      id: _asInt(json['id']) ?? 0,
+      name: json['name'] as String? ?? json['label'] as String? ?? '',
+      email: json['email'] as String?,
+      phone: json['phone'] as String?,
+      rewardPoints: _asInt(json['reward_points']) ?? 0,
+      userTypes: typesRaw.map((e) => e.toString()).where((s) => s.isNotEmpty).toList(),
+    );
+  }
+
+  String get displayName =>
+      phone != null && phone!.isNotEmpty ? '$name ($phone)' : name;
 }
 
 class Shop {
@@ -99,6 +151,8 @@ class Shop {
   bool get isOn => status == 'on';
 
   String get shopTypeName => shopType?.name ?? '';
+
+  bool get supportsPartners => shopType?.supportsPartners ?? false;
 
   String? documentPath(String field) {
     switch (field) {

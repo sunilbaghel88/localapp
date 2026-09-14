@@ -70,6 +70,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/shops/{shop}', [ShopOwnerShopController::class, 'show']);
         Route::patch('/shops/{shop}', [ShopOwnerShopController::class, 'update']);
         Route::post('/shops/{shop}/documents', [ShopOwnerShopController::class, 'uploadDocument']);
+        Route::get('/shops/{shop}/partners', [ShopOwnerShopController::class, 'partners']);
+        Route::get('/shops/{shop}/partners/search', [ShopOwnerShopController::class, 'searchPartners']);
+        Route::post('/shops/{shop}/partners', [ShopOwnerShopController::class, 'attachPartner']);
+        Route::delete('/shops/{shop}/partners/{user}', [ShopOwnerShopController::class, 'detachPartner']);
         Route::get('/categories', [ShopMetaController::class, 'categories']);
         Route::get('/brands', [ShopMetaController::class, 'brands']);
 

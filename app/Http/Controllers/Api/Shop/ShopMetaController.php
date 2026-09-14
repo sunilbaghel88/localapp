@@ -17,7 +17,7 @@ class ShopMetaController extends Controller
     {
         $shops = Shop::query()
             ->where('user_id', Auth::id())
-            ->with('shopType:id,name,slug')
+            ->with(['shopType.rewardUserTypes'])
             ->orderBy('name')
             ->get();
 
@@ -30,9 +30,10 @@ class ShopMetaController extends Controller
     {
         $shopTypes = ShopType::query()
             ->where('is_active', true)
+            ->with(['rewardUserTypes'])
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->get(['id', 'name', 'slug']);
+            ->get(['id', 'name', 'slug', 'supports_partner_rewards']);
 
         return response()->json([
             'shop_types' => $shopTypes,

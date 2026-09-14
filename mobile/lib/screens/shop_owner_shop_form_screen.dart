@@ -51,8 +51,18 @@ class _ShopOwnerShopFormScreenState extends State<ShopOwnerShopFormScreen> {
   Shop? _shop;
   final Map<String, bool> _uploadingDocs = {};
   final Map<String, _PendingDoc> _pendingDocs = {};
+  List<ShopPartner> _partners = [];
+  bool _loadingPartners = false;
 
   bool get _isCreate => widget.shopId == null;
+
+  ShopTypeOption? get _selectedShopType {
+    if (_shopTypeId == null) return _shop?.shopType;
+    return _shopTypes.where((t) => t.id == _shopTypeId).firstOrNull ??
+        _shop?.shopType;
+  }
+
+  bool get _supportsPartners => _selectedShopType?.supportsPartners ?? false;
 
   @override
   void initState() {
@@ -91,6 +101,9 @@ class _ShopOwnerShopFormScreenState extends State<ShopOwnerShopFormScreen> {
         }
         _loading = false;
       });
+      if (shop != null && (shop.supportsPartners)) {
+        await _loadPartners(shop.id);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -121,6 +134,91 @@ class _ShopOwnerShopFormScreenState extends State<ShopOwnerShopFormScreen> {
         !_states.contains(_state)) {
       _states = [..._states, _state!];
     }
+  }
+
+  Future<void> _loadPartners(int shopId) async {
+    setState(() => _loadingPartners = true);
+    try {
+      final partners = await _api.getShopPartners(shopId);
+      if (!mounted) return;
+      setState(() {
+        _partners = partners;
+        _loadingPartners = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadingPartners = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not load partners: $e')),
+      );
+    }
+  }
+
+  Future<void> _detachPartner(ShopPartner partner) async {
+    final shopId = _shop?.id;
+    if (shopId == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Detach partner'),
+        content: Text(
+          'Remove ${partner.displayName} from this shop? Their account stays active.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Detach'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await _api.detachShopPartner(shopId, partner.id);
+      if (!mounted) return;
+      setState(() {
+        _partners = _partners.where((p) => p.id != partner.id).toList();
+      });
+    } on DioException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_apiError(e))),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  Future<void> _openAttachSheet() async {
+    final shopId = _shop?.id;
+    if (shopId == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return _AttachPartnerSheet(
+          shopId: shopId,
+          api: _api,
+          apiError: _apiError,
+          onAttached: (partner) {
+            setState(() {
+              if (!_partners.any((p) => p.id == partner.id)) {
+                _partners = [..._partners, partner];
+              }
+            });
+            messenger.showSnackBar(
+              SnackBar(content: Text('${partner.displayName} attached')),
+            );
+          },
+        );
+      },
+    );
   }
 
   Map<String, dynamic> _payload() {
@@ -520,6 +618,49 @@ class _ShopOwnerShopFormScreenState extends State<ShopOwnerShopFormScreen> {
                   ),
                   const SizedBox(height: 12),
                   ..._shopDocFields.map(_documentTile),
+                  if (_supportsPartners) ...[
+                    const Divider(height: 32),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Partners',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ),
+                        if (!_isCreate && canSave)
+                          FilledButton.tonalIcon(
+                            onPressed: _openAttachSheet,
+                            icon: const Icon(Icons.person_add_outlined),
+                            label: const Text('Attach'),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _isCreate
+                          ? 'Save the shop first, then you can attach electricians, plumbers, or other reward-eligible partners.'
+                          : 'Partners attached here can be selected on orders and earn reward points.',
+                      style: const TextStyle(color: Colors.black54),
+                    ),
+                    if (!_isCreate) ...[
+                      const SizedBox(height: 12),
+                      if (_loadingPartners)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      else if (_partners.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Text('No partners attached yet.'),
+                        )
+                      else
+                        ..._partners.map((p) => _partnerTile(p, canSave: canSave)),
+                    ],
+                  ],
                   const SizedBox(height: 24),
                   if (canSave)
                     FilledButton(
@@ -603,6 +744,217 @@ class _ShopOwnerShopFormScreenState extends State<ShopOwnerShopFormScreen> {
               )
             : const Icon(Icons.upload_outlined),
         onTap: uploading ? null : () => _pickDocument(field),
+      ),
+    );
+  }
+
+  Widget _partnerTile(ShopPartner partner, {required bool canSave}) {
+    final types = partner.userTypes.join(', ');
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: CircleAvatar(
+          child: Text(
+            partner.name.isNotEmpty ? partner.name[0].toUpperCase() : '?',
+          ),
+        ),
+        title: Text(partner.name),
+        subtitle: Text(
+          [
+            if ((partner.phone ?? '').isNotEmpty) partner.phone!,
+            if ((partner.email ?? '').isNotEmpty) partner.email!,
+            if (types.isNotEmpty) types,
+            '${partner.rewardPoints} pts',
+          ].join(' • '),
+        ),
+        isThreeLine: true,
+        trailing: canSave
+            ? IconButton(
+                tooltip: 'Detach',
+                icon: const Icon(Icons.link_off),
+                onPressed: () => _detachPartner(partner),
+              )
+            : null,
+      ),
+    );
+  }
+}
+
+class _AttachPartnerSheet extends StatefulWidget {
+  final int shopId;
+  final ApiService api;
+  final String Function(DioException e) apiError;
+  final void Function(ShopPartner partner) onAttached;
+
+  const _AttachPartnerSheet({
+    required this.shopId,
+    required this.api,
+    required this.apiError,
+    required this.onAttached,
+  });
+
+  @override
+  State<_AttachPartnerSheet> createState() => _AttachPartnerSheetState();
+}
+
+class _AttachPartnerSheetState extends State<_AttachPartnerSheet> {
+  final _searchController = TextEditingController();
+  List<ShopPartner> _results = [];
+  bool _loading = true;
+  String? _error;
+  int? _attachingId;
+  int _searchGen = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _search(immediate: true);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search({String q = '', bool immediate = false}) async {
+    final gen = ++_searchGen;
+    if (!immediate) {
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      if (!mounted || gen != _searchGen) return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final rows = await widget.api.searchShopPartners(widget.shopId, q: q);
+      if (!mounted || gen != _searchGen) return;
+      setState(() {
+        _results = rows;
+        _loading = false;
+      });
+    } on DioException catch (e) {
+      if (!mounted || gen != _searchGen) return;
+      setState(() {
+        _error = widget.apiError(e);
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted || gen != _searchGen) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _attach(ShopPartner partner) async {
+    if (_attachingId != null) return;
+    setState(() => _attachingId = partner.id);
+    try {
+      final attached = await widget.api.attachShopPartner(
+        widget.shopId,
+        partner.id,
+      );
+      if (!mounted) return;
+      widget.onAttached(attached);
+      Navigator.pop(context);
+    } on DioException catch (e) {
+      if (!mounted) return;
+      setState(() => _attachingId = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(widget.apiError(e))),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _attachingId = null);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottom),
+      child: SafeArea(
+        child: SizedBox(
+          height: MediaQuery.sizeOf(context).height * 0.7,
+          child: Column(
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  'Attach partner',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search),
+                    hintText: 'Search name, phone, or email',
+                  ),
+                  onChanged: (v) => _search(q: v),
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (v) => _search(q: v, immediate: true),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                        ? Center(child: Text(_error!))
+                        : _results.isEmpty
+                            ? const Center(
+                                child: Text('No matching partners found.'),
+                              )
+                            : ListView.builder(
+                                itemCount: _results.length,
+                                itemBuilder: (context, i) {
+                                  final partner = _results[i];
+                                  final attaching = _attachingId == partner.id;
+                                  return ListTile(
+                                    title: Text(partner.displayName),
+                                    subtitle: Text(
+                                      [
+                                        if ((partner.email ?? '').isNotEmpty)
+                                          partner.email!,
+                                        ...partner.userTypes,
+                                      ].join(' • '),
+                                    ),
+                                    trailing: attaching
+                                        ? const SizedBox(
+                                            width: 24,
+                                            height: 24,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : const Icon(Icons.add),
+                                    onTap: attaching
+                                        ? null
+                                        : () => _attach(partner),
+                                  );
+                                },
+                              ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
