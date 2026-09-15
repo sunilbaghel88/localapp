@@ -45,31 +45,127 @@ class SmsSender
                 return;
             }
 
-            $shopName = $order->shop?->name ?: 'shop';
-            $customerName = trim((string) ($order->user?->name ?: $order->address?->name ?: 'Customer'));
-            $total = number_format((float) $order->grand_total, 2, '.', '');
-            $itemsCount = (string) $order->items->count();
+            $placeholders = $this->orderPlaceholders($order, $mobile);
+            $message = strtr(
+                (string) ($settings->order_message_template ?: 'Your order #{{order_id}} at {{shop}} is placed. Amount Rs {{total}}. Thank you.'),
+                $placeholders
+            );
 
-            $message = strtr((string) ($settings->order_message_template ?: 'Your order #{{order_id}} at {{shop}} is placed. Amount Rs {{total}}. Thank you.'), [
-                '{{order_id}}' => (string) $order->id,
-                '{{shop}}' => $shopName,
-                '{{total}}' => $total,
-                '{{customer}}' => $customerName,
-                '{{mobile}}' => $mobile,
-                '{{items_count}}' => $itemsCount,
-            ]);
-
-            $this->dispatch($settings, $mobile, $message, [
-                '{{order_id}}' => (string) $order->id,
-                '{{shop}}' => $shopName,
-                '{{total}}' => $total,
-            ]);
+            $this->dispatch($settings, $mobile, $message, $placeholders);
         } catch (\Throwable $e) {
             Log::warning('Order SMS failed', [
                 'order_id' => $order->id,
                 'message' => $e->getMessage(),
             ]);
         }
+    }
+
+    public function notifyOrderStatusChanged(Order $order): void
+    {
+        $this->notifyStatusChange(
+            $order,
+            enabled: fn (SmsSetting $settings) => (bool) $settings->order_status_sms_enabled,
+            template: fn (SmsSetting $settings) => $settings->templateForOrderStatus((string) $order->status),
+            kind: 'order_status',
+        );
+    }
+
+    public function notifyPaymentStatusChanged(Order $order): void
+    {
+        $this->notifyStatusChange(
+            $order,
+            enabled: fn (SmsSetting $settings) => (bool) $settings->payment_status_sms_enabled,
+            template: fn (SmsSetting $settings) => $settings->templateForPaymentStatus((string) $order->payment_status),
+            kind: 'payment_status',
+        );
+    }
+
+    /**
+     * @param  callable(SmsSetting): bool  $enabled
+     * @param  callable(SmsSetting): ?string  $template
+     */
+    protected function notifyStatusChange(Order $order, callable $enabled, callable $template, string $kind): void
+    {
+        try {
+            $settings = SmsSetting::current();
+            if (! $settings->is_enabled || ! $enabled($settings)) {
+                return;
+            }
+
+            $body = $template($settings);
+            if (! filled($body)) {
+                return;
+            }
+
+            $order->loadMissing(['user', 'shop', 'address', 'items', 'partnerUser']);
+
+            foreach ($this->recipientMobiles($order) as $mobile) {
+                $placeholders = $this->orderPlaceholders($order, $mobile);
+                $message = strtr($body, $placeholders);
+
+                try {
+                    $this->dispatch($settings, $mobile, $message, $placeholders);
+                } catch (\Throwable $e) {
+                    Log::warning('Order status SMS failed', [
+                        'order_id' => $order->id,
+                        'kind' => $kind,
+                        'mobile' => $mobile,
+                        'message' => $e->getMessage(),
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Order status SMS failed', [
+                'order_id' => $order->id,
+                'kind' => $kind,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function recipientMobiles(Order $order): array
+    {
+        $mobiles = [];
+
+        $customer = $this->resolveOrderMobile($order);
+        if ($customer !== null) {
+            $mobiles[$customer] = true;
+        }
+
+        $partner = $this->normalizeMobile($order->partnerUser?->phone);
+        if ($partner !== null) {
+            $mobiles[$partner] = true;
+        }
+
+        return array_keys($mobiles);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function orderPlaceholders(Order $order, string $mobile): array
+    {
+        $shopName = $order->shop?->name ?: 'shop';
+        $customerName = trim((string) ($order->user?->name ?: $order->address?->name ?: 'Customer'));
+        $partnerName = trim((string) ($order->partnerUser?->name ?: ''));
+        if ($partnerName === '') {
+            $partnerName = 'Partner';
+        }
+
+        return [
+            '{{order_id}}' => (string) $order->id,
+            '{{shop}}' => $shopName,
+            '{{total}}' => number_format((float) $order->grand_total, 2, '.', ''),
+            '{{customer}}' => $customerName,
+            '{{partner}}' => $partnerName,
+            '{{mobile}}' => $mobile,
+            '{{items_count}}' => (string) $order->items->count(),
+            '{{status}}' => ucfirst((string) $order->status),
+            '{{payment_status}}' => ucfirst((string) $order->payment_status),
+        ];
     }
 
     /**
@@ -112,21 +208,34 @@ class SmsSender
 
     protected function resolveOrderMobile(Order $order): ?string
     {
-        $candidates = [
+        return $this->firstValidMobile([
             $order->user?->phone,
             $order->address?->phone,
-        ];
+        ]);
+    }
 
+    /**
+     * @param  list<mixed>  $candidates
+     */
+    protected function firstValidMobile(array $candidates): ?string
+    {
         foreach ($candidates as $raw) {
-            $digits = preg_replace('/\D+/', '', (string) $raw) ?? '';
-            if (strlen($digits) > 10) {
-                $digits = substr($digits, -10);
-            }
-            if (strlen($digits) >= 10) {
-                return $digits;
+            $mobile = $this->normalizeMobile($raw);
+            if ($mobile !== null) {
+                return $mobile;
             }
         }
 
         return null;
+    }
+
+    protected function normalizeMobile(mixed $raw): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $raw) ?? '';
+        if (strlen($digits) > 10) {
+            $digits = substr($digits, -10);
+        }
+
+        return strlen($digits) >= 10 ? $digits : null;
     }
 }
