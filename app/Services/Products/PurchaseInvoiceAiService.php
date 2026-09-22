@@ -2,6 +2,7 @@
 
 namespace App\Services\Products;
 
+use App\AiAgents\PurchaseInvoiceParserAgent;
 use App\Models\Brand;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -10,12 +11,10 @@ use App\Models\PurchaseInvoiceItem;
 use App\Models\Shop;
 use App\Models\User;
 use Carbon\Carbon;
-use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use OpenAI;
 use Smalot\PdfParser\Parser;
 
 class PurchaseInvoiceAiService
@@ -37,16 +36,7 @@ class PurchaseInvoiceAiService
             ]);
         }
 
-        $catalog = Product::query()
-            ->where('shop_id', $shop->id)
-            ->orderBy('name')
-            ->limit(250)
-            ->pluck('name')
-            ->filter()
-            ->values()
-            ->all();
-
-        $parsed = $this->parseInvoiceWithAi($text, $catalog, $user);
+        $parsed = $this->parseInvoiceWithAi($text, $user);
         $parsed['products'] = $this->groupProductsWithVariants($parsed['products']);
         if ($parsed['products'] === []) {
             throw ValidationException::withMessages([
@@ -103,7 +93,7 @@ class PurchaseInvoiceAiService
             ]);
         }
 
-        $header = $this->normalizeInvoiceHeader($parsed, $products);
+        $header = $this->reconcileInvoiceTax($this->normalizeInvoiceHeader($parsed, $products), $products);
 
         return [
             'supplier' => $header['supplier_name'],
@@ -321,10 +311,38 @@ class PurchaseInvoiceAiService
 
     public function extractPdfText(string $absolutePdfPath): string
     {
+        $blocks = [];
+        foreach ($this->extractPdfPages($absolutePdfPath) as $index => $page) {
+            $blocks[] = '--- PAGE '.($index + 1)." ---\n".$page;
+        }
+
+        return trim(implode("\n\n", $blocks));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function extractPdfPages(string $absolutePdfPath): array
+    {
         try {
             $parser = new Parser;
             $pdf = $parser->parseFile($absolutePdfPath);
-            $text = trim((string) $pdf->getText());
+            $pages = [];
+            foreach ($pdf->getPages() as $page) {
+                if ($page === null) {
+                    continue;
+                }
+                $text = $this->cleanPdfText((string) $page->getText());
+                if ($text !== '') {
+                    $pages[] = $text;
+                }
+            }
+            if ($pages === []) {
+                $fallback = $this->cleanPdfText((string) $pdf->getText());
+                if ($fallback !== '') {
+                    $pages[] = $fallback;
+                }
+            }
         } catch (\Throwable $e) {
             Log::warning('Purchase invoice PDF parse failed', [
                 'message' => $e->getMessage(),
@@ -334,27 +352,16 @@ class PurchaseInvoiceAiService
             ]);
         }
 
-        $text = $this->sanitizeText($text);
-        $text = preg_replace("/[ \t]+/", ' ', $text) ?? $text;
-        $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
-
-        return Str::limit($text, 14000, "\n...");
+        return $pages;
     }
 
     /**
-     * @param  array<int, string>  $catalogNames
      * @return array<string, mixed>
      */
-    protected function parseInvoiceWithAi(string $text, array $catalogNames, User $user): array
+    protected function parseInvoiceWithAi(string $text, User $user): array
     {
-        $catalogBlock = $catalogNames === []
-            ? '(none)'
-            : collect($catalogNames)->take(200)->implode("\n- ");
-
-        $prompt = "CATALOG (existing products in this shop, for duplicate matching):\n- {$catalogBlock}\n\nINVOICE TEXT:\n{$text}";
-
         try {
-            $raw = $this->askOpenAi($prompt);
+            $raw = PurchaseInvoiceParserAgent::forUser($user)->respond("INVOICE TEXT:\n{$text}");
         } catch (\Throwable $e) {
             Log::error('Purchase invoice AI extract failed', [
                 'exception' => $e::class,
@@ -368,16 +375,77 @@ class PurchaseInvoiceAiService
             ]);
         }
 
-        $decoded = $this->decodeJson($raw);
+        if (is_array($raw)) {
+            $decoded = $raw;
+        } else {
+            $decoded = $this->decodeJson(trim((string) $raw));
+        }
+
         if (! is_array($decoded)) {
             throw ValidationException::withMessages([
                 'file' => __('AI returned an unexpected response. Please try again.'),
             ]);
         }
 
+        $supplier = $decoded['supplier'] ?? $decoded['supplier_name'] ?? null;
+        $supplierName = $decoded['supplier_name'] ?? $decoded['supplier'] ?? null;
+
+        return [
+            'supplier' => is_string($supplier) ? $supplier : null,
+            'supplier_name' => is_string($supplierName) ? $supplierName : null,
+            'supplier_gstin' => $decoded['supplier_gstin'] ?? $decoded['gstin'] ?? $decoded['gst_no'] ?? null,
+            'invoice_number' => is_string($decoded['invoice_number'] ?? null) ? $decoded['invoice_number'] : null,
+            'invoice_date' => $decoded['invoice_date'] ?? null,
+            'cgst_amount' => $decoded['cgst_amount'] ?? $decoded['cgst'] ?? 0,
+            'sgst_amount' => $decoded['sgst_amount'] ?? $decoded['sgst'] ?? 0,
+            'igst_amount' => $decoded['igst_amount'] ?? $decoded['igst'] ?? 0,
+            'products' => $this->rowsFromDecoded($decoded),
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected function rowsFromDecoded(array $decoded): array
+    {
+        $lines = $decoded['lines'] ?? null;
+        if (is_array($lines)) {
+            $rows = [];
+            foreach ($lines as $line) {
+                if (! is_array($line)) {
+                    continue;
+                }
+                $name = trim((string) ($line['name'] ?? ''));
+                if ($name === '') {
+                    continue;
+                }
+                $rows[] = [
+                    'name' => $name,
+                    'brand' => $line['brand'] ?? null,
+                    'hsn_code' => $line['hsn_code'] ?? $line['hsn'] ?? null,
+                    'variants' => [[
+                        'name' => null,
+                        'quantity' => $line['quantity'] ?? 1,
+                        'unit' => $line['unit'] ?? null,
+                        'hsn_code' => $line['hsn_code'] ?? $line['hsn'] ?? null,
+                        'list_price' => $line['list_price'] ?? $line['rate'] ?? null,
+                        'discount_percent' => $line['discount_percent'] ?? $line['discount'] ?? null,
+                        'cost_price' => $line['cost_price'] ?? null,
+                        'cgst_amount' => $line['cgst_amount'] ?? $line['cgst'] ?? 0,
+                        'sgst_amount' => $line['sgst_amount'] ?? $line['sgst'] ?? 0,
+                        'igst_amount' => $line['igst_amount'] ?? $line['igst'] ?? 0,
+                        'sku' => $line['sku'] ?? null,
+                        'attributes' => is_array($line['attributes'] ?? null) ? $line['attributes'] : [],
+                    ]],
+                ];
+            }
+
+            return $rows;
+        }
+
         $groups = $decoded['products'] ?? $decoded['items'] ?? [];
         if (! is_array($groups)) {
-            $groups = [];
+            return [];
         }
 
         $rows = [];
@@ -397,21 +465,44 @@ class PurchaseInvoiceAiService
             $rows[] = $row;
         }
 
-        return [
-            'supplier' => is_string($decoded['supplier'] ?? $decoded['supplier_name'] ?? null)
-                ? ($decoded['supplier'] ?? $decoded['supplier_name'])
-                : null,
-            'supplier_name' => is_string($decoded['supplier_name'] ?? $decoded['supplier'] ?? null)
-                ? ($decoded['supplier_name'] ?? $decoded['supplier'])
-                : null,
-            'supplier_gstin' => $decoded['supplier_gstin'] ?? $decoded['gstin'] ?? $decoded['gst_no'] ?? null,
-            'invoice_number' => is_string($decoded['invoice_number'] ?? null) ? $decoded['invoice_number'] : null,
-            'invoice_date' => $decoded['invoice_date'] ?? null,
-            'cgst_amount' => $decoded['cgst_amount'] ?? $decoded['cgst'] ?? 0,
-            'sgst_amount' => $decoded['sgst_amount'] ?? $decoded['sgst'] ?? 0,
-            'igst_amount' => $decoded['igst_amount'] ?? $decoded['igst'] ?? 0,
-            'products' => $rows,
-        ];
+        return $rows;
+    }
+
+    /**
+     * @param  array{supplier_name:?string, supplier_gstin:?string, invoice_number:?string, invoice_date:?string, cgst_amount:float, sgst_amount:float, igst_amount:float}  $header
+     * @param  array<int, array<string, mixed>>  $products
+     * @return array{supplier_name:?string, supplier_gstin:?string, invoice_number:?string, invoice_date:?string, cgst_amount:float, sgst_amount:float, igst_amount:float}
+     */
+    protected function reconcileInvoiceTax(array $header, array $products): array
+    {
+        $cgst = 0.0;
+        $sgst = 0.0;
+        $igst = 0.0;
+        foreach ($products as $product) {
+            foreach ($product['variants'] ?? [] as $variant) {
+                if (! is_array($variant)) {
+                    continue;
+                }
+                $cgst += $this->toMoney($variant['cgst_amount'] ?? 0);
+                $sgst += $this->toMoney($variant['sgst_amount'] ?? 0);
+                $igst += $this->toMoney($variant['igst_amount'] ?? 0);
+            }
+        }
+
+        $header['cgst_amount'] = max($header['cgst_amount'], round($cgst, 2));
+        $header['sgst_amount'] = max($header['sgst_amount'], round($sgst, 2));
+        $header['igst_amount'] = max($header['igst_amount'], round($igst, 2));
+
+        return $header;
+    }
+
+    protected function cleanPdfText(string $text): string
+    {
+        $text = $this->sanitizeText($text);
+        $text = preg_replace("/[ \t]+/", ' ', $text) ?? $text;
+        $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
+
+        return trim($text);
     }
 
     /**
@@ -748,104 +839,6 @@ class PurchaseInvoiceAiService
         }
 
         return $sku;
-    }
-
-    protected function askOpenAi(string $prompt): string
-    {
-        $apiKey = (string) config('laragent.providers.default.api_key');
-        if ($apiKey === '') {
-            throw new \RuntimeException('OPENAI_API_KEY is not set.');
-        }
-
-        $client = OpenAI::factory()
-            ->withApiKey($apiKey)
-            ->withHttpClient(new GuzzleClient([
-                'timeout' => 120,
-                'connect_timeout' => 20,
-            ]))
-            ->make();
-
-        $result = $client->chat()->create([
-            'model' => 'gpt-4o-mini',
-            'temperature' => 0.1,
-            'response_format' => ['type' => 'json_object'],
-            'messages' => [
-                ['role' => 'system', 'content' => $this->systemPrompt()],
-                ['role' => 'user', 'content' => $prompt],
-            ],
-        ]);
-
-        $raw = trim((string) ($result->choices[0]->message->content ?? ''));
-        if ($raw === '') {
-            throw new \RuntimeException('OpenAI returned an empty response.');
-        }
-
-        return $raw;
-    }
-
-    protected function systemPrompt(): string
-    {
-        return <<<'PROMPT'
-You extract purchased goods from a supplier purchase invoice or sales order.
-
-The layout varies by supplier. Ignore letterheads, GST/tax tables, bank details, and totals. Focus on line items (products/goods).
-
-Return ONLY valid JSON. No markdown. No extra text.
-
-Output format:
-{
-  "supplier": "supplier / billed-from company name or null",
-  "supplier_gstin": "15-char GSTIN of the supplier or null",
-  "invoice_number": "invoice / sales order / bill number or null",
-  "invoice_date": "invoice date as YYYY-MM-DD or null",
-  "cgst_amount": 0,
-  "sgst_amount": 0,
-  "igst_amount": 0,
-  "products": [
-    {
-      "name": "catalog product name WITHOUT size/spec",
-      "brand": "brand if clearly present else null",
-      "hsn_code": "HSN/SAC if shared by all variants else null",
-      "matched_existing_name": "exact catalog name if this is the same product else null",
-      "variants": [
-        {
-          "name": "size / spec only, e.g. 20MM (3/4\") SDR 13.5",
-          "quantity": 50,
-          "unit": "PIPE",
-          "hsn_code": "39172390",
-          "list_price": 403.0,
-          "discount_percent": 67.0,
-          "cost_price": 132.99,
-          "cgst_amount": 598.45,
-          "sgst_amount": 598.45,
-          "igst_amount": 0,
-          "sku": "supplier sku if present else null",
-          "attributes": { "size": "20MM", "inch": "3/4\"", "sdr": "13.5" }
-        }
-      ]
-    }
-  ]
-}
-
-Grouping rules:
-- Do NOT create one product per invoice row.
-- Same brand + same item type (pipe, elbow, tee, MTA, etc.) = ONE product with multiple variants.
-- Put size, diameter, inch, length, SDR, color, pack size into the variant name and attributes.
-- Product "name" is the shared title, e.g. "Supreme CPVC Pipe SDR 13.5", not "Supreme CPVC PIPE 20MM".
-- Example: "SUPREME CPVC PIPE 20MM (3/4\") SDR 13.5" and "SUPREME CPVC PIPE 25MM (1\") SDR 13.5" are two variants of one product.
-- Different fittings stay different products: pipe, elbow, tee, MTA, Y, coupler, etc.
-- If a line has no size/spec, still include one variant with name null.
-- "quantity" is purchased units (integer). If missing, use 1.
-- "list_price" is the unit list/rate column (not line total). Parse numbers like 1,250.00.
-- "discount_percent" is the applied discount on that line (67 or 67%). If missing, 0.
-- "cost_price" is the net unit purchase rate AFTER discount (list_price * (1 - discount/100)). Not the line total.
-- "hsn_code" is the HSN/SAC number for that line. Digits only. Do not put HSN in sku.
-- "cgst_amount", "sgst_amount", "igst_amount" on each variant are the LINE tax amounts (not percentages). Use 0 if that tax is absent.
-- Header "cgst_amount" / "sgst_amount" / "igst_amount" are invoice totals. If only line taxes exist, sum them.
-- Extract supplier name, supplier GSTIN, invoice/order number, and invoice date from the header.
-- Skip freight, packing, round-off, and tax-only rows.
-- If a CATALOG section is provided, set matched_existing_name when the product (not a single size) already exists.
-PROMPT;
     }
 
     protected function sanitizeText(string $text): string

@@ -583,8 +583,12 @@ class _ShopOwnerImportInvoiceScreenState
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    '${_lines.where((l) => l.include && l.selectedVariants.isNotEmpty).length} of ${_lines.length} products selected',
+                    '${_lines.fold<int>(0, (sum, line) => sum + line.variants.length)} invoice rows, grouped into ${_lines.length} products',
                     style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_lines.where((l) => l.include && l.selectedVariants.isNotEmpty).length} of ${_lines.length} products selected',
                   ),
                   const SizedBox(height: 8),
                   ..._lines.map(_lineCard),

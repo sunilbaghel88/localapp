@@ -10,49 +10,52 @@ class PurchaseInvoiceParserAgent extends Agent
 
     protected $model = 'gpt-4o-mini';
 
-    protected $history = \LarAgent\History\InMemoryChatHistory::class;
+    protected $history = 'in_memory';
 
     public function instructions()
     {
         return <<<'PROMPT'
-You extract purchased goods from a supplier purchase invoice.
+You extract every product row from a supplier purchase invoice or sales order.
 
-The invoice layout varies by supplier.
+Return ONLY valid JSON. No markdown. No extra text.
 
-Group invoice rows into products with variants. Same brand + item type (e.g. CPVC pipe in 20MM and 25MM) is ONE product with size variants. Different fittings (pipe vs elbow vs tee) are different products.
+The invoice may span pages. A repeated letterhead, page number, or "continued" line is not the end of the list.
 
-Return ONLY valid JSON. No markdown.
+Rules:
+- One object in "lines" for every printed item row. Do not merge sizes. Do not summarize. Do not return a sample.
+- Copy the printed description into "name", including size, colour, and pack.
+- Skip letterhead, tax summary, bank details, freight, packing, and round-off.
+- "quantity" is purchased units (integer). If missing, use 1.
+- "list_price" is the unit rate, not the line total. Parse numbers like 1,250.00.
+- "discount_percent" is the line discount. If missing, 0.
+- "cost_price" is the net unit rate after discount, not the line total.
+- "hsn_code" is digits only.
+- "cgst_amount", "sgst_amount", and "igst_amount" are the line tax amounts. Use 0 when that tax is absent.
+- Header tax fields are invoice totals when the text shows them, otherwise 0.
+- Fill supplier, GSTIN, invoice number, and invoice date when the text shows them, otherwise null.
 
 {
-  "supplier": "supplier name",
-  "supplier_gstin": "15-char GSTIN or null",
-  "invoice_number": "invoice/order no or null",
+  "supplier": null,
+  "supplier_gstin": null,
+  "invoice_number": null,
   "invoice_date": "YYYY-MM-DD or null",
   "cgst_amount": 0,
   "sgst_amount": 0,
   "igst_amount": 0,
-  "products": [
+  "lines": [
     {
-      "name": "Supreme CPVC Pipe SDR 13.5",
+      "name": "SUPREME CPVC PIPE 20MM (3/4\") SDR 13.5",
       "brand": "Supreme",
+      "quantity": 50,
+      "unit": "PIPE",
       "hsn_code": "39172390",
-      "matched_existing_name": null,
-      "variants": [
-        {
-          "name": "20MM (3/4\")",
-          "quantity": 50,
-          "unit": "PIPE",
-          "hsn_code": "39172390",
-          "list_price": 403,
-          "discount_percent": 67,
-          "cost_price": 132.99,
-          "cgst_amount": 598.45,
-          "sgst_amount": 598.45,
-          "igst_amount": 0,
-          "sku": null,
-          "attributes": { "size": "20MM" }
-        }
-      ]
+      "list_price": 403.0,
+      "discount_percent": 67.0,
+      "cost_price": 132.99,
+      "cgst_amount": 598.45,
+      "sgst_amount": 598.45,
+      "igst_amount": 0,
+      "sku": null
     }
   ]
 }

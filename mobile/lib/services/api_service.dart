@@ -464,8 +464,8 @@ class ApiService {
       '/shop/purchase-invoices/extract',
       data: formData,
       options: Options(
-        receiveTimeout: const Duration(seconds: 120),
-        sendTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 240),
+        sendTimeout: const Duration(seconds: 120),
       ),
     );
     return r.data ?? {};
