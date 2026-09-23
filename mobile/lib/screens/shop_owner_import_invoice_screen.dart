@@ -645,7 +645,9 @@ class _ShopOwnerImportInvoiceScreenState
               Padding(
                 padding: const EdgeInsets.only(left: 12, bottom: 8),
                 child: Text(
-                  line.duplicateMatch == 'exact'
+                  line.duplicateMatch == 'goods_description'
+                      ? 'Already imported: ${line.duplicateProductName ?? 'existing product'}'
+                      : line.duplicateMatch == 'exact'
                       ? 'Already in catalog: ${line.duplicateProductName ?? 'existing product'}'
                       : 'Looks similar to: ${line.duplicateProductName ?? 'an existing product'}',
                   style: TextStyle(
@@ -694,9 +696,12 @@ class _ShopOwnerImportInvoiceScreenState
               Expanded(
                 child: TextField(
                   controller: variant.nameController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Variant / size',
-                    border: OutlineInputBorder(),
+                    helperText: (variant.goodsDescription ?? '').isEmpty
+                        ? null
+                        : variant.goodsDescription,
+                    border: const OutlineInputBorder(),
                     isDense: true,
                   ),
                 ),
@@ -987,6 +992,7 @@ class _InvoiceVariant {
     required this.igstController,
     this.sku,
     this.unit,
+    this.goodsDescription,
     this.attributes = const {},
     this.costManual = false,
   });
@@ -1038,6 +1044,7 @@ class _InvoiceVariant {
       ),
       sku: json['sku']?.toString(),
       unit: json['unit']?.toString(),
+      goodsDescription: _InvoiceProduct._nullableText(json['goods_description']),
       attributes: attributes,
       costManual: (cost - computed).abs() > 0.05,
     );
@@ -1055,6 +1062,7 @@ class _InvoiceVariant {
   final TextEditingController igstController;
   final String? sku;
   final String? unit;
+  final String? goodsDescription;
   final Map<String, String> attributes;
   bool include = true;
   bool priceManual = false;
@@ -1083,6 +1091,9 @@ class _InvoiceVariant {
       'name': nameController.text.trim().isEmpty
           ? null
           : nameController.text.trim(),
+      'goods_description': (goodsDescription ?? '').trim().isEmpty
+          ? null
+          : goodsDescription!.trim(),
       'quantity': int.tryParse(qtyController.text.trim()) ?? 0,
       'hsn_code': hsn.isEmpty ? null : hsn,
       'list_price': double.tryParse(listController.text.trim()) ?? 0,

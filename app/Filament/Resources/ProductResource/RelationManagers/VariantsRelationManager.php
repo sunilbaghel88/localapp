@@ -39,6 +39,11 @@ class VariantsRelationManager extends RelationManager
                 Forms\Components\TextInput::make('name')
                     ->label('Variant Name')
                     ->maxLength(255),
+                Forms\Components\Textarea::make('goods_description')
+                    ->label('Invoice description')
+                    ->helperText('Original Description of Goods from the purchase invoice.')
+                    ->rows(2)
+                    ->columnSpanFull(),
                 Forms\Components\TextInput::make('price')
                     ->numeric()
                     ->required()
@@ -103,6 +108,11 @@ class VariantsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('name')
                     ->label('Variant Name')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('goods_description')
+                    ->label('Invoice description')
+                    ->searchable()
+                    ->wrap()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('price')
                     ->money('inr', divideBy: 1)
                     ->sortable(),

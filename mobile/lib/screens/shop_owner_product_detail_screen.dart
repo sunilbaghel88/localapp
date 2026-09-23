@@ -168,6 +168,13 @@ class _VariantCard extends StatelessWidget {
                 Text(variant.isActive ? 'Active' : 'Inactive', style: Theme.of(context).textTheme.labelSmall),
               ],
             ),
+            if ((variant.goodsDescription ?? '').trim().isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                variant.goodsDescription!.trim(),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
             const SizedBox(height: 8),
             Text('SKU: ${variant.sku ?? '—'}', style: Theme.of(context).textTheme.bodySmall),
             Text('Price: ₹${variant.price.toStringAsFixed(2)}', style: Theme.of(context).textTheme.bodyMedium),

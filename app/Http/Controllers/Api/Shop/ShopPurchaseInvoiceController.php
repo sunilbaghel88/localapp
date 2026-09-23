@@ -200,6 +200,7 @@ class ShopPurchaseInvoiceController extends Controller
             'items.*.sku' => ['nullable', 'string', 'max:255'],
             'items.*.variants' => ['nullable', 'array', 'min:1'],
             'items.*.variants.*.name' => ['nullable', 'string', 'max:255'],
+            'items.*.variants.*.goods_description' => ['nullable', 'string', 'max:2000'],
             'items.*.variants.*.quantity' => ['required_with:items.*.variants', 'integer', 'min:0'],
             'items.*.variants.*.selling_price' => ['required_with:items.*.variants', 'numeric', 'min:0'],
             'items.*.variants.*.cost_price' => ['nullable', 'numeric', 'min:0'],

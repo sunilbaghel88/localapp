@@ -482,6 +482,7 @@ class _VariantRow {
   final TextEditingController compareAtPriceController;
   final TextEditingController stockController;
   bool isActive;
+  final String? goodsDescription;
   final List<_AttributeRow> attributes;
 
   _VariantRow({
@@ -493,6 +494,7 @@ class _VariantRow {
     required this.compareAtPriceController,
     required this.stockController,
     required this.isActive,
+    this.goodsDescription,
     required this.attributes,
   });
 
@@ -520,6 +522,7 @@ class _VariantRow {
       compareAtPriceController: TextEditingController(text: v.compareAtPrice?.toString() ?? ''),
       stockController: TextEditingController(text: v.stock.toString()),
       isActive: v.isActive,
+      goodsDescription: v.goodsDescription,
       attributes: (v.attributes ?? {}).entries
           .map((e) => _AttributeRow(key: e.key, value: e.value?.toString() ?? ''))
           .toList(),
@@ -679,6 +682,15 @@ class _VariantCard extends StatelessWidget {
               controller: variant.nameController,
               decoration: const InputDecoration(labelText: 'Variant name (optional)'),
             ),
+            if ((variant.goodsDescription ?? '').trim().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Invoice description',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+              const SizedBox(height: 2),
+              Text(variant.goodsDescription!.trim()),
+            ],
 
             const SizedBox(height: 12),
 

@@ -63,7 +63,14 @@ class PurchaseInvoiceAiService
                 $variants[] = $this->normalizeExtractedLine($row, $row);
             }
 
-            $match = $this->findDuplicate($shop->id, $name, $row['matched_existing_name'] ?? null);
+            $descriptions = [];
+            foreach ($variants as $variant) {
+                $description = $variant['goods_description'] ?? null;
+                if (is_string($description) && trim($description) !== '') {
+                    $descriptions[] = $description;
+                }
+            }
+            $match = $this->findDuplicateByGoodsDescription($shop->id, $descriptions);
             $hsn = $this->nullableString($row['hsn_code'] ?? null);
             if ($hsn === null) {
                 foreach ($variants as $variant) {
@@ -140,7 +147,16 @@ class PurchaseInvoiceAiService
                 }
 
                 if (! empty($row['skip_if_duplicate'])) {
-                    $match = $this->findDuplicate($shop->id, $name, null);
+                    $descriptions = [];
+                    foreach ($row['variants'] ?? [] as $candidate) {
+                        if (is_array($candidate)) {
+                            $description = $candidate['goods_description'] ?? null;
+                            if (is_string($description) && trim($description) !== '') {
+                                $descriptions[] = $description;
+                            }
+                        }
+                    }
+                    $match = $this->findDuplicateByGoodsDescription($shop->id, $descriptions);
                     if ($match) {
                         $skipped[] = [
                             'name' => $name,
@@ -160,6 +176,7 @@ class PurchaseInvoiceAiService
                 if (! is_array($incomingVariants) || $incomingVariants === []) {
                     $incomingVariants = [[
                         'name' => null,
+                        'goods_description' => $row['goods_description'] ?? null,
                         'quantity' => $row['quantity'] ?? 0,
                         'selling_price' => $row['selling_price'] ?? 0,
                         'sku' => $row['sku'] ?? null,
@@ -203,6 +220,7 @@ class PurchaseInvoiceAiService
                     }
                     $pricing = $this->resolveLinePricing($variant, $row);
                     $variantName = $this->nullableString($variant['name'] ?? null);
+                    $goodsDescription = $this->nullableString($variant['goods_description'] ?? $row['goods_description'] ?? null, 2000);
                     $sku = $this->uniqueSku(
                         $shop->id,
                         $variant['sku'] ?? null,
@@ -220,6 +238,7 @@ class PurchaseInvoiceAiService
                         'product_id' => $product->id,
                         'sku' => $sku,
                         'name' => $variantName,
+                        'goods_description' => $goodsDescription,
                         'stock' => $qty,
                         'price' => $price,
                         'cost_price' => $pricing['cost_price'],
@@ -240,7 +259,7 @@ class PurchaseInvoiceAiService
                     $invoiceItems[] = [
                         'product_id' => $product->id,
                         'product_variant_id' => $createdVariant->id,
-                        'name' => $product->name,
+                        'name' => $goodsDescription ?? $product->name,
                         'variant_name' => $variantName,
                         'hsn_code' => $pricing['hsn_code'] ?? $productHsn,
                         'unit' => $unit,
@@ -415,16 +434,25 @@ class PurchaseInvoiceAiService
                 if (! is_array($line)) {
                     continue;
                 }
+                $goods = trim((string) ($line['goods_description'] ?? $line['description_of_goods'] ?? ''));
                 $name = trim((string) ($line['name'] ?? ''));
+                if ($goods === '') {
+                    $goods = $name;
+                }
+                if ($name === '') {
+                    $name = $goods;
+                }
                 if ($name === '') {
                     continue;
                 }
                 $rows[] = [
                     'name' => $name,
+                    'goods_description' => $goods,
                     'brand' => $line['brand'] ?? null,
                     'hsn_code' => $line['hsn_code'] ?? $line['hsn'] ?? null,
                     'variants' => [[
                         'name' => null,
+                        'goods_description' => $goods,
                         'quantity' => $line['quantity'] ?? 1,
                         'unit' => $line['unit'] ?? null,
                         'hsn_code' => $line['hsn_code'] ?? $line['hsn'] ?? null,
@@ -529,6 +557,7 @@ class PurchaseInvoiceAiService
             if (! is_array($incoming) || $incoming === []) {
                 $incoming = [[
                     'name' => null,
+                    'goods_description' => $row['goods_description'] ?? null,
                     'quantity' => $row['quantity'] ?? 1,
                     'unit' => $row['unit'] ?? null,
                     'cost_price' => $row['cost_price'] ?? 0,
@@ -549,8 +578,9 @@ class PurchaseInvoiceAiService
                 }
 
                 $variantName = trim((string) ($variant['name'] ?? $variant['spec'] ?? ''));
-                $lineDescription = $productName;
-                if ($variantName !== '') {
+                $goods = trim((string) ($variant['goods_description'] ?? $row['goods_description'] ?? ''));
+                $lineDescription = $goods !== '' ? $goods : $productName;
+                if ($goods === '' && $variantName !== '') {
                     if ($this->isSpecLike($variantName)) {
                         $lineDescription = trim($productName.' '.$variantName);
                     } elseif (mb_strlen($variantName) >= mb_strlen($productName)) {
@@ -558,22 +588,23 @@ class PurchaseInvoiceAiService
                     }
                 }
 
-                $family = $this->isSpecLike($variantName)
-                    ? $this->familyName($productName)
-                    : $this->familyName($lineDescription);
-
-                if (mb_strlen($family) < 6) {
-                    $family = $lineDescription;
+                $nameIsRaw = $goods !== '' && $this->normalizeGoodsKey($productName) === $this->normalizeGoodsKey($goods);
+                $catalogName = $nameIsRaw || trim($productName) === ''
+                    ? $this->prettyProductName($this->familyName($lineDescription))
+                    : $this->prettyProductName($productName);
+                if (mb_strlen($catalogName) < 3) {
+                    $catalogName = $this->prettyProductName($this->familyName($lineDescription));
                 }
 
-                $spec = $this->isSpecLike($variantName)
-                    ? $this->tidySpec($variantName)
-                    : $this->specFromName($lineDescription);
+                $spec = $this->specFromName($lineDescription);
+                if ($spec === null && $this->isSpecLike($variantName)) {
+                    $spec = $this->tidySpec($variantName);
+                }
 
-                $key = mb_strtolower($family);
+                $key = mb_strtolower($catalogName);
                 if (! isset($buckets[$key])) {
                     $buckets[$key] = [
-                        'name' => $this->prettyProductName($family),
+                        'name' => $catalogName,
                         'brand' => $this->nullableString($row['brand'] ?? null),
                         'matched_existing_name' => $this->nullableString($row['matched_existing_name'] ?? null),
                         'variants' => [],
@@ -592,6 +623,7 @@ class PurchaseInvoiceAiService
                 $pricing = $this->resolveLinePricing($variant, $row);
                 $buckets[$key]['variants'][] = [
                     'name' => $spec,
+                    'goods_description' => $goods !== '' ? $goods : $lineDescription,
                     'quantity' => $variant['quantity'] ?? $row['quantity'] ?? 1,
                     'unit' => $unit,
                     'hsn_code' => $pricing['hsn_code'],
@@ -710,6 +742,67 @@ class PurchaseInvoiceAiService
         }
 
         return $titled;
+    }
+
+    /**
+     * @param  array<int, string>  $descriptions
+     * @return array{product_id:int, product_name:string, match:string}|null
+     */
+    public function findDuplicateByGoodsDescription(int $shopId, array $descriptions): ?array
+    {
+        $needles = [];
+        foreach ($descriptions as $description) {
+            foreach ($this->goodsDescriptionKeys($description) as $key) {
+                $needles[$key] = true;
+            }
+        }
+        if ($needles === []) {
+            return null;
+        }
+
+        $variants = ProductVariant::query()
+            ->whereNotNull('goods_description')
+            ->whereHas('product', fn ($query) => $query->where('shop_id', $shopId))
+            ->with('product:id,name')
+            ->get(['id', 'product_id', 'goods_description']);
+
+        foreach ($variants as $variant) {
+            foreach ($this->goodsDescriptionKeys($variant->goods_description) as $key) {
+                if (isset($needles[$key])) {
+                    return [
+                        'product_id' => (int) $variant->product_id,
+                        'product_name' => $variant->product?->name ?? '',
+                        'match' => 'goods_description',
+                    ];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function goodsDescriptionKeys(mixed $value): array
+    {
+        $keys = [];
+        foreach (preg_split("/\n+/", (string) $value) ?: [] as $line) {
+            $key = $this->normalizeGoodsKey($line);
+            if ($key !== '') {
+                $keys[$key] = true;
+            }
+        }
+
+        return array_keys($keys);
+    }
+
+    protected function normalizeGoodsKey(mixed $value): string
+    {
+        $value = trim((string) $value);
+        $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+
+        return mb_strtolower($value);
     }
 
     /**
@@ -895,7 +988,7 @@ class PurchaseInvoiceAiService
         return round(max(0, (float) $raw), 2);
     }
 
-    protected function nullableString(mixed $value): ?string
+    protected function nullableString(mixed $value, int $limit = 255): ?string
     {
         if (! is_string($value) && ! is_numeric($value)) {
             return null;
@@ -903,7 +996,7 @@ class PurchaseInvoiceAiService
 
         $value = trim((string) $value);
 
-        return $value === '' || strtolower($value) === 'null' ? null : Str::limit($value, 255, '');
+        return $value === '' || strtolower($value) === 'null' ? null : Str::limit($value, $limit, '');
     }
 
     /**
@@ -918,6 +1011,7 @@ class PurchaseInvoiceAiService
 
         return [
             'name' => $this->nullableString($variant['name'] ?? $variant['spec'] ?? null),
+            'goods_description' => $this->nullableString($variant['goods_description'] ?? $row['goods_description'] ?? null, 2000),
             'quantity' => max(1, (int) ($variant['quantity'] ?? $row['quantity'] ?? 1)),
             'unit' => $this->nullableString($variant['unit'] ?? $row['unit'] ?? null) ?? 'pcs',
             'hsn_code' => $pricing['hsn_code'],

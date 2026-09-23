@@ -3,6 +3,7 @@ class ProductVariant {
   final int productId;
   final String? sku;
   final String? name;
+  final String? goodsDescription;
   final int stock;
   final double price;
   final double? costPrice;
@@ -15,6 +16,7 @@ class ProductVariant {
     required this.productId,
     this.sku,
     this.name,
+    this.goodsDescription,
     required this.stock,
     required this.price,
     this.costPrice,
@@ -44,6 +46,7 @@ class ProductVariant {
       productId: json['product_id'] as int,
       sku: json['sku'] as String?,
       name: json['name'] as String?,
+      goodsDescription: json['goods_description'] as String?,
       stock: (json['stock'] as num?)?.toInt() ?? 0,
       price: _toDouble(json['price']),
       costPrice: json['cost_price'] == null ? null : _toDouble(json['cost_price']),
