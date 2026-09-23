@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import 'product_name_text.dart';
+
 class VoiceOrderPrompt extends StatefulWidget {
   const VoiceOrderPrompt({
     super.key,
@@ -207,7 +209,7 @@ Future<List<Map<String, dynamic>>> resolveAiSuggestItems(
                   final variant = (candidate['variant_label'] ?? '').toString();
                   final qty = candidate['quantity'] ?? 1;
                   return ListTile(
-                    title: Text(brand.isEmpty ? name : '$name ($brand)'),
+                    title: ProductNameText(brand.isEmpty ? name : '$name ($brand)'),
                     subtitle: Text('Qty $qty • $variant'),
                     onTap: () => Navigator.pop(ctx, candidate),
                   );

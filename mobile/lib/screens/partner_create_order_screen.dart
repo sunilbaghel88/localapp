@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../models/shop.dart';
 import '../services/api_service.dart';
+import '../widgets/product_name_text.dart';
 import '../widgets/voice_order_prompt.dart';
 
 /// Create an order on behalf of a customer — same flow as the partner web page
@@ -612,14 +613,23 @@ class _PartnerCreateOrderScreenState extends State<PartnerCreateOrderScreen> {
                         ),
                         onChanged: (v) => _onProductQueryChanged(i, v),
                       ),
+                      if ((line.selectedProduct?['name'] as String? ?? '').trim().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: ProductNameText(
+                            line.selectedProduct!['name'] as String,
+                            showEnglish: false,
+                          ),
+                        ),
                       if (line.productSearchResults.isNotEmpty)
                         Card(
                           margin: const EdgeInsets.only(top: 8),
                           child: Column(
                             children: line.productSearchResults.map((p) {
+                              final brand = p['brand'] as String?;
                               return ListTile(
-                                title: Text(p['name'] as String? ?? ''),
-                                subtitle: p['brand'] != null ? Text(p['brand'] as String) : null,
+                                title: ProductNameText(p['name'] as String? ?? ''),
+                                subtitle: brand != null && brand.isNotEmpty ? Text(brand) : null,
                                 onTap: () => _applyProductToLine(i, p),
                               );
                             }).toList(),

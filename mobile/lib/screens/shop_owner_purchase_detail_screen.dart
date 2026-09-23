@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../models/purchase_invoice.dart';
 import '../services/api_service.dart';
+import '../widgets/product_name_text.dart';
 
 class ShopOwnerPurchaseDetailScreen extends StatefulWidget {
   final int invoiceId;
@@ -294,7 +295,15 @@ class _ShopOwnerPurchaseDetailScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(item.title, style: Theme.of(context).textTheme.titleSmall),
+            ProductNameText(
+              item.name,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            if (item.variantName.isNotEmpty)
+              Text(
+                item.variantName,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             if (item.productId != null)
               TextButton(
                 onPressed: () =>
@@ -449,7 +458,8 @@ class _EditableItem {
   _EditableItem({
     required this.id,
     required this.productId,
-    required this.title,
+    required this.name,
+    required this.variantName,
     required this.hsnController,
     required this.qtyController,
     required this.listController,
@@ -466,7 +476,8 @@ class _EditableItem {
     return _EditableItem(
       id: item.id,
       productId: item.productId,
-      title: variant.isEmpty ? item.name : '${item.name} • $variant',
+      name: item.name,
+      variantName: variant,
       hsnController: TextEditingController(text: item.hsnCode ?? ''),
       qtyController: TextEditingController(text: item.quantity.toString()),
       listController:
@@ -488,7 +499,8 @@ class _EditableItem {
 
   final int id;
   final int? productId;
-  final String title;
+  final String name;
+  final String variantName;
   final TextEditingController hsnController;
   final TextEditingController qtyController;
   final TextEditingController listController;

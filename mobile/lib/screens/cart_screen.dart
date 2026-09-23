@@ -7,6 +7,7 @@ import '../models/cart.dart';
 import '../models/cart_item.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../widgets/product_name_text.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -140,7 +141,10 @@ class _CartScreenState extends State<CartScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(product?.name ?? 'Product', style: const TextStyle(fontWeight: FontWeight.w600)),
+                              ProductNameText(
+                                product?.name ?? 'Product',
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              ),
                               if (variant?.name != null) Text(variant!.name!, style: Theme.of(context).textTheme.bodySmall),
                               Text(currency.format(item.price), style: const TextStyle(fontWeight: FontWeight.bold)),
                               Row(

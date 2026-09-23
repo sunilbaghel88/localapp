@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../models/product.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../widgets/product_name_text.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String slug;
@@ -95,7 +96,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final images = product.images;
     return Scaffold(
       appBar: AppBar(
-        title: Text(product.name),
+        toolbarHeight: 72,
+        title: ProductNameText(
+          product.name,
+          maxLines: 1,
+          hindiMaxLines: 1,
+        ),
         actions: [
           IconButton(icon: const Icon(Icons.shopping_cart_outlined), onPressed: () => context.push('/cart')),
         ],
@@ -168,7 +174,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             letterSpacing: 0.8,
                           ),
                     ),
-                  Text(product.name, style: Theme.of(context).textTheme.headlineSmall),
+                  ProductNameText(
+                    product.name,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                    hindiMaxLines: 2,
+                  ),
                   if (product.category != null)
                     Text(
                       product.category!.name,
@@ -243,7 +253,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 child: Text('Related Products', style: Theme.of(context).textTheme.titleMedium),
               ),
               SizedBox(
-                height: 200,
+                height: 228,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -263,9 +273,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               if (p.imageUrl != null)
-                                CachedNetworkImage(imageUrl: p.imageUrl!, height: 120, fit: BoxFit.cover)
+                                CachedNetworkImage(imageUrl: p.imageUrl!, height: 100, fit: BoxFit.cover)
                               else
-                                const SizedBox(height: 120, child: Center(child: Icon(Icons.image))),
+                                const SizedBox(height: 100, child: Center(child: Icon(Icons.image))),
                               Padding(
                                 padding: const EdgeInsets.all(8),
                                 child: Column(
@@ -281,10 +291,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                               letterSpacing: 0.6,
                                             ),
                                       ),
-                                    Text(
+                                    ProductNameText(
                                       p.name,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                      hindiMaxLines: 1,
                                       style: const TextStyle(fontSize: 12),
                                     ),
                                     if (v != null)

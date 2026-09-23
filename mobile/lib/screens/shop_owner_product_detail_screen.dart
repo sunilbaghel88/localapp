@@ -5,6 +5,7 @@ import '../models/product.dart';
 import '../models/product_image.dart';
 import '../models/product_variant.dart';
 import '../services/api_service.dart';
+import '../widgets/product_name_text.dart';
 
 class ShopOwnerProductDetailScreen extends StatefulWidget {
   final int productId;
@@ -52,7 +53,14 @@ class _ShopOwnerProductDetailScreenState extends State<ShopOwnerProductDetailScr
     final product = _product;
     return Scaffold(
       appBar: AppBar(
-        title: Text(product?.name ?? 'Product'),
+        toolbarHeight: product == null ? null : 72,
+        title: product == null
+            ? const Text('Product')
+            : ProductNameText(
+                product.name,
+                maxLines: 1,
+                hindiMaxLines: 1,
+              ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/owner/products'),

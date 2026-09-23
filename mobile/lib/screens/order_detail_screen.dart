@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/order.dart';
 import '../services/api_service.dart';
+import '../widgets/product_name_text.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final int orderId;
@@ -101,7 +102,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           Text('Items', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           ...order.items.map((item) => ListTile(
-                title: Text(item.name),
+                title: ProductNameText(item.name),
                 subtitle: Text('Qty: ${item.quantity}'),
                 trailing: Text(currency.format(item.total)),
               )),

@@ -11,6 +11,7 @@ import '../providers/auth_provider.dart';
 import '../providers/branding_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/app_brand_logo.dart';
+import '../widgets/product_name_text.dart';
 import '../widgets/main_scaffold.dart';
 
 const _accentRed = Color(0xFFC62828);
@@ -402,18 +403,39 @@ class _BannerCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      slide.title.toUpperCase(),
-                      textAlign: TextAlign.center,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        height: 1.25,
+                    if (slide.route?.startsWith('/products/') ?? false)
+                      ProductNameText(
+                        slide.title,
+                        englishUpperCase: true,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        hindiMaxLines: 1,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          height: 1.25,
+                        ),
+                        hindiStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          height: 1.25,
+                        ),
+                      )
+                    else
+                      Text(
+                        slide.title.toUpperCase(),
+                        textAlign: TextAlign.center,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          height: 1.25,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),

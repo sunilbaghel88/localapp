@@ -12,6 +12,7 @@ import '../models/product_image.dart';
 import '../models/product_variant.dart';
 import '../models/shop.dart';
 import '../services/api_service.dart';
+import '../widgets/product_name_text.dart';
 
 class ShopOwnerProductFormScreen extends StatefulWidget {
   final int? productId;
@@ -281,8 +282,12 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
 
                 TextField(
                   controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Product name'),
+                  decoration: const InputDecoration(
+                    labelText: 'Product name',
+                    helperText: 'Hindi is shown in the app only and is not saved.',
+                  ),
                 ),
+                LiveProductHindiName(controller: _nameController),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _hsnController,

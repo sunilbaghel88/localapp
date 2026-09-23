@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../models/category.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
+import '../widgets/product_name_text.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -183,7 +184,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           padding: const EdgeInsets.all(12),
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
-                            childAspectRatio: 0.72,
+                            childAspectRatio: 0.62,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
                           ),
@@ -253,10 +254,10 @@ class _ProductTile extends StatelessWidget {
                             letterSpacing: 0.6,
                           ),
                     ),
-                  Text(
+                  ProductNameText(
                     product.name,
                     maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    hindiMaxLines: 1,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   if (variant != null)

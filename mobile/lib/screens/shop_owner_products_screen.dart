@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
+import '../widgets/product_name_text.dart';
 
 class ShopOwnerProductsScreen extends StatefulWidget {
   const ShopOwnerProductsScreen({super.key});
@@ -145,7 +146,8 @@ class _ShopOwnerProductsScreenState extends State<ShopOwnerProductsScreen> {
                                   ),
                                 )
                               : const Icon(Icons.image_not_supported),
-                          title: Text(p.name),
+                          title: ProductNameText(p.name),
+                          isThreeLine: true,
                           subtitle: Text('${subtitle.isEmpty ? '' : '$subtitle • '}${p.status}'),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () => context.push('/owner/products/${p.id}'),

@@ -5,6 +5,7 @@ import '../models/address.dart';
 import '../models/cart.dart';
 import '../models/shop_with_partners.dart';
 import '../services/api_service.dart';
+import '../widgets/product_name_text.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -172,7 +173,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 const SizedBox(height: 8),
                 ..._cart!.items.map((item) => ListTile(
                       leading: const Icon(Icons.shopping_bag_outlined),
-                      title: Text(item.product?.name ?? 'Item'),
+                      title: ProductNameText(item.product?.name ?? 'Item'),
                       trailing: Text(currency.format(item.lineTotal)),
                       subtitle: Text('Qty: ${item.quantity}'),
                     )),
