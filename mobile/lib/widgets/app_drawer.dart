@@ -75,17 +75,97 @@ class AppDrawer extends StatelessWidget {
                     route: '/eshop',
                     currentPath: currentPath,
                   ),
+                  if (canCreateOrder || isPartner)
+                    _item(
+                      context,
+                      icon: Icons.add_shopping_cart_outlined,
+                      label: 'Create Order',
+                      route: canCreateOrder
+                          ? '/owner/orders/create'
+                          : '/partner/orders/create',
+                      currentPath: currentPath,
+                    ),
+                  if (canManageOrders)
+                    _item(
+                      context,
+                      icon: Icons.receipt_long_outlined,
+                      label: 'Manage Orders',
+                      route: '/owner/orders',
+                      currentPath: currentPath,
+                    ),
                   _item(
                     context,
                     icon: Icons.shopping_bag_outlined,
-                    label: 'My Purchase',
+                    label: 'My Orders',
                     route: '/orders',
                     currentPath: currentPath,
                   ),
+                  if (canManageOrders)
+                    _item(
+                      context,
+                      icon: Icons.card_giftcard_outlined,
+                      label: 'Reward Redemption',
+                      route: '/owner/reward-redemptions',
+                      currentPath: currentPath,
+                    )
+                  else if (isPartner)
+                    _item(
+                      context,
+                      icon: Icons.workspace_premium_outlined,
+                      label: 'Reward Redemption',
+                      route: '/partner/rewards',
+                      currentPath: currentPath,
+                    ),
+                  if (canManageProducts)
+                    _item(
+                      context,
+                      icon: Icons.upload_file_outlined,
+                      label: 'Upload Purchase Invoice',
+                      route: '/owner/products/import',
+                      currentPath: currentPath,
+                    ),
+                  if (canManageProducts)
+                    _item(
+                      context,
+                      icon: Icons.history_outlined,
+                      label: 'Purchase History',
+                      route: '/owner/purchases',
+                      currentPath: currentPath,
+                    ),
+                  if (canManageShops)
+                    _item(
+                      context,
+                      icon: Icons.store_outlined,
+                      label: 'Manage Shops',
+                      route: '/owner/shops',
+                      currentPath: currentPath,
+                    ),
+                  if (canManageProducts)
+                    _item(
+                      context,
+                      icon: Icons.inventory_2_outlined,
+                      label: 'Manage Products',
+                      route: '/owner/products',
+                      currentPath: currentPath,
+                    ),
+                  if (canAssignUserTypes)
+                    _item(
+                      context,
+                      icon: Icons.manage_accounts_outlined,
+                      label: 'Assign user types',
+                      route: '/owner/user-types',
+                      currentPath: currentPath,
+                    ),
                   _item(
                     context,
                     icon: Icons.groups_outlined,
                     label: 'Meetings',
+                    currentPath: currentPath,
+                  ),
+                  _item(
+                    context,
+                    icon: Icons.photo_outlined,
+                    label: 'Photo Gallery',
                     currentPath: currentPath,
                   ),
                   _item(
@@ -97,7 +177,7 @@ class AppDrawer extends StatelessWidget {
                   _item(
                     context,
                     icon: Icons.description_outlined,
-                    label: 'T & C',
+                    label: 'Terms & Conditions',
                     currentPath: currentPath,
                   ),
                   _item(
@@ -106,107 +186,6 @@ class AppDrawer extends StatelessWidget {
                     label: 'Privacy Policy',
                     currentPath: currentPath,
                   ),
-                  if (canManageProducts ||
-                      canManageOrders ||
-                      canManageShops ||
-                      canCreateOrder ||
-                      isPartner ||
-                      canAssignUserTypes) ...[
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-                      child: Text(
-                        'MANAGEMENT',
-                        style: TextStyle(
-                          fontSize: 11,
-                          letterSpacing: 1.2,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ),
-                    if (canManageShops)
-                      _item(
-                        context,
-                        icon: Icons.storefront_outlined,
-                        label: 'Manage Shops',
-                        route: '/owner/shops',
-                        currentPath: currentPath,
-                      ),
-                    if (canManageProducts)
-                      _item(
-                        context,
-                        icon: Icons.inventory_2_outlined,
-                        label: 'Manage Products',
-                        route: '/owner/products',
-                        currentPath: currentPath,
-                      ),
-                    if (canManageProducts)
-                      _item(
-                        context,
-                        icon: Icons.picture_as_pdf_outlined,
-                        label: 'Import Invoice',
-                        route: '/owner/products/import',
-                        currentPath: currentPath,
-                      ),
-                    if (canManageProducts)
-                      _item(
-                        context,
-                        icon: Icons.receipt_outlined,
-                        label: 'Purchases',
-                        route: '/owner/purchases',
-                        currentPath: currentPath,
-                      ),
-                    if (canManageOrders)
-                      _item(
-                        context,
-                        icon: Icons.receipt_long_outlined,
-                        label: 'Manage Orders',
-                        route: '/owner/orders',
-                        currentPath: currentPath,
-                      ),
-                    if (canManageOrders)
-                      _item(
-                        context,
-                        icon: Icons.card_giftcard_outlined,
-                        label: 'Reward Redemptions',
-                        route: '/owner/reward-redemptions',
-                        currentPath: currentPath,
-                      ),
-                    if (canCreateOrder)
-                      _item(
-                        context,
-                        icon: Icons.add_shopping_cart_outlined,
-                        label: 'Create Order',
-                        route: '/owner/orders/create',
-                        currentPath: currentPath,
-                      ),
-                    if (canAssignUserTypes)
-                      _item(
-                        context,
-                        icon: Icons.sell_outlined,
-                        label: 'Assign User Types',
-                        route: '/owner/user-types',
-                        currentPath: currentPath,
-                      ),
-                    if (isPartner)
-                      _item(
-                        context,
-                        icon: Icons.workspace_premium_outlined,
-                        label: 'Redeem Points',
-                        route: '/partner/rewards',
-                        currentPath: currentPath,
-                      ),
-                    if (isPartner)
-                      _item(
-                        context,
-                        icon: Icons.assignment_outlined,
-                        label: canCreateOrder
-                            ? 'Create Field Order'
-                            : 'Create Order',
-                        route: '/partner/orders/create',
-                        currentPath: currentPath,
-                      ),
-                  ],
                   const Divider(),
                   _item(
                     context,
