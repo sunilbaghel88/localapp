@@ -291,6 +291,7 @@ class OrderOnBehalfAiService
         return [
             'product_id' => (int) $product->id,
             'product_name' => $product->name,
+            'product_name_hi' => $product->name_hi,
             'brand' => $product->brand?->name,
             'quantity' => $qty,
             'variant_id' => (int) $variant->id,

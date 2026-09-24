@@ -426,6 +426,18 @@ class ApiService {
     return Product.fromJson(r.data['product'] as Map<String, dynamic>);
   }
 
+  Future<String> suggestProductHindiName(String name) async {
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/products/hindi-name',
+      data: {'name': name},
+    );
+    final value = (r.data?['name_hi'] ?? '').toString().trim();
+    if (value.isEmpty) {
+      throw StateError('No Hindi name returned');
+    }
+    return value;
+  }
+
   /// Uploads image bytes to the server; returns the storage path for [ProductImage.url].
   ///
   /// Uses `MultipartFile.fromBytes` so it works on platforms where `dart:io` is unavailable (Flutter Web).

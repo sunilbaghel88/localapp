@@ -78,6 +78,7 @@ class PurchaseInvoiceItem {
   final int? productId;
   final int? productVariantId;
   final String name;
+  final String? nameHi;
   final String? variantName;
   final String? hsnCode;
   final String? unit;
@@ -95,6 +96,7 @@ class PurchaseInvoiceItem {
     this.productId,
     this.productVariantId,
     required this.name,
+    this.nameHi,
     this.variantName,
     this.hsnCode,
     this.unit,
@@ -114,6 +116,7 @@ class PurchaseInvoiceItem {
       productId: json['product_id'] as int?,
       productVariantId: json['product_variant_id'] as int?,
       name: (json['name'] ?? '').toString(),
+      nameHi: json['name_hi'] as String?,
       variantName: json['variant_name'] as String?,
       hsnCode: json['hsn_code'] as String?,
       unit: json['unit'] as String?,

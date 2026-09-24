@@ -7,8 +7,10 @@ use App\Filament\Resources\ProductResource\RelationManagers;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\Products\ProductHindiNameService;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -56,6 +58,37 @@ class ProductResource extends Resource
 
                         $set('slug', $slug);
                     }),
+                Forms\Components\TextInput::make('name_hi')
+                    ->label('Hindi name')
+                    ->maxLength(255)
+                    ->suffixAction(
+                        Forms\Components\Actions\Action::make('generateHindiName')
+                            ->icon('heroicon-m-sparkles')
+                            ->tooltip('Get Hindi name')
+                            ->action(function (Forms\Get $get, Forms\Set $set): void {
+                                $name = trim((string) $get('name'));
+                                if ($name === '') {
+                                    Notification::make()
+                                        ->title('Enter the product name first')
+                                        ->warning()
+                                        ->send();
+
+                                    return;
+                                }
+
+                                $hindi = app(ProductHindiNameService::class)->translate($name, auth()->user());
+                                if ($hindi === null) {
+                                    Notification::make()
+                                        ->title('Could not get a Hindi name')
+                                        ->danger()
+                                        ->send();
+
+                                    return;
+                                }
+
+                                $set('name_hi', $hindi);
+                            }),
+                    ),
                 Forms\Components\Select::make('status')
                     ->options([
                         'draft' => 'Draft',

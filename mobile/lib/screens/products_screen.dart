@@ -256,6 +256,7 @@ class _ProductTile extends StatelessWidget {
                     ),
                   ProductNameText(
                     product.name,
+                    hindi: product.nameHi,
                     maxLines: 2,
                     hindiMaxLines: 1,
                     style: const TextStyle(fontWeight: FontWeight.w600),

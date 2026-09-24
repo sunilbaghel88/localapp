@@ -173,7 +173,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 const SizedBox(height: 8),
                 ..._cart!.items.map((item) => ListTile(
                       leading: const Icon(Icons.shopping_bag_outlined),
-                      title: ProductNameText(item.product?.name ?? 'Item'),
+                      title: ProductNameText(
+                        item.product?.name ?? 'Item',
+                        hindi: item.product?.nameHi,
+                      ),
                       trailing: Text(currency.format(item.lineTotal)),
                       subtitle: Text('Qty: ${item.quantity}'),
                     )),

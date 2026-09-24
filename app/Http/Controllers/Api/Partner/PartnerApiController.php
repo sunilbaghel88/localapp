@@ -192,6 +192,7 @@ class PartnerApiController extends Controller
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
+                    'name_hi' => $product->name_hi,
                     'brand' => $product->brand?->name,
                     'variants' => $product->variants->map(fn ($v) => [
                         'id' => $v->id,

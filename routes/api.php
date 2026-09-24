@@ -79,6 +79,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Products
         Route::get('/products', [ShopProductController::class, 'index']);
+        Route::post('/products/hindi-name', [ShopProductController::class, 'hindiName']);
         Route::post('/products', [ShopProductController::class, 'store']);
         Route::get('/products/{product}', [ShopProductController::class, 'show']);
         Route::patch('/products/{product}', [ShopProductController::class, 'update']);

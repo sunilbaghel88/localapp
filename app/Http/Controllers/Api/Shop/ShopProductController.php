@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Shop;
 
 use App\Http\Controllers\Controller;
+use App\Services\Products\ProductHindiNameService;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
@@ -14,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ShopProductController extends Controller
 {
@@ -159,6 +161,7 @@ class ShopProductController extends Controller
         $data = $request->validate([
             'shop_id' => ['required', Rule::exists('shops', 'id')],
             'name' => ['required', 'string', 'max:255'],
+            'name_hi' => ['nullable', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
             'category_id' => ['required', Rule::exists('categories', 'id')],
@@ -205,6 +208,7 @@ class ShopProductController extends Controller
             'category_id' => (int) $data['category_id'],
             'brand_id' => $brandId,
             'name' => $data['name'],
+            'name_hi' => $this->nullableNameHi($data['name_hi'] ?? null),
             'slug' => $slug,
             'description' => $data['description'] ?? null,
             'status' => $data['status'],
@@ -261,6 +265,7 @@ class ShopProductController extends Controller
         $data = $request->validate([
             'shop_id' => ['required', Rule::exists('shops', 'id')],
             'name' => ['required', 'string', 'max:255'],
+            'name_hi' => ['nullable', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('products', 'slug')->ignore($product->id)],
             'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
             'category_id' => ['required', Rule::exists('categories', 'id')],
@@ -312,6 +317,7 @@ class ShopProductController extends Controller
             'category_id' => (int) $data['category_id'],
             'brand_id' => $brandId,
             'name' => $data['name'],
+            'name_hi' => $this->nullableNameHi($data['name_hi'] ?? null),
             'slug' => $slug,
             'description' => $data['description'] ?? null,
             'status' => $data['status'],
@@ -417,6 +423,33 @@ class ShopProductController extends Controller
         return response()->json([
             'product' => $product,
         ]);
+    }
+
+    public function hindiName(Request $request, ProductHindiNameService $hindiNames): JsonResponse
+    {
+        $this->authorizeForShopOwnerProduct('create');
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+        ]);
+
+        $nameHi = $hindiNames->translate($data['name'], $request->user());
+        if ($nameHi === null) {
+            throw ValidationException::withMessages([
+                'name' => __('Could not get a Hindi name. Try again.'),
+            ]);
+        }
+
+        return response()->json([
+            'name_hi' => $nameHi,
+        ]);
+    }
+
+    protected function nullableNameHi(mixed $value): ?string
+    {
+        $value = trim((string) ($value ?? ''));
+
+        return $value === '' ? null : $value;
     }
 }
 

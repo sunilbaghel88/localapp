@@ -405,7 +405,7 @@ class _ShopOwnerOrderDetailScreenState
                 const SizedBox(height: 8),
                 ...order.items.map((item) {
                   return ListTile(
-                    title: ProductNameText(item.name),
+                    title: ProductNameText(item.name, hindi: item.nameHi),
                     subtitle: Text('Qty: ${item.quantity}'),
                     trailing: Text(
                       currency.format(item.total),

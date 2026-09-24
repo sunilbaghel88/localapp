@@ -36,6 +36,19 @@ class PurchaseInvoiceItem extends Model
         'igst_amount' => 'decimal:2',
     ];
 
+    protected $appends = [
+        'name_hi',
+    ];
+
+    public function getNameHiAttribute(): ?string
+    {
+        if (! $this->relationLoaded('product')) {
+            return null;
+        }
+
+        return $this->product?->name_hi;
+    }
+
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(PurchaseInvoice::class, 'purchase_invoice_id');

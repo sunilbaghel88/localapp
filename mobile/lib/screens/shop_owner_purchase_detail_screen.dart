@@ -297,6 +297,7 @@ class _ShopOwnerPurchaseDetailScreenState
           children: [
             ProductNameText(
               item.name,
+              hindi: item.nameHi,
               style: Theme.of(context).textTheme.titleSmall,
             ),
             if (item.variantName.isNotEmpty)
@@ -459,6 +460,7 @@ class _EditableItem {
     required this.id,
     required this.productId,
     required this.name,
+    this.nameHi,
     required this.variantName,
     required this.hsnController,
     required this.qtyController,
@@ -477,6 +479,7 @@ class _EditableItem {
       id: item.id,
       productId: item.productId,
       name: item.name,
+      nameHi: item.nameHi,
       variantName: variant,
       hsnController: TextEditingController(text: item.hsnCode ?? ''),
       qtyController: TextEditingController(text: item.quantity.toString()),
@@ -500,6 +503,7 @@ class _EditableItem {
   final int id;
   final int? productId;
   final String name;
+  final String? nameHi;
   final String variantName;
   final TextEditingController hsnController;
   final TextEditingController qtyController;

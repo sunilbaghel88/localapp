@@ -58,6 +58,7 @@ class _ShopOwnerProductDetailScreenState extends State<ShopOwnerProductDetailScr
             ? const Text('Product')
             : ProductNameText(
                 product.name,
+                hindi: product.nameHi,
                 maxLines: 1,
                 hindiMaxLines: 1,
               ),

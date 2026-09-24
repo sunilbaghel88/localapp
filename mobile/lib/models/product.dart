@@ -9,6 +9,7 @@ class Product {
   final int? categoryId;
   final int? brandId;
   final String name;
+  final String? nameHi;
   final String slug;
   final String? description;
   final String? brand;
@@ -25,6 +26,7 @@ class Product {
     this.categoryId,
     this.brandId,
     required this.name,
+    this.nameHi,
     required this.slug,
     this.description,
     this.brand,
@@ -54,6 +56,7 @@ class Product {
       categoryId: json['category_id'] as int?,
       brandId: brandId,
       name: json['name'] as String,
+      nameHi: json['name_hi'] as String?,
       slug: json['slug'] as String,
       description: json['description'] as String?,
       brand: brandValue,

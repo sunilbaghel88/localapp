@@ -29,6 +29,19 @@ class OrderItem extends Model
         'attributes' => 'array',
     ];
 
+    protected $appends = [
+        'name_hi',
+    ];
+
+    public function getNameHiAttribute(): ?string
+    {
+        if (! $this->relationLoaded('product')) {
+            return null;
+        }
+
+        return $this->product?->name_hi;
+    }
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);

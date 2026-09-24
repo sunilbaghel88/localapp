@@ -94,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ...featured.map(
             (p) => _BannerSlide(
               title: p.name,
+              hindi: p.nameHi,
               subtitle: (p.brand ?? '').trim().isEmpty
                   ? 'FEATURED'
                   : p.brand!.trim().toUpperCase(),
@@ -406,6 +407,7 @@ class _BannerCard extends StatelessWidget {
                     if (slide.route?.startsWith('/products/') ?? false)
                       ProductNameText(
                         slide.title,
+                        hindi: slide.hindi,
                         englishUpperCase: true,
                         textAlign: TextAlign.center,
                         maxLines: 2,
@@ -685,11 +687,13 @@ class _BannerSlide {
   const _BannerSlide({
     required this.title,
     required this.subtitle,
+    this.hindi,
     this.imageUrl,
     this.route,
   });
 
   final String title;
+  final String? hindi;
   final String subtitle;
   final String? imageUrl;
   final String? route;

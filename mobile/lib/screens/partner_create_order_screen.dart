@@ -33,7 +33,12 @@ class _OrderLineEditor {
     line.qtyController.text = '${item['quantity'] ?? 1}';
     final vars = (item['variants'] as List<dynamic>? ?? []).map((e) => e as Map<String, dynamic>).toList();
     line.variants = vars;
-    line.selectedProduct = {'id': line.productId, 'name': name, 'variants': vars};
+    line.selectedProduct = {
+      'id': line.productId,
+      'name': name,
+      'name_hi': item['product_name_hi'],
+      'variants': vars,
+    };
     final vid = aiInt(item['variant_id']);
     if (vid != null) {
       line.variantId = vid;
@@ -618,6 +623,7 @@ class _PartnerCreateOrderScreenState extends State<PartnerCreateOrderScreen> {
                           padding: const EdgeInsets.only(top: 6),
                           child: ProductNameText(
                             line.selectedProduct!['name'] as String,
+                            hindi: line.selectedProduct?['name_hi'] as String?,
                             showEnglish: false,
                           ),
                         ),
@@ -628,7 +634,10 @@ class _PartnerCreateOrderScreenState extends State<PartnerCreateOrderScreen> {
                             children: line.productSearchResults.map((p) {
                               final brand = p['brand'] as String?;
                               return ListTile(
-                                title: ProductNameText(p['name'] as String? ?? ''),
+                                title: ProductNameText(
+                                  p['name'] as String? ?? '',
+                                  hindi: p['name_hi'] as String?,
+                                ),
                                 subtitle: brand != null && brand.isNotEmpty ? Text(brand) : null,
                                 onTap: () => _applyProductToLine(i, p),
                               );

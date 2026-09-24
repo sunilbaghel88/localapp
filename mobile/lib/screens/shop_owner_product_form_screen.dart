@@ -12,7 +12,6 @@ import '../models/product_image.dart';
 import '../models/product_variant.dart';
 import '../models/shop.dart';
 import '../services/api_service.dart';
-import '../widgets/product_name_text.dart';
 
 class ShopOwnerProductFormScreen extends StatefulWidget {
   final int? productId;
@@ -27,12 +26,14 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
   final ApiService _api = ApiService();
 
   final _nameController = TextEditingController();
+  final _hindiNameController = TextEditingController();
   final _hsnController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _brandNameController = TextEditingController();
 
   bool _loading = true;
   bool _saving = false;
+  bool _hindiBusy = false;
   String? _error;
 
   List<Shop> _shops = [];
@@ -122,6 +123,7 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
 
     setState(() {
       _nameController.text = p.name;
+      _hindiNameController.text = p.nameHi ?? '';
       _hsnController.text = p.hsnCode ?? '';
       _descriptionController.text = p.description ?? '';
       _status = p.status;
@@ -151,6 +153,29 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
       }
       _loading = false;
     });
+  }
+
+  Future<void> _fillHindiName() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter the product name first')),
+      );
+      return;
+    }
+    setState(() => _hindiBusy = true);
+    try {
+      final hindi = await _api.suggestProductHindiName(name);
+      if (!mounted) return;
+      setState(() => _hindiNameController.text = hindi);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not get a Hindi name. Try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _hindiBusy = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -204,6 +229,9 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
       final payload = <String, dynamic>{
         'shop_id': _selectedShopId,
         'name': name,
+        'name_hi': _hindiNameController.text.trim().isEmpty
+            ? null
+            : _hindiNameController.text.trim(),
         'hsn_code': _hsnController.text.trim().isEmpty
             ? null
             : _hsnController.text.trim(),
@@ -238,6 +266,7 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
   @override
   void dispose() {
     _nameController.dispose();
+    _hindiNameController.dispose();
     _hsnController.dispose();
     _descriptionController.dispose();
     _brandNameController.dispose();
@@ -282,12 +311,30 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
 
                 TextField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Product name',
-                    helperText: 'Hindi is shown in the app only and is not saved.',
+                  decoration: const InputDecoration(labelText: 'Product name'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _hindiNameController,
+                  decoration: InputDecoration(
+                    labelText: 'Hindi name',
+                    helperText: 'Saved with the product and shown next to the English name.',
+                    suffixIcon: _hindiBusy
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : IconButton(
+                            tooltip: 'Get Hindi name',
+                            onPressed: _fillHindiName,
+                            icon: const Icon(Icons.auto_awesome),
+                          ),
                   ),
                 ),
-                LiveProductHindiName(controller: _nameController),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _hsnController,

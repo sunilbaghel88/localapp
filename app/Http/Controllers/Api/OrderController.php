@@ -29,6 +29,7 @@ class OrderController extends Controller
         $order->load([
             'shop',
             'address',
+            'items.product:id,name_hi',
             'items.variant.product.images',
             'payments',
         ]);

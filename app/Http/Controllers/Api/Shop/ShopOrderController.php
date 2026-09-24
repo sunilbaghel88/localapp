@@ -53,7 +53,7 @@ class ShopOrderController extends Controller
         $order->load([
             'shop',
             'address',
-            'items',
+            'items.product:id,name_hi',
             'user:id,first_name,last_name,email,phone',
             'electricianUser:id,first_name,last_name,email,phone',
         ]);
@@ -80,7 +80,7 @@ class ShopOrderController extends Controller
         $order->load([
             'shop',
             'address',
-            'items',
+            'items.product:id,name_hi',
             'user:id,first_name,last_name,email,phone',
             'electricianUser:id,first_name,last_name,email,phone',
         ]);
@@ -107,7 +107,7 @@ class ShopOrderController extends Controller
         $order->load([
             'shop',
             'address',
-            'items',
+            'items.product:id,name_hi',
             'user:id,first_name,last_name,email,phone',
             'electricianUser:id,first_name,last_name,email,phone',
         ]);

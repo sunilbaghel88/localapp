@@ -38,6 +38,7 @@ class PurchaseInvoiceAiService
 
         $parsed = $this->parseInvoiceWithAi($text, $user);
         $parsed['products'] = $this->groupProductsWithVariants($parsed['products']);
+        $parsed['products'] = $this->attachHindiNames($parsed['products'], $user);
         if ($parsed['products'] === []) {
             throw ValidationException::withMessages([
                 'file' => __('AI could not find product lines on this invoice. Try another PDF or add products manually.'),
@@ -83,6 +84,7 @@ class PurchaseInvoiceAiService
 
             $products[] = [
                 'name' => Str::limit($name, 255, ''),
+                'name_hi' => $this->nullableString($row['name_hi'] ?? null),
                 'brand' => $this->nullableString($row['brand'] ?? null),
                 'hsn_code' => $hsn,
                 'variants' => $variants,
@@ -207,6 +209,7 @@ class PurchaseInvoiceAiService
                     'category_id' => $categoryId,
                     'brand_id' => $brandId,
                     'name' => Str::limit($name, 255, ''),
+                    'name_hi' => $this->nullableString($row['name_hi'] ?? null),
                     'slug' => $slug,
                     'description' => null,
                     'status' => $status,
@@ -640,6 +643,33 @@ class PurchaseInvoiceAiService
         }
 
         return array_values($buckets);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $products
+     * @return array<int, array<string, mixed>>
+     */
+    protected function attachHindiNames(array $products, User $user): array
+    {
+        $names = [];
+        foreach ($products as $row) {
+            $name = trim((string) ($row['name'] ?? ''));
+            if ($name !== '') {
+                $names[] = $name;
+            }
+        }
+
+        if ($names === []) {
+            return $products;
+        }
+
+        $hindi = app(ProductHindiNameService::class)->translateMany($names, $user);
+        foreach ($products as $index => $row) {
+            $name = trim((string) ($row['name'] ?? ''));
+            $products[$index]['name_hi'] = $hindi[$name] ?? null;
+        }
+
+        return $products;
     }
 
     protected function familyName(string $name): string

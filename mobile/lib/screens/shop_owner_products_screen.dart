@@ -146,7 +146,7 @@ class _ShopOwnerProductsScreenState extends State<ShopOwnerProductsScreen> {
                                   ),
                                 )
                               : const Icon(Icons.image_not_supported),
-                          title: ProductNameText(p.name),
+                          title: ProductNameText(p.name, hindi: p.nameHi),
                           isThreeLine: true,
                           subtitle: Text('${subtitle.isEmpty ? '' : '$subtitle • '}${p.status}'),
                           trailing: const Icon(Icons.chevron_right),

@@ -143,6 +143,7 @@ class _CartScreenState extends State<CartScreen> {
                             children: [
                               ProductNameText(
                                 product?.name ?? 'Product',
+                                hindi: product?.nameHi,
                                 style: const TextStyle(fontWeight: FontWeight.w600),
                               ),
                               if (variant?.name != null) Text(variant!.name!, style: Theme.of(context).textTheme.bodySmall),

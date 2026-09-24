@@ -641,6 +641,31 @@ class _ShopOwnerImportInvoiceScreenState
                 ),
               ],
             ),
+            Padding(
+              padding: const EdgeInsets.only(left: 12, right: 4, bottom: 8),
+              child: TextField(
+                controller: line.hindiNameController,
+                decoration: InputDecoration(
+                  labelText: 'Hindi name',
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                  suffixIcon: line.hindiBusy
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : IconButton(
+                          tooltip: 'Get Hindi name',
+                          onPressed: () => _fillLineHindi(line),
+                          icon: const Icon(Icons.auto_awesome),
+                        ),
+                ),
+              ),
+            ),
             if (line.duplicate)
               Padding(
                 padding: const EdgeInsets.only(left: 12, bottom: 8),
@@ -869,6 +894,29 @@ class _ShopOwnerImportInvoiceScreenState
     );
   }
 
+  Future<void> _fillLineHindi(_InvoiceProduct line) async {
+    final name = line.nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter the product name first')),
+      );
+      return;
+    }
+    setState(() => line.hindiBusy = true);
+    try {
+      final hindi = await _api.suggestProductHindiName(name);
+      if (!mounted) return;
+      setState(() => line.hindiNameController.text = hindi);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not get a Hindi name. Try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => line.hindiBusy = false);
+    }
+  }
+
   void _recalcVariant(_InvoiceVariant variant) {
     if (!variant.costManual) {
       variant.recomputeNetRate();
@@ -887,6 +935,7 @@ extension _FirstOrNullExt<T> on Iterable<T> {
 class _InvoiceProduct {
   _InvoiceProduct({
     required this.nameController,
+    required this.hindiNameController,
     required this.variants,
     this.brand,
     this.include = true,
@@ -914,6 +963,9 @@ class _InvoiceProduct {
     }
     return _InvoiceProduct(
       nameController: TextEditingController(text: (json['name'] ?? '').toString()),
+      hindiNameController: TextEditingController(
+        text: (json['name_hi'] ?? '').toString(),
+      ),
       variants: variants,
       brand: _nullableText(json['brand']),
       include: json['include'] == true || !duplicate,
@@ -925,6 +977,7 @@ class _InvoiceProduct {
   }
 
   final TextEditingController nameController;
+  final TextEditingController hindiNameController;
   final List<_InvoiceVariant> variants;
   final String? brand;
   bool include;
@@ -932,6 +985,7 @@ class _InvoiceProduct {
   final String? duplicateMatch;
   final int? duplicateProductId;
   final String? duplicateProductName;
+  bool hindiBusy = false;
 
   List<_InvoiceVariant> get selectedVariants =>
       variants.where((v) => v.include).toList();
@@ -956,6 +1010,9 @@ class _InvoiceProduct {
     }
     return {
       'name': nameController.text.trim(),
+      'name_hi': hindiNameController.text.trim().isEmpty
+          ? null
+          : hindiNameController.text.trim(),
       'brand': brand,
       'hsn_code': hsn,
       'skip_if_duplicate': false,
@@ -965,6 +1022,7 @@ class _InvoiceProduct {
 
   void dispose() {
     nameController.dispose();
+    hindiNameController.dispose();
     for (final variant in variants) {
       variant.dispose();
     }

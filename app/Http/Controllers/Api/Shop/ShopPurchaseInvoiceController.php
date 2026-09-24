@@ -192,6 +192,7 @@ class ShopPurchaseInvoiceController extends Controller
             'invoice.source_filename' => ['nullable', 'string', 'max:255'],
             'items' => ['required', 'array', 'min:1', 'max:200'],
             'items.*.name' => ['required', 'string', 'max:255'],
+            'items.*.name_hi' => ['nullable', 'string', 'max:255'],
             'items.*.brand' => ['nullable', 'string', 'max:255'],
             'items.*.hsn_code' => ['nullable', 'string', 'max:16'],
             'items.*.skip_if_duplicate' => ['nullable', 'boolean'],

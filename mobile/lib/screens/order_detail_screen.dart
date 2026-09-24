@@ -102,7 +102,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           Text('Items', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           ...order.items.map((item) => ListTile(
-                title: ProductNameText(item.name),
+                title: ProductNameText(item.name, hindi: item.nameHi),
                 subtitle: Text('Qty: ${item.quantity}'),
                 trailing: Text(currency.format(item.total)),
               )),

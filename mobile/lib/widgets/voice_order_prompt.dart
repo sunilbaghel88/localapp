@@ -205,11 +205,15 @@ Future<List<Map<String, dynamic>>> resolveAiSuggestItems(
                 ),
                 ...candidates.map((candidate) {
                   final name = (candidate['product_name'] ?? '').toString();
+                  final hindi = (candidate['product_name_hi'] ?? '').toString();
                   final brand = (candidate['brand'] ?? '').toString();
                   final variant = (candidate['variant_label'] ?? '').toString();
                   final qty = candidate['quantity'] ?? 1;
                   return ListTile(
-                    title: ProductNameText(brand.isEmpty ? name : '$name ($brand)'),
+                    title: ProductNameText(
+                      brand.isEmpty ? name : '$name ($brand)',
+                      hindi: hindi,
+                    ),
                     subtitle: Text('Qty $qty • $variant'),
                     onTap: () => Navigator.pop(ctx, candidate),
                   );

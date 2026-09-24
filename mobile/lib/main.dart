@@ -4,7 +4,6 @@ import 'app_router.dart';
 import 'core/app_keys.dart';
 import 'providers/auth_provider.dart';
 import 'providers/branding_provider.dart';
-import 'services/hindi_name_store.dart';
 
 void main() {
   runApp(const MyApp());
@@ -19,7 +18,6 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => BrandingProvider()),
-        ChangeNotifierProvider(create: (_) => HindiNameStore()),
       ],
       child: Builder(
         builder: (context) {

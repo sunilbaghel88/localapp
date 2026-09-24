@@ -99,6 +99,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         toolbarHeight: 72,
         title: ProductNameText(
           product.name,
+          hindi: product.nameHi,
           maxLines: 1,
           hindiMaxLines: 1,
         ),
@@ -176,6 +177,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ProductNameText(
                     product.name,
+                    hindi: product.nameHi,
                     style: Theme.of(context).textTheme.headlineSmall,
                     hindiMaxLines: 2,
                   ),
@@ -293,6 +295,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       ),
                                     ProductNameText(
                                       p.name,
+                                      hindi: p.nameHi,
                                       maxLines: 1,
                                       hindiMaxLines: 1,
                                       style: const TextStyle(fontSize: 12),
