@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
@@ -312,6 +313,69 @@ class AuthController extends Controller
             'token' => $user->createToken($request->device_name)->plainTextToken,
             'user' => $this->authUserPayload($user),
         ], 201);
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $email = strtolower(trim((string) $request->input('email', '')));
+        $request->merge([
+            'phone' => $this->normalizePhone((string) $request->input('phone', '')),
+            'email' => $email === '' ? null : $email,
+        ]);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => [
+                'nullable',
+                'string',
+                'lowercase',
+                'email',
+                'max:255',
+                Rule::unique(User::class, 'email')->ignore($user->id),
+            ],
+            'phone' => [
+                'required',
+                'string',
+                'min:10',
+                'max:15',
+                Rule::unique(User::class, 'phone')->ignore($user->id),
+            ],
+        ]);
+
+        $email = $validated['email'] ?? '';
+        if ($email === '') {
+            $email = $user->email ?: ($validated['phone'].'@phone.localapp');
+        }
+
+        $user->fill([
+            'name' => $validated['name'],
+            'email' => $email,
+            'phone' => $validated['phone'],
+        ]);
+
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
+
+        return response()->json($this->authUserPayload($user->fresh()));
+    }
+
+    public function updatePassword(Request $request)
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', Password::defaults(), 'confirmed'],
+        ]);
+
+        $request->user()->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        return response()->json(['message' => 'Password updated']);
     }
 
     public function logout(Request $request)

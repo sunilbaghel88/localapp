@@ -143,6 +143,37 @@ class ApiService {
     return User.fromJson(r.data as Map<String, dynamic>);
   }
 
+  Future<User> updateProfile({
+    required String name,
+    String? email,
+    required String phone,
+  }) async {
+    final r = await _dio.patch(
+      '/user',
+      data: {
+        'name': name.trim(),
+        'email': (email ?? '').trim(),
+        'phone': phone.trim(),
+      },
+    );
+    return User.fromJson(r.data as Map<String, dynamic>);
+  }
+
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    await _dio.patch(
+      '/user/password',
+      data: {
+        'current_password': currentPassword,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      },
+    );
+  }
+
   // Home
   Future<Map<String, dynamic>> getHome() async {
     final r = await _dio.get('/home');
@@ -684,20 +715,14 @@ class ApiService {
   Future<Map<String, dynamic>> createShopOrderPartner({
     required int shopId,
     required String name,
-    required String email,
-    String? phone,
-    required String password,
-    required String passwordConfirmation,
+    required String phone,
   }) async {
     final r = await _dio.post<Map<String, dynamic>>(
       '/shop/order-create/partners',
       data: {
         'shop_id': shopId,
         'name': name,
-        'email': email.trim().toLowerCase(),
-        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
-        'password': password,
-        'password_confirmation': passwordConfirmation,
+        'phone': phone.trim(),
       },
     );
     final row = r.data?['data'] as Map<String, dynamic>?;

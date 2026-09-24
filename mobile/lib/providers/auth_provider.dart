@@ -253,6 +253,55 @@ class AuthProvider with ChangeNotifier {
     } catch (_) {}
   }
 
+  Future<bool> updateProfile({
+    required String name,
+    String? email,
+    required String phone,
+  }) async {
+    _error = null;
+    notifyListeners();
+    try {
+      _user = await _api.updateProfile(
+        name: name,
+        email: email,
+        phone: phone,
+      );
+      notifyListeners();
+      return true;
+    } on DioException catch (e) {
+      _error = _firstApiError(e, const ['name', 'email', 'phone']) ?? 'Could not update profile';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updatePassword({
+    required String currentPassword,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    _error = null;
+    notifyListeners();
+    try {
+      await _api.updatePassword(
+        currentPassword: currentPassword,
+        password: password,
+        passwordConfirmation: passwordConfirmation,
+      );
+      notifyListeners();
+      return true;
+    } on DioException catch (e) {
+      _error = _firstApiError(e, const [
+            'current_password',
+            'password',
+            'password_confirmation',
+          ]) ??
+          'Could not update password';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     try {
       await _api.logout();

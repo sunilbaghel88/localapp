@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
@@ -275,12 +276,14 @@ class ShopOrderCreateController extends Controller
     {
         $this->authorize('create', Order::class);
 
+        $request->merge([
+            'phone' => $this->normalizePhone((string) $request->input('phone', '')),
+        ]);
+
         $validated = $request->validate([
             'shop_id' => ['required', 'integer', 'exists:shops,id'],
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'phone' => ['nullable', 'string', 'max:30'],
-            'password' => ['required', 'confirmed', Password::defaults()],
+            'phone' => ['required', 'string', 'min:10', 'max:15', 'unique:users,phone'],
             'user_type_id' => ['nullable', 'integer', 'exists:user_types,id'],
         ]);
 
@@ -311,11 +314,19 @@ class ShopOrderCreateController extends Controller
             ]);
         }
 
+        $phone = $validated['phone'];
+        $email = $phone.'@phone.localapp';
+        if (User::query()->where('email', $email)->exists()) {
+            throw ValidationException::withMessages([
+                'phone' => [__('An account already exists for this mobile number.')],
+            ]);
+        }
+
         $user = User::create([
             'name' => $validated['name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
-            'password' => Hash::make($validated['password']),
+            'email' => $email,
+            'phone' => $phone,
+            'password' => Hash::make(Str::random(32)),
             'is_active' => true,
         ]);
         $user->userTypes()->syncWithoutDetaching([$partnerTypeId]);
@@ -611,5 +622,16 @@ class ShopOrderCreateController extends Controller
         return response()->json([
             'order' => $order,
         ], 201);
+    }
+
+    protected function normalizePhone(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+
+        if (strlen($digits) > 10) {
+            $digits = substr($digits, -10);
+        }
+
+        return $digits;
     }
 }

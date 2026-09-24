@@ -42,6 +42,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         return $user ? $user->toAuthArray() : [];
     });
+    Route::patch('/user', [AuthController::class, 'updateProfile'])->name('api.user.update');
+    Route::patch('/user/password', [AuthController::class, 'updatePassword'])->name('api.user.password');
     Route::post('/logout', [AuthController::class, 'logout'])->name('api.logout');
     Route::get('/user-types', [UserTypeController::class, 'index'])->name('api.user-types.index');
 
