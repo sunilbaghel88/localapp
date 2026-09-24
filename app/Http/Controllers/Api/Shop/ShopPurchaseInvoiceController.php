@@ -134,7 +134,7 @@ class ShopPurchaseInvoiceController extends Controller
         $this->authorize('create', Product::class);
 
         if (function_exists('set_time_limit')) {
-            @set_time_limit(120);
+            @set_time_limit(180);
         }
 
         $data = $request->validate([
