@@ -40,6 +40,12 @@ class _ShopOwnerImportInvoiceScreenState
 
   final TextEditingController _globalMarginController =
       TextEditingController(text: '20');
+  final TextEditingController _cgstPercentController =
+      TextEditingController(text: '0');
+  final TextEditingController _sgstPercentController =
+      TextEditingController(text: '0');
+  final TextEditingController _igstPercentController =
+      TextEditingController(text: '0');
   final TextEditingController _supplierController = TextEditingController();
   final TextEditingController _gstinController = TextEditingController();
   final TextEditingController _invoiceNumberController = TextEditingController();
@@ -59,6 +65,15 @@ class _ShopOwnerImportInvoiceScreenState
     return double.tryParse(_globalMarginController.text.trim()) ?? 0;
   }
 
+  double get _cgstPercent =>
+      double.tryParse(_cgstPercentController.text.trim()) ?? 0;
+
+  double get _sgstPercent =>
+      double.tryParse(_sgstPercentController.text.trim()) ?? 0;
+
+  double get _igstPercent =>
+      double.tryParse(_igstPercentController.text.trim()) ?? 0;
+
   @override
   void initState() {
     super.initState();
@@ -68,6 +83,9 @@ class _ShopOwnerImportInvoiceScreenState
   @override
   void dispose() {
     _globalMarginController.dispose();
+    _cgstPercentController.dispose();
+    _sgstPercentController.dispose();
+    _igstPercentController.dispose();
     _supplierController.dispose();
     _gstinController.dispose();
     _invoiceNumberController.dispose();
@@ -179,6 +197,7 @@ class _ShopOwnerImportInvoiceScreenState
         }
       }
       _fillHeader(data);
+      _repriceLines();
       setState(() {
         _extracting = false;
       });
@@ -203,13 +222,32 @@ class _ShopOwnerImportInvoiceScreenState
   }
 
   void _applyGlobalMargin() {
+    setState(_repriceLines);
+  }
+
+  /// Net rate before GST is list price after discount.
+  /// CGST and SGST are added on top of that. IGST is used on its own.
+  void _repriceLines() {
     final margin = _globalMargin;
-    setState(() {
-      for (final line in _lines) {
-        if (!line.include) continue;
-        line.applyMargin(margin);
+    final cgst = _cgstPercent;
+    final sgst = _sgstPercent;
+    final igst = _igstPercent;
+    for (final line in _lines) {
+      if (!line.include) continue;
+      for (final variant in line.variants) {
+        if (!variant.include) continue;
+        if (!variant.costManual) {
+          variant.recomputeNetRate(
+            cgstPercent: cgst,
+            sgstPercent: sgst,
+            igstPercent: igst,
+          );
+        }
+        if (!variant.priceManual) {
+          variant.applyMargin(margin);
+        }
       }
-    });
+    }
   }
 
   Future<void> _createProducts() async {
@@ -575,11 +613,68 @@ class _ShopOwnerImportInvoiceScreenState
                     decoration: const InputDecoration(
                       labelText: 'Margin % for all products',
                       helperText:
-                          'Selling price = purchase rate + this margin. You can still edit any row.',
+                          'Selling price = net rate + this margin. You can still edit any row.',
                       border: OutlineInputBorder(),
                       suffixText: '%',
                     ),
                     onChanged: (_) => _applyGlobalMargin(),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _cgstPercentController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'CGST',
+                            border: OutlineInputBorder(),
+                            suffixText: '%',
+                          ),
+                          onChanged: (_) => _applyGlobalMargin(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _sgstPercentController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'SGST',
+                            border: OutlineInputBorder(),
+                            suffixText: '%',
+                          ),
+                          onChanged: (_) => _applyGlobalMargin(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _igstPercentController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'IGST',
+                            border: OutlineInputBorder(),
+                            suffixText: '%',
+                          ),
+                          onChanged: (_) => _applyGlobalMargin(),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6, left: 4),
+                    child: Text(
+                      'Net rate starts as list price after discount. CGST and SGST are added on top. If IGST is filled, only IGST is added.',
+                      style: TextStyle(fontSize: 12),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -810,7 +905,7 @@ class _ShopOwnerImportInvoiceScreenState
                         ),
                         decoration: const InputDecoration(
                           labelText: 'Net rate',
-                          helperText: 'After discount',
+                          helperText: 'After discount and GST',
                           border: OutlineInputBorder(),
                           isDense: true,
                         ),
@@ -919,7 +1014,11 @@ class _ShopOwnerImportInvoiceScreenState
 
   void _recalcVariant(_InvoiceVariant variant) {
     if (!variant.costManual) {
-      variant.recomputeNetRate();
+      variant.recomputeNetRate(
+        cgstPercent: _cgstPercent,
+        sgstPercent: _sgstPercent,
+        igstPercent: _igstPercent,
+      );
     }
     if (!variant.priceManual) {
       variant.applyMargin(_globalMargin);
@@ -989,14 +1088,6 @@ class _InvoiceProduct {
 
   List<_InvoiceVariant> get selectedVariants =>
       variants.where((v) => v.include).toList();
-
-  void applyMargin(double margin) {
-    for (final variant in variants) {
-      if (!variant.priceManual) {
-        variant.applyMargin(margin);
-      }
-    }
-  }
 
   Map<String, dynamic> toPayload() {
     final selected = selectedVariants;
@@ -1104,7 +1195,7 @@ class _InvoiceVariant {
       unit: json['unit']?.toString(),
       goodsDescription: _InvoiceProduct._nullableText(json['goods_description']),
       attributes: attributes,
-      costManual: (cost - computed).abs() > 0.05,
+      costManual: false,
     );
   }
 
@@ -1126,11 +1217,18 @@ class _InvoiceVariant {
   bool priceManual = false;
   bool costManual;
 
-  void recomputeNetRate() {
+  void recomputeNetRate({
+    required double cgstPercent,
+    required double sgstPercent,
+    required double igstPercent,
+  }) {
     final list = double.tryParse(listController.text.trim()) ?? 0;
+    if (list <= 0) return;
     final discount = double.tryParse(discountController.text.trim()) ?? 0;
+    final beforeTax = list * (1 - discount / 100);
+    final taxPercent = igstPercent > 0 ? igstPercent : cgstPercent + sgstPercent;
     costController.text =
-        (list * (1 - discount / 100)).toStringAsFixed(2);
+        (beforeTax * (1 + taxPercent / 100)).toStringAsFixed(2);
   }
 
   void applyMargin(double margin) {

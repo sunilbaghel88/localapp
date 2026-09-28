@@ -222,6 +222,12 @@ class PurchaseInvoiceAiService
                         continue;
                     }
                     $pricing = $this->resolveLinePricing($variant, $row);
+                    // The import screen adds the shop owner's GST % on top of the
+                    // discounted list price. Keep that net rate when it is sent.
+                    $explicitCost = $this->toMoney($variant['cost_price'] ?? 0);
+                    if ($explicitCost > 0) {
+                        $pricing['cost_price'] = $explicitCost;
+                    }
                     $variantName = $this->nullableString($variant['name'] ?? null);
                     $goodsDescription = $this->nullableString($variant['goods_description'] ?? $row['goods_description'] ?? null, 2000);
                     $sku = $this->uniqueSku(
