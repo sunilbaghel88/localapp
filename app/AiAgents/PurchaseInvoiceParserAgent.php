@@ -33,8 +33,7 @@ Rules:
 - "discount_percent" is the line discount. If missing, 0.
 - "cost_price" is the net unit rate after discount, not the line total.
 - "hsn_code" is digits only.
-- "cgst_amount", "sgst_amount", and "igst_amount" are the line tax amounts. Use 0 when that tax is absent.
-- Header tax fields are invoice totals when the text shows them, otherwise 0.
+- Do not extract CGST, SGST, or IGST. Leave every tax amount at 0.
 - Fill supplier, GSTIN, invoice number, and invoice date when the text shows them, otherwise null.
 
 {
@@ -42,9 +41,6 @@ Rules:
   "supplier_gstin": null,
   "invoice_number": null,
   "invoice_date": "YYYY-MM-DD or null",
-  "cgst_amount": 0,
-  "sgst_amount": 0,
-  "igst_amount": 0,
   "lines": [
     {
       "name": "Supreme CPVC Pipe",
@@ -56,9 +52,6 @@ Rules:
       "list_price": 403.0,
       "discount_percent": 67.0,
       "cost_price": 132.99,
-      "cgst_amount": 598.45,
-      "sgst_amount": 598.45,
-      "igst_amount": 0,
       "sku": null
     }
   ]

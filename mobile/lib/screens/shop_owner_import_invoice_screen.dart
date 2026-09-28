@@ -233,9 +233,13 @@ class _ShopOwnerImportInvoiceScreenState
     final sgst = _sgstPercent;
     final igst = _igstPercent;
     for (final line in _lines) {
-      if (!line.include) continue;
       for (final variant in line.variants) {
-        if (!variant.include) continue;
+        variant.applyTaxAmounts(
+          cgstPercent: cgst,
+          sgstPercent: sgst,
+          igstPercent: igst,
+        );
+        if (!line.include || !variant.include) continue;
         if (!variant.costManual) {
           variant.recomputeNetRate(
             cgstPercent: cgst,
@@ -248,6 +252,24 @@ class _ShopOwnerImportInvoiceScreenState
         }
       }
     }
+    _syncTaxTotals();
+  }
+
+  void _syncTaxTotals() {
+    var cgst = 0.0;
+    var sgst = 0.0;
+    var igst = 0.0;
+    for (final line in _lines) {
+      if (!line.include) continue;
+      for (final variant in line.selectedVariants) {
+        cgst += double.tryParse(variant.cgstController.text.trim()) ?? 0;
+        sgst += double.tryParse(variant.sgstController.text.trim()) ?? 0;
+        igst += double.tryParse(variant.igstController.text.trim()) ?? 0;
+      }
+    }
+    _cgstTotalController.text = cgst.toStringAsFixed(2);
+    _sgstTotalController.text = sgst.toStringAsFixed(2);
+    _igstTotalController.text = igst.toStringAsFixed(2);
   }
 
   Future<void> _createProducts() async {
@@ -672,7 +694,7 @@ class _ShopOwnerImportInvoiceScreenState
                   const Padding(
                     padding: EdgeInsets.only(top: 6, left: 4),
                     child: Text(
-                      'Net rate starts as list price after discount. CGST and SGST are added on top. If IGST is filled, only IGST is added.',
+                      'Net rate starts as list price after discount. CGST and SGST are added on top. If IGST is filled, only IGST is added. Each row’s tax amount is that rate times the quantity.',
                       style: TextStyle(fontSize: 12),
                     ),
                   ),
@@ -723,6 +745,7 @@ class _ShopOwnerImportInvoiceScreenState
                     for (final variant in line.variants) {
                       variant.include = line.include;
                     }
+                    _syncTaxTotals();
                   }),
                 ),
                 Expanded(
@@ -810,7 +833,10 @@ class _ShopOwnerImportInvoiceScreenState
               Checkbox(
                 value: variant.include,
                 onChanged: product.include
-                    ? (v) => setState(() => variant.include = v ?? false)
+                    ? (v) => setState(() {
+                          variant.include = v ?? false;
+                          _syncTaxTotals();
+                        })
                     : null,
               ),
               Expanded(
@@ -855,6 +881,7 @@ class _ShopOwnerImportInvoiceScreenState
                           border: OutlineInputBorder(),
                           isDense: true,
                         ),
+                        onChanged: (_) => _recalcVariant(variant),
                       ),
                     ),
                   ],
@@ -1023,6 +1050,12 @@ class _ShopOwnerImportInvoiceScreenState
     if (!variant.priceManual) {
       variant.applyMargin(_globalMargin);
     }
+    variant.applyTaxAmounts(
+      cgstPercent: _cgstPercent,
+      sgstPercent: _sgstPercent,
+      igstPercent: _igstPercent,
+    );
+    _syncTaxTotals();
     setState(() {});
   }
 }
@@ -1234,6 +1267,30 @@ class _InvoiceVariant {
   void applyMargin(double margin) {
     final cost = double.tryParse(costController.text.trim()) ?? 0;
     priceController.text = _sellingFrom(cost, margin).toStringAsFixed(2);
+  }
+
+  /// Line tax amount = discounted list price × GST % × quantity.
+  void applyTaxAmounts({
+    required double cgstPercent,
+    required double sgstPercent,
+    required double igstPercent,
+  }) {
+    final list = double.tryParse(listController.text.trim()) ?? 0;
+    final discount = double.tryParse(discountController.text.trim()) ?? 0;
+    final qty = double.tryParse(qtyController.text.trim()) ?? 0;
+    final beforeTax = list * (1 - discount / 100);
+    if (igstPercent > 0) {
+      cgstController.text = '0.00';
+      sgstController.text = '0.00';
+      igstController.text =
+          (beforeTax * igstPercent / 100 * qty).toStringAsFixed(2);
+      return;
+    }
+    cgstController.text =
+        (beforeTax * cgstPercent / 100 * qty).toStringAsFixed(2);
+    sgstController.text =
+        (beforeTax * sgstPercent / 100 * qty).toStringAsFixed(2);
+    igstController.text = '0.00';
   }
 
   Map<String, dynamic> toPayload() {
