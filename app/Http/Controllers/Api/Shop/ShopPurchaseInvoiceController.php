@@ -194,6 +194,7 @@ class ShopPurchaseInvoiceController extends Controller
             'items.*.name' => ['required', 'string', 'max:255'],
             'items.*.name_hi' => ['nullable', 'string', 'max:255'],
             'items.*.brand' => ['nullable', 'string', 'max:255'],
+            'items.*.status' => ['nullable', Rule::in(['draft', 'published', 'archived'])],
             'items.*.hsn_code' => ['nullable', 'string', 'max:16'],
             'items.*.skip_if_duplicate' => ['nullable', 'boolean'],
             'items.*.quantity' => ['nullable', 'integer', 'min:0'],
@@ -212,6 +213,7 @@ class ShopPurchaseInvoiceController extends Controller
             'items.*.variants.*.sgst_amount' => ['nullable', 'numeric', 'min:0'],
             'items.*.variants.*.igst_amount' => ['nullable', 'numeric', 'min:0'],
             'items.*.variants.*.sku' => ['nullable', 'string', 'max:255'],
+            'items.*.variants.*.is_active' => ['nullable', 'boolean'],
             'items.*.variants.*.unit' => ['nullable', 'string', 'max:40'],
             'items.*.variants.*.attributes' => ['nullable', 'array'],
         ]);

@@ -27,6 +27,7 @@ class _ShopOwnerImportInvoiceScreenState
   int? _parentCategoryId;
   int? _categoryId;
   String _status = 'published';
+  bool _variantsActive = true;
 
   String? _fileName;
   Uint8List? _fileBytes;
@@ -198,6 +199,7 @@ class _ShopOwnerImportInvoiceScreenState
       }
       _fillHeader(data);
       _repriceLines();
+      _applyCatalogFlags();
       setState(() {
         _extracting = false;
       });
@@ -223,6 +225,15 @@ class _ShopOwnerImportInvoiceScreenState
 
   void _applyGlobalMargin() {
     setState(_repriceLines);
+  }
+
+  void _applyCatalogFlags() {
+    for (final line in _lines) {
+      line.status = _status;
+      for (final variant in line.variants) {
+        variant.isActive = _variantsActive;
+      }
+    }
   }
 
   /// Net rate before GST is list price after discount.
@@ -615,15 +626,42 @@ class _ShopOwnerImportInvoiceScreenState
                     // ignore: deprecated_member_use
                     value: _status,
                     decoration: const InputDecoration(
-                      labelText: 'Status',
+                      labelText: 'Product status for all',
+                      helperText:
+                          'Published products appear in the store. You can change any product below.',
                       border: OutlineInputBorder(),
                     ),
                     items: const [
                       DropdownMenuItem(value: 'published', child: Text('Published')),
                       DropdownMenuItem(value: 'draft', child: Text('Draft')),
+                      DropdownMenuItem(value: 'archived', child: Text('Archived')),
                     ],
                     onChanged: (v) {
-                      if (v != null) setState(() => _status = v);
+                      if (v == null) return;
+                      setState(() {
+                        _status = v;
+                        for (final line in _lines) {
+                          line.status = v;
+                        }
+                      });
+                    },
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Variants active'),
+                    subtitle: const Text(
+                      'Active variants can be sold. You can turn a single size off on its row.',
+                    ),
+                    value: _variantsActive,
+                    onChanged: (v) {
+                      setState(() {
+                        _variantsActive = v;
+                        for (final line in _lines) {
+                          for (final variant in line.variants) {
+                            variant.isActive = v;
+                          }
+                        }
+                      });
                     },
                   ),
                   const SizedBox(height: 12),
@@ -799,6 +837,27 @@ class _ShopOwnerImportInvoiceScreenState
                   ),
                 ),
               ),
+            Padding(
+              padding: const EdgeInsets.only(left: 12, right: 4, bottom: 8),
+              child: DropdownButtonFormField<String>(
+                // ignore: deprecated_member_use
+                value: line.status,
+                decoration: const InputDecoration(
+                  labelText: 'Product status',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'published', child: Text('Published')),
+                  DropdownMenuItem(value: 'draft', child: Text('Draft')),
+                  DropdownMenuItem(value: 'archived', child: Text('Archived')),
+                ],
+                onChanged: (v) {
+                  if (v == null) return;
+                  setState(() => line.status = v);
+                },
+              ),
+            ),
             if ((line.brand ?? '').isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(left: 12, bottom: 4),
@@ -853,6 +912,18 @@ class _ShopOwnerImportInvoiceScreenState
                 ),
               ),
             ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 40),
+            child: Row(
+              children: [
+                Switch(
+                  value: variant.isActive,
+                  onChanged: (v) => setState(() => variant.isActive = v),
+                ),
+                Text(variant.isActive ? 'Active' : 'Inactive'),
+              ],
+            ),
           ),
           const SizedBox(height: 8),
           Padding(
@@ -1112,6 +1183,7 @@ class _InvoiceProduct {
   final TextEditingController hindiNameController;
   final List<_InvoiceVariant> variants;
   final String? brand;
+  String status = 'published';
   bool include;
   final bool duplicate;
   final String? duplicateMatch;
@@ -1138,6 +1210,7 @@ class _InvoiceProduct {
           ? null
           : hindiNameController.text.trim(),
       'brand': brand,
+      'status': status,
       'hsn_code': hsn,
       'skip_if_duplicate': false,
       'variants': selected.map((v) => v.toPayload()).toList(),
@@ -1177,6 +1250,7 @@ class _InvoiceVariant {
     this.goodsDescription,
     this.attributes = const {},
     this.costManual = false,
+    this.isActive = true,
   });
 
   factory _InvoiceVariant.fromJson(Map<String, dynamic> json, double margin) {
@@ -1229,6 +1303,7 @@ class _InvoiceVariant {
       goodsDescription: _InvoiceProduct._nullableText(json['goods_description']),
       attributes: attributes,
       costManual: false,
+      isActive: true,
     );
   }
 
@@ -1247,6 +1322,7 @@ class _InvoiceVariant {
   final String? goodsDescription;
   final Map<String, String> attributes;
   bool include = true;
+  bool isActive;
   bool priceManual = false;
   bool costManual;
 
@@ -1318,6 +1394,7 @@ class _InvoiceVariant {
       'igst_amount': double.tryParse(igstController.text.trim()) ?? 0,
       'sku': sku,
       'unit': unit,
+      'is_active': isActive,
       'attributes': attrs,
     };
   }

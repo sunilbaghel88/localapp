@@ -204,6 +204,11 @@ class PurchaseInvoiceAiService
                     }
                 }
 
+                $productStatus = $row['status'] ?? $status;
+                if (! in_array($productStatus, ['draft', 'published', 'archived'], true)) {
+                    $productStatus = $status;
+                }
+
                 $product = Product::create([
                     'shop_id' => $shop->id,
                     'category_id' => $categoryId,
@@ -212,7 +217,7 @@ class PurchaseInvoiceAiService
                     'name_hi' => $this->nullableString($row['name_hi'] ?? null),
                     'slug' => $slug,
                     'description' => null,
-                    'status' => $status,
+                    'status' => $productStatus,
                     'hsn_code' => $productHsn,
                 ]);
 
@@ -253,7 +258,9 @@ class PurchaseInvoiceAiService
                         'cost_price' => $pricing['cost_price'],
                         'compare_at_price' => null,
                         'attributes' => $attributes,
-                        'is_active' => true,
+                        'is_active' => array_key_exists('is_active', $variant)
+                            ? filter_var($variant['is_active'], FILTER_VALIDATE_BOOLEAN)
+                            : true,
                     ]);
 
                     $createdVariants[] = [
