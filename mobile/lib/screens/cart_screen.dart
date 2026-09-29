@@ -8,6 +8,7 @@ import '../models/cart_item.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/product_name_text.dart';
+import '../widgets/eshop_price_text.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -147,7 +148,10 @@ class _CartScreenState extends State<CartScreen> {
                                 style: const TextStyle(fontWeight: FontWeight.w600),
                               ),
                               if (variant?.name != null) Text(variant!.name!, style: Theme.of(context).textTheme.bodySmall),
-                              Text(currency.format(item.price), style: const TextStyle(fontWeight: FontWeight.bold)),
+                              EshopPriceText(
+                                visible: item.priceVisibleOnEshop,
+                                price: currency.format(item.price),
+                              ),
                               Row(
                                 children: [
                                   IconButton(
@@ -183,7 +187,12 @@ class _CartScreenState extends State<CartScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Subtotal'),
-                      Text(currency.format(cart.subtotal), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        cart.allEshopPricesVisible
+                            ? currency.format(cart.subtotal)
+                            : EshopPriceText.placeholder,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),

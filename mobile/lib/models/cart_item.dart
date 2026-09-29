@@ -43,4 +43,6 @@ class CartItem {
   }
 
   double get lineTotal => quantity * price;
+
+  bool get priceVisibleOnEshop => product?.priceVisibleOnEshop ?? false;
 }

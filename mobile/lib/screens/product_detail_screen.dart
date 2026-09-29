@@ -7,6 +7,7 @@ import '../models/product.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/product_name_text.dart';
+import '../widgets/eshop_price_text.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String slug;
@@ -190,14 +191,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   const SizedBox(height: 12),
                   if (variant != null) ...[
-                    Row(
-                      children: [
-                        Text(currency.format(variant.price), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                        if (variant.hasDiscount) ...[
-                          const SizedBox(width: 8),
-                          Text(currency.format(variant.compareAtPrice!), style: TextStyle(decoration: TextDecoration.lineThrough, color: Theme.of(context).colorScheme.outline)),
-                        ],
-                      ],
+                    EshopPriceText(
+                      visible: product.priceVisibleOnEshop,
+                      price: currency.format(variant.price),
+                      compareAt: variant.hasDiscount
+                          ? currency.format(variant.compareAtPrice!)
+                          : null,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      compareStyle: TextStyle(
+                        decoration: TextDecoration.lineThrough,
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     if (product.variants.length > 1) ...[
@@ -301,8 +305,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       style: const TextStyle(fontSize: 12),
                                     ),
                                     if (v != null)
-                                      Text(
-                                        '₹${v.price.toStringAsFixed(2)}',
+                                      EshopPriceText(
+                                        visible: p.priceVisibleOnEshop,
+                                        price: '₹${v.price.toStringAsFixed(2)}',
                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                                       ),
                                   ],

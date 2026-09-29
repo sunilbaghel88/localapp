@@ -5,6 +5,7 @@ import '../models/category.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
 import '../widgets/product_name_text.dart';
+import '../widgets/eshop_price_text.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -262,7 +263,10 @@ class _ProductTile extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   if (variant != null)
-                    Text('₹${variant.price.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    EshopPriceText(
+                      visible: product.priceVisibleOnEshop,
+                      price: '₹${variant.price.toStringAsFixed(2)}',
+                    ),
                 ],
               ),
             ),

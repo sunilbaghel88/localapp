@@ -21,7 +21,17 @@ class Product extends Model
         'description',
         'status',
         'hsn_code',
+        'price_visible_on_eshop',
     ];
+
+    protected $casts = [
+        'price_visible_on_eshop' => 'boolean',
+    ];
+
+    public function isPriceVisibleOnEshop(): bool
+    {
+        return (bool) $this->price_visible_on_eshop;
+    }
 
     public function shop(): BelongsTo
     {

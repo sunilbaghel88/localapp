@@ -50,10 +50,14 @@
                     $highestPrice = $product->variants->max('price');
                 @endphp
                 <div class="mb-6">
-                    @if($lowestPrice === $highestPrice)
-                        <span class="text-3xl font-bold text-gray-900">₹{{ number_format($lowestPrice, 2) }}</span>
+                    @if($product->isPriceVisibleOnEshop())
+                        @if($lowestPrice === $highestPrice)
+                            <span class="text-3xl font-bold text-gray-900">₹{{ number_format($lowestPrice, 2) }}</span>
+                        @else
+                            <span class="text-3xl font-bold text-gray-900">₹{{ number_format($lowestPrice, 2) }} - ₹{{ number_format($highestPrice, 2) }}</span>
+                        @endif
                     @else
-                        <span class="text-3xl font-bold text-gray-900">₹{{ number_format($lowestPrice, 2) }} - ₹{{ number_format($highestPrice, 2) }}</span>
+                        <span class="text-3xl font-bold text-gray-900">At the time of order</span>
                     @endif
                 </div>
                 @endif
@@ -87,11 +91,14 @@
                             @foreach($product->variants as $variant)
                             <option value="{{ $variant->id }}"
                                     data-price="{{ $variant->price }}"
+                                    data-price-visible="{{ $product->isPriceVisibleOnEshop() ? '1' : '0' }}"
                                     data-stock="{{ $variant->stock }}"
                                     data-compare-price="{{ $variant->compare_at_price }}"
                                     data-attributes="{{ base64_encode(json_encode($variant->attributes ?? [])) }}">
                                 {{ $variant->name ?: $variant->sku }}
-                                - ₹{{ number_format($variant->price, 2) }}
+                                @if($product->isPriceVisibleOnEshop())
+                                    - ₹{{ number_format($variant->price, 2) }}
+                                @endif
                                 @if($variant->stock <= 0) (Out of Stock) @endif
                             </option>
                             @endforeach
@@ -128,9 +135,14 @@
 
                         if (this.value) {
                             variantInfo.classList.remove('hidden');
-                            document.getElementById('variantPrice').textContent = '₹' + parseFloat(price).toFixed(2);
+                            const priceVisible = option.dataset.priceVisible !== '0';
+                            if (priceVisible) {
+                                document.getElementById('variantPrice').textContent = '₹' + parseFloat(price).toFixed(2);
+                            } else {
+                                document.getElementById('variantPrice').textContent = 'At the time of order';
+                            }
 
-                            if (comparePrice && parseFloat(comparePrice) > parseFloat(price)) {
+                            if (priceVisible && comparePrice && parseFloat(comparePrice) > parseFloat(price)) {
                                 document.getElementById('variantComparePrice').textContent = '₹' + parseFloat(comparePrice).toFixed(2);
                                 document.getElementById('variantComparePrice').classList.remove('hidden');
                             } else {

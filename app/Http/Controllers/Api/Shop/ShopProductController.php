@@ -169,6 +169,7 @@ class ShopProductController extends Controller
             'brand_name' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'hsn_code' => ['nullable', 'string', 'max:16'],
+            'price_visible_on_eshop' => ['sometimes', 'boolean'],
             'variants' => ['required', 'array', 'min:1'],
             'variants.*.sku' => ['required', 'string', 'max:255'],
             'variants.*.name' => ['nullable', 'string', 'max:255'],
@@ -213,6 +214,7 @@ class ShopProductController extends Controller
             'description' => $data['description'] ?? null,
             'status' => $data['status'],
             'hsn_code' => $data['hsn_code'] ?? null,
+            'price_visible_on_eshop' => (bool) ($data['price_visible_on_eshop'] ?? false),
         ]);
 
         foreach ($data['variants'] as $variant) {
@@ -273,6 +275,7 @@ class ShopProductController extends Controller
             'brand_name' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'hsn_code' => ['nullable', 'string', 'max:16'],
+            'price_visible_on_eshop' => ['sometimes', 'boolean'],
             'variants' => ['required', 'array', 'min:1'],
             'variants.*.id' => ['nullable', 'integer'],
             'variants.*.sku' => ['required', 'string', 'max:255'],
@@ -322,6 +325,7 @@ class ShopProductController extends Controller
             'description' => $data['description'] ?? null,
             'status' => $data['status'],
             'hsn_code' => $data['hsn_code'] ?? null,
+            'price_visible_on_eshop' => (bool) ($data['price_visible_on_eshop'] ?? false),
         ]);
 
         // Variants: update existing by id, create new, and deactivate removed ones (avoid breaking order history).

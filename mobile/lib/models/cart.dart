@@ -67,4 +67,7 @@ class Cart {
       itemsCount: (response['items_count'] as int?) ?? 0,
     );
   }
+
+  bool get allEshopPricesVisible =>
+      items.every((item) => item.priceVisibleOnEshop);
 }

@@ -219,6 +219,7 @@ class PurchaseInvoiceAiService
                     'description' => null,
                     'status' => $productStatus,
                     'hsn_code' => $productHsn,
+                    'price_visible_on_eshop' => false,
                 ]);
 
                 $createdVariants = [];

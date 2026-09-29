@@ -5,6 +5,7 @@ import '../models/category.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
 import '../widgets/product_name_text.dart';
+import '../widgets/eshop_price_text.dart';
 import '../widgets/main_scaffold.dart';
 
 class EshopScreen extends StatefulWidget {
@@ -301,24 +302,17 @@ class _ProductCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   if (variant != null) ...[
-                    Row(
-                      children: [
-                        Text(
-                          '₹${variant.price.toStringAsFixed(2)}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        if (variant.hasDiscount) ...[
-                          const SizedBox(width: 6),
-                          Text(
-                            '₹${variant.compareAtPrice!.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context).colorScheme.outline,
-                              decoration: TextDecoration.lineThrough,
-                            ),
-                          ),
-                        ],
-                      ],
+                    EshopPriceText(
+                      visible: product.priceVisibleOnEshop,
+                      price: '₹${variant.price.toStringAsFixed(2)}',
+                      compareAt: variant.hasDiscount
+                          ? '₹${variant.compareAtPrice!.toStringAsFixed(2)}'
+                          : null,
+                      compareStyle: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.outline,
+                        decoration: TextDecoration.lineThrough,
+                      ),
                     ),
                   ] else
                     Text(

@@ -20,9 +20,13 @@
         <div class="flex items-center justify-between">
             <div>
                 @if($lowestPriceVariant)
-                    <span class="text-lg font-bold text-gray-900">₹{{ number_format($lowestPriceVariant->price, 2) }}</span>
-                    @if($lowestPriceVariant->compare_at_price && $lowestPriceVariant->compare_at_price > $lowestPriceVariant->price)
-                        <span class="text-sm text-gray-500 line-through ml-2">₹{{ number_format($lowestPriceVariant->compare_at_price, 2) }}</span>
+                    @if($product->isPriceVisibleOnEshop())
+                        <span class="text-lg font-bold text-gray-900">₹{{ number_format($lowestPriceVariant->price, 2) }}</span>
+                        @if($lowestPriceVariant->compare_at_price && $lowestPriceVariant->compare_at_price > $lowestPriceVariant->price)
+                            <span class="text-sm text-gray-500 line-through ml-2">₹{{ number_format($lowestPriceVariant->compare_at_price, 2) }}</span>
+                        @endif
+                    @else
+                        <span class="text-lg font-bold text-gray-900">At the time of order</span>
                     @endif
                 @else
                     <span class="text-gray-500">Out of stock</span>

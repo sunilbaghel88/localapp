@@ -6,6 +6,7 @@ import '../models/cart.dart';
 import '../models/shop_with_partners.dart';
 import '../services/api_service.dart';
 import '../widgets/product_name_text.dart';
+import '../widgets/eshop_price_text.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -177,7 +178,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         item.product?.name ?? 'Item',
                         hindi: item.product?.nameHi,
                       ),
-                      trailing: Text(currency.format(item.lineTotal)),
+                      trailing: Text(
+                        item.priceVisibleOnEshop
+                            ? currency.format(item.lineTotal)
+                            : EshopPriceText.placeholder,
+                      ),
                       subtitle: Text('Qty: ${item.quantity}'),
                     )),
                 const Divider(),
@@ -185,7 +190,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Total'),
-                    Text(currency.format(_grandTotal), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      _cart!.allEshopPricesVisible
+                          ? currency.format(_grandTotal)
+                          : EshopPriceText.placeholder,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ],
                 ),
               ],

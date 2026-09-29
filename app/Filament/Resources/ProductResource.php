@@ -96,6 +96,10 @@ class ProductResource extends Resource
                         'archived' => 'Archived',
                     ])
                     ->default('draft'),
+                Forms\Components\Toggle::make('price_visible_on_eshop')
+                    ->label('Price visible at e-shop')
+                    ->helperText('When off, customers see “At the time of order” instead of the price.')
+                    ->default(false),
                 Forms\Components\TextInput::make('slug')
                     ->required()
                     ->unique(ignoreRecord: true)
@@ -229,6 +233,13 @@ class ProductResource extends Resource
                         'success' => 'published',
                         'warning' => 'archived',
                     ]),
+                Tables\Columns\IconColumn::make('price_visible_on_eshop')
+                    ->label('E-shop price')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-eye')
+                    ->falseIcon('heroicon-o-eye-slash')
+                    ->trueColor('success')
+                    ->falseColor('gray'),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable(),

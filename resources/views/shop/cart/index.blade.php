@@ -60,8 +60,12 @@
                                     </div>
                                     
                                     <div class="text-right">
-                                        <p class="font-semibold text-gray-900">₹{{ number_format($item->quantity * $item->price, 2) }}</p>
-                                        <p class="text-sm text-gray-500">₹{{ number_format($item->price, 2) }} each</p>
+                                        @if($item->variant?->product?->isPriceVisibleOnEshop())
+                                            <p class="font-semibold text-gray-900">₹{{ number_format($item->quantity * $item->price, 2) }}</p>
+                                            <p class="text-sm text-gray-500">₹{{ number_format($item->price, 2) }} each</p>
+                                        @else
+                                            <p class="font-semibold text-gray-900">At the time of order</p>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -81,25 +85,28 @@
                         $shipping = 0;
                         $tax = 0;
                         $total = $subtotal + $shipping + $tax;
+                        $hideEshopPrices = $cart->items->contains(function ($item) {
+                            return ! $item->variant?->product?->isPriceVisibleOnEshop();
+                        });
                     @endphp
 
                     <div class="space-y-2 mb-4">
                         <div class="flex justify-between text-gray-600">
                             <span>Subtotal</span>
-                            <span>₹{{ number_format($subtotal, 2) }}</span>
+                            <span>{{ $hideEshopPrices ? 'At the time of order' : '₹' . number_format($subtotal, 2) }}</span>
                         </div>
                         <div class="flex justify-between text-gray-600">
                             <span>Shipping</span>
-                            <span>₹{{ number_format($shipping, 2) }}</span>
+                            <span>{{ $hideEshopPrices ? 'At the time of order' : '₹' . number_format($shipping, 2) }}</span>
                         </div>
                         <div class="flex justify-between text-gray-600">
                             <span>Tax</span>
-                            <span>₹{{ number_format($tax, 2) }}</span>
+                            <span>{{ $hideEshopPrices ? 'At the time of order' : '₹' . number_format($tax, 2) }}</span>
                         </div>
                         <div class="border-t border-gray-200 pt-2 mt-2">
                             <div class="flex justify-between font-bold text-gray-900">
                                 <span>Total</span>
-                                <span>₹{{ number_format($total, 2) }}</span>
+                                <span>{{ $hideEshopPrices ? 'At the time of order' : '₹' . number_format($total, 2) }}</span>
                             </div>
                         </div>
                     </div>

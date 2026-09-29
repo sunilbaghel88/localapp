@@ -45,6 +45,7 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
   int? _selectedCategoryId;
   int? _selectedBrandId;
   String _status = 'draft';
+  bool _priceVisibleOnEshop = false;
 
   List<Category> get _subcategories {
     final parentId = _selectedParentCategoryId;
@@ -127,6 +128,7 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
       _hsnController.text = p.hsnCode ?? '';
       _descriptionController.text = p.description ?? '';
       _status = p.status;
+      _priceVisibleOnEshop = p.priceVisibleOnEshop;
       _selectedShopId = p.shopId ?? _selectedShopId;
       _selectedCategoryId = p.categoryId;
       _selectedBrandId = p.brandId;
@@ -236,6 +238,7 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
             ? null
             : _hsnController.text.trim(),
         'status': _status,
+        'price_visible_on_eshop': _priceVisibleOnEshop,
         'category_id': _selectedCategoryId,
         'description': desc.isEmpty ? null : desc,
         'variants': variants,
@@ -362,6 +365,17 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
                     DropdownMenuEntry(value: 'published', label: 'Published'),
                     DropdownMenuEntry(value: 'archived', label: 'Archived'),
                   ],
+                ),
+
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Price visible at e-shop'),
+                  subtitle: const Text(
+                    'When off, customers see “At the time of order” instead of the price.',
+                  ),
+                  value: _priceVisibleOnEshop,
+                  onChanged: (v) => setState(() => _priceVisibleOnEshop = v),
                 ),
 
                 const SizedBox(height: 12),

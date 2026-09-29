@@ -15,6 +15,7 @@ class Product {
   final String? brand;
   final String? hsnCode;
   final String status;
+  final bool priceVisibleOnEshop;
   final List<ProductImage> images;
   final List<ProductVariant> variants;
   final Category? category;
@@ -32,6 +33,7 @@ class Product {
     this.brand,
     this.hsnCode,
     this.status = 'published',
+    this.priceVisibleOnEshop = false,
     this.images = const [],
     this.variants = const [],
     this.category,
@@ -62,6 +64,7 @@ class Product {
       brand: brandValue,
       hsnCode: json['hsn_code'] as String?,
       status: json['status'] as String? ?? 'published',
+      priceVisibleOnEshop: _toBool(json['price_visible_on_eshop']),
       images: (json['images'] as List<dynamic>?) ?.map((e) => ProductImage.fromJson(e as Map<String, dynamic>)).toList() ?? [],
       variants: (json['variants'] as List<dynamic>?) ?.map((e) => ProductVariant.fromJson(e as Map<String, dynamic>)).toList() ?? [],
       category: json['category'] != null ? Category.fromJson(json['category'] as Map<String, dynamic>) : null,
@@ -78,4 +81,14 @@ class Product {
   ProductVariant? get lowestPriceVariant => variants.isNotEmpty ? variants.first : null;
 
   String? get imageUrl => primaryImage?.fullUrl;
+
+  static bool _toBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' || normalized == '1';
+    }
+    return false;
+  }
 }

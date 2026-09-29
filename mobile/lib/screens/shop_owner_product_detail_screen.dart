@@ -108,6 +108,12 @@ class _ShopOwnerProductDetailScreenState extends State<ShopOwnerProductDetailScr
                                   Text('Brand: ${(product.brand ?? '').trim()}', style: Theme.of(context).textTheme.bodyMedium),
                                 if ((product.hsnCode ?? '').trim().isNotEmpty)
                                   Text('HSN: ${product.hsnCode}', style: Theme.of(context).textTheme.bodyMedium),
+                                Text(
+                                  product.priceVisibleOnEshop
+                                      ? 'E-shop price: visible'
+                                      : 'E-shop price: hidden (At the time of order)',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
                                 const SizedBox(height: 12),
                                 Text('Slug: ${product.slug}', style: Theme.of(context).textTheme.bodySmall),
                               ],
