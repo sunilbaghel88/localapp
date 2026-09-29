@@ -26,6 +26,8 @@ class SmsSetting extends Model
         'order_sms_enabled',
         'order_status_sms_enabled',
         'payment_status_sms_enabled',
+        'customer_created_sms_enabled',
+        'partner_created_sms_enabled',
         'endpoint',
         'http_method',
         'payload_params',
@@ -33,6 +35,8 @@ class SmsSetting extends Model
         'order_message_template',
         'order_status_templates',
         'payment_status_templates',
+        'customer_created_message_template',
+        'partner_created_message_template',
         'otp_ttl_minutes',
     ];
 
@@ -43,6 +47,8 @@ class SmsSetting extends Model
             'order_sms_enabled' => 'boolean',
             'order_status_sms_enabled' => 'boolean',
             'payment_status_sms_enabled' => 'boolean',
+            'customer_created_sms_enabled' => 'boolean',
+            'partner_created_sms_enabled' => 'boolean',
             'payload_params' => 'array',
             'order_status_templates' => 'array',
             'payment_status_templates' => 'array',
@@ -97,6 +103,16 @@ class SmsSetting extends Model
         return $text === '' ? null : $text;
     }
 
+    public static function defaultCustomerCreatedTemplate(): string
+    {
+        return 'Hi {{name}}, your account is ready. Login with mobile {{mobile}}.';
+    }
+
+    public static function defaultPartnerCreatedTemplate(): string
+    {
+        return 'Hi {{name}}, you were added as a partner at {{shop}}. Login with mobile {{mobile}}.';
+    }
+
     public static function current(): self
     {
         $setting = static::query()->first();
@@ -110,6 +126,8 @@ class SmsSetting extends Model
             'order_sms_enabled' => true,
             'order_status_sms_enabled' => true,
             'payment_status_sms_enabled' => true,
+            'customer_created_sms_enabled' => true,
+            'partner_created_sms_enabled' => true,
             'endpoint' => 'http://sms.endmile.in/WebServiceSMS.aspx',
             'http_method' => 'GET',
             'payload_params' => [
@@ -124,6 +142,8 @@ class SmsSetting extends Model
             'order_message_template' => 'Your order #{{order_id}} at {{shop}} is placed. Amount Rs {{total}}. Thank you.',
             'order_status_templates' => static::defaultOrderStatusTemplates(),
             'payment_status_templates' => static::defaultPaymentStatusTemplates(),
+            'customer_created_message_template' => static::defaultCustomerCreatedTemplate(),
+            'partner_created_message_template' => static::defaultPartnerCreatedTemplate(),
             'otp_ttl_minutes' => 10,
         ]);
     }

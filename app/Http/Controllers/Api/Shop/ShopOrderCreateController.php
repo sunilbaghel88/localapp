@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserType;
 use App\Services\Orders\CreateOrderWithItemsService;
 use App\Services\Orders\OrderOnBehalfAiService;
+use App\Services\Sms\SmsSender;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -243,20 +244,38 @@ class ShopOrderCreateController extends Controller
     {
         $this->authorize('create', Order::class);
 
+        $request->merge([
+            'phone' => $this->normalizePhone((string) $request->input('phone', '')),
+        ]);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'phone' => ['nullable', 'string', 'max:30'],
-            'password' => ['required', 'confirmed', Password::defaults()],
+            'phone' => ['required', 'string', 'min:10', 'max:15', 'unique:users,phone'],
+            'shop_id' => ['nullable', 'integer', 'exists:shops,id'],
         ]);
+
+        $phone = $validated['phone'];
+        $email = $phone.'@phone.localapp';
+        if (User::query()->where('email', $email)->exists()) {
+            throw ValidationException::withMessages([
+                'phone' => [__('An account already exists for this mobile number.')],
+            ]);
+        }
 
         $user = User::create([
             'name' => $validated['name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
-            'password' => Hash::make($validated['password']),
+            'email' => $email,
+            'phone' => $phone,
+            'password' => Hash::make(Str::random(32)),
             'is_active' => true,
         ]);
+
+        $shop = null;
+        $shopId = isset($validated['shop_id']) ? (int) $validated['shop_id'] : 0;
+        if ($shopId > 0 && $this->userOwnsShop($shopId)) {
+            $shop = Shop::query()->find($shopId);
+        }
+        app(SmsSender::class)->notifyCustomerCreated($user, $shop);
 
         return response()->json([
             'data' => [
@@ -332,6 +351,8 @@ class ShopOrderCreateController extends Controller
         $user->userTypes()->syncWithoutDetaching([$partnerTypeId]);
 
         $shop->partners()->syncWithoutDetaching([$user->id]);
+
+        app(SmsSender::class)->notifyPartnerCreated($user, $shop);
 
         return response()->json([
             'data' => [

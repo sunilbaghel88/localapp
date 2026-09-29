@@ -39,11 +39,17 @@ class SmsSettings extends Page implements HasForms
             'order_sms_enabled' => $setting->order_sms_enabled,
             'order_status_sms_enabled' => $setting->order_status_sms_enabled ?? true,
             'payment_status_sms_enabled' => $setting->payment_status_sms_enabled ?? true,
+            'customer_created_sms_enabled' => $setting->customer_created_sms_enabled ?? true,
+            'partner_created_sms_enabled' => $setting->partner_created_sms_enabled ?? true,
             'endpoint' => $setting->endpoint,
             'http_method' => $setting->http_method,
             'payload_params' => $setting->payload_params ?? [],
             'message_template' => $setting->message_template,
             'order_message_template' => $setting->order_message_template,
+            'customer_created_message_template' => $setting->customer_created_message_template
+                ?: SmsSetting::defaultCustomerCreatedTemplate(),
+            'partner_created_message_template' => $setting->partner_created_message_template
+                ?: SmsSetting::defaultPartnerCreatedTemplate(),
             'order_status_templates' => array_merge(
                 SmsSetting::defaultOrderStatusTemplates(),
                 $setting->order_status_templates ?? [],
@@ -167,6 +173,28 @@ class SmsSettings extends Page implements HasForms
                             ->rows(2)
                             ->maxLength(500),
                     ]),
+                Forms\Components\Section::make('New customer SMS')
+                    ->description('Sent to the customer when they are created from the Create Order popup. Placeholders: {{name}}, {{mobile}}, {{shop}}.')
+                    ->schema([
+                        Forms\Components\Toggle::make('customer_created_sms_enabled')
+                            ->label('Send SMS when a new customer is created'),
+                        Forms\Components\Textarea::make('customer_created_message_template')
+                            ->label('New customer template')
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->default(SmsSetting::defaultCustomerCreatedTemplate()),
+                    ]),
+                Forms\Components\Section::make('New partner SMS')
+                    ->description('Sent to the partner when they are created from the Create Order popup. Placeholders: {{name}}, {{mobile}}, {{shop}}.')
+                    ->schema([
+                        Forms\Components\Toggle::make('partner_created_sms_enabled')
+                            ->label('Send SMS when a new partner is created'),
+                        Forms\Components\Textarea::make('partner_created_message_template')
+                            ->label('New partner template')
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->default(SmsSetting::defaultPartnerCreatedTemplate()),
+                    ]),
             ])
             ->statePath('data');
     }
@@ -181,11 +209,15 @@ class SmsSettings extends Page implements HasForms
             'order_sms_enabled' => (bool) ($data['order_sms_enabled'] ?? true),
             'order_status_sms_enabled' => (bool) ($data['order_status_sms_enabled'] ?? true),
             'payment_status_sms_enabled' => (bool) ($data['payment_status_sms_enabled'] ?? true),
+            'customer_created_sms_enabled' => (bool) ($data['customer_created_sms_enabled'] ?? true),
+            'partner_created_sms_enabled' => (bool) ($data['partner_created_sms_enabled'] ?? true),
             'endpoint' => $data['endpoint'] ?? null,
             'http_method' => strtoupper((string) ($data['http_method'] ?? 'GET')),
             'payload_params' => $data['payload_params'] ?? [],
             'message_template' => $data['message_template'] ?? 'Your OTP is {{otp}}.',
             'order_message_template' => $data['order_message_template'] ?? 'Your order #{{order_id}} at {{shop}} is placed. Amount Rs {{total}}. Thank you.',
+            'customer_created_message_template' => $data['customer_created_message_template'] ?? SmsSetting::defaultCustomerCreatedTemplate(),
+            'partner_created_message_template' => $data['partner_created_message_template'] ?? SmsSetting::defaultPartnerCreatedTemplate(),
             'order_status_templates' => array_merge(
                 SmsSetting::defaultOrderStatusTemplates(),
                 $data['order_status_templates'] ?? [],

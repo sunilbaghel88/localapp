@@ -3,7 +3,9 @@
 namespace App\Services\Sms;
 
 use App\Models\Order;
+use App\Models\Shop;
 use App\Models\SmsSetting;
+use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -55,6 +57,74 @@ class SmsSender
         } catch (\Throwable $e) {
             Log::warning('Order SMS failed', [
                 'order_id' => $order->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function notifyCustomerCreated(User $user, ?Shop $shop = null): void
+    {
+        $this->notifyAccountCreated(
+            user: $user,
+            shop: $shop,
+            enabled: fn (SmsSetting $settings) => (bool) $settings->customer_created_sms_enabled,
+            template: fn (SmsSetting $settings) => $settings->customer_created_message_template
+                ?: SmsSetting::defaultCustomerCreatedTemplate(),
+            kind: 'customer_created',
+        );
+    }
+
+    public function notifyPartnerCreated(User $user, ?Shop $shop = null): void
+    {
+        $this->notifyAccountCreated(
+            user: $user,
+            shop: $shop,
+            enabled: fn (SmsSetting $settings) => (bool) $settings->partner_created_sms_enabled,
+            template: fn (SmsSetting $settings) => $settings->partner_created_message_template
+                ?: SmsSetting::defaultPartnerCreatedTemplate(),
+            kind: 'partner_created',
+        );
+    }
+
+    /**
+     * @param  callable(SmsSetting): bool  $enabled
+     * @param  callable(SmsSetting): ?string  $template
+     */
+    protected function notifyAccountCreated(User $user, ?Shop $shop, callable $enabled, callable $template, string $kind): void
+    {
+        try {
+            $settings = SmsSetting::current();
+            if (! $settings->is_enabled || ! $enabled($settings)) {
+                return;
+            }
+
+            $body = trim((string) $template($settings));
+            if ($body === '') {
+                return;
+            }
+
+            $mobile = $this->normalizeMobile($user->phone);
+            if ($mobile === null) {
+                Log::info('Account SMS skipped: no mobile', [
+                    'kind' => $kind,
+                    'user_id' => $user->id,
+                ]);
+
+                return;
+            }
+
+            $placeholders = [
+                '{{name}}' => trim((string) ($user->name ?: 'User')),
+                '{{mobile}}' => $mobile,
+                '{{shop}}' => $shop?->name ?: 'shop',
+            ];
+            $message = strtr($body, $placeholders);
+
+            $this->dispatch($settings, $mobile, $message, $placeholders);
+        } catch (\Throwable $e) {
+            Log::warning('Account created SMS failed', [
+                'kind' => $kind,
+                'user_id' => $user->id,
                 'message' => $e->getMessage(),
             ]);
         }

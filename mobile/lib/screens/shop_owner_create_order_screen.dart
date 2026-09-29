@@ -558,11 +558,9 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
   }
 
   Future<void> _showAddCustomerDialog() async {
+    final shopId = _shopId;
     final name = TextEditingController();
-    final email = TextEditingController();
     final phone = TextEditingController();
-    final password = TextEditingController();
-    final password2 = TextEditingController();
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -573,18 +571,16 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
             Future<void> save() async {
               if (saving) return;
               final n = name.text.trim();
-              final em = email.text.trim();
-              final pw = password.text;
-              final p2 = password2.text;
-              if (n.isEmpty || em.isEmpty || pw.isEmpty) {
+              final mobile = phone.text.trim();
+              if (n.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Name, email, and password are required.')),
+                  const SnackBar(content: Text('Name is required.')),
                 );
                 return;
               }
-              if (pw != p2) {
+              if (mobile.length < 10) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Passwords do not match.')),
+                  const SnackBar(content: Text('Enter a valid 10-digit mobile number.')),
                 );
                 return;
               }
@@ -592,10 +588,8 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
               try {
                 final row = await _api.createShopOrderCustomer(
                   name: n,
-                  email: em,
-                  phone: phone.text.trim().isEmpty ? null : phone.text.trim(),
-                  password: pw,
-                  passwordConfirmation: p2,
+                  phone: mobile,
+                  shopId: shopId,
                 );
                 if (!mounted) return;
                 dialogClosed = true;
@@ -639,31 +633,14 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
                       ),
                       const SizedBox(height: 12),
                       TextField(
-                        controller: email,
-                        enabled: !saving,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(labelText: 'Email *', border: OutlineInputBorder()),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
                         controller: phone,
                         enabled: !saving,
                         keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(labelText: 'Phone (optional)', border: OutlineInputBorder()),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: password,
-                        enabled: !saving,
-                        obscureText: true,
-                        decoration: const InputDecoration(labelText: 'Password *', border: OutlineInputBorder()),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: password2,
-                        enabled: !saving,
-                        obscureText: true,
-                        decoration: const InputDecoration(labelText: 'Confirm password *', border: OutlineInputBorder()),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(10),
+                        ],
+                        decoration: const InputDecoration(labelText: 'Mobile *', border: OutlineInputBorder()),
                         onSubmitted: (_) => save(),
                       ),
                     ],
@@ -691,7 +668,7 @@ class _ShopOwnerCreateOrderScreenState extends State<ShopOwnerCreateOrderScreen>
         );
       },
     );
-    _disposeTextControllersNextFrame([name, email, phone, password, password2]);
+    _disposeTextControllersNextFrame([name, phone]);
   }
 
   Future<void> _showAddPartnerDialog() async {

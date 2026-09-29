@@ -692,19 +692,15 @@ class ApiService {
 
   Future<Map<String, dynamic>> createShopOrderCustomer({
     required String name,
-    required String email,
-    String? phone,
-    required String password,
-    required String passwordConfirmation,
+    required String phone,
+    int? shopId,
   }) async {
     final r = await _dio.post<Map<String, dynamic>>(
       '/shop/order-create/customers',
       data: {
         'name': name,
-        'email': email.trim().toLowerCase(),
-        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
-        'password': password,
-        'password_confirmation': passwordConfirmation,
+        'phone': phone.trim(),
+        'shop_id': ?shopId,
       },
     );
     final row = r.data?['data'] as Map<String, dynamic>?;
