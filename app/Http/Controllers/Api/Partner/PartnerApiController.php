@@ -40,7 +40,7 @@ class PartnerApiController extends Controller
         $user = $request->user();
 
         $grants = UserRewardGrant::query()
-            ->with(['order.shop', 'grantedBy'])
+            ->with(['order.shop', 'offlineBill.shop', 'grantedBy'])
             ->where('user_id', $user->id)
             ->latest()
             ->paginate($perPage);

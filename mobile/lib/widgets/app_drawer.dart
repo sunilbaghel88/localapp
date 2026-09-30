@@ -93,6 +93,14 @@ class AppDrawer extends StatelessWidget {
                       route: '/owner/orders',
                       currentPath: currentPath,
                     ),
+                  if (canManageOrders || canCreateOrder)
+                    _item(
+                      context,
+                      icon: Icons.menu_book_outlined,
+                      label: 'Offline bills ledger',
+                      route: '/owner/offline-bills',
+                      currentPath: currentPath,
+                    ),
                   _item(
                     context,
                     icon: Icons.shopping_bag_outlined,

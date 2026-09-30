@@ -160,7 +160,7 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
+                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shop</th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Granted by</th>
@@ -174,10 +174,10 @@
                                 {{ $grant->created_at?->format('d M Y, h:i A') ?? '—' }}
                             </td>
                             <td class="px-5 py-3 text-sm text-gray-900 whitespace-nowrap">
-                                {{ $grant->order_id ? ('#' . $grant->order_id) : '—' }}
+                                {{ $grant->sourceLabel() }}
                             </td>
                             <td class="px-5 py-3 text-sm text-gray-700 whitespace-nowrap">
-                                {{ $grant->order?->shop?->name ?? '—' }}
+                                {{ $grant->shopName() ?? '—' }}
                             </td>
                             <td class="px-5 py-3 text-sm font-semibold text-gray-900 whitespace-nowrap">
                                 +{{ (int) $grant->points }}

@@ -21,7 +21,7 @@ class RewardPointsController extends Controller
             ->get([$shopTable.'.id', $shopTable.'.name']);
 
         $grants = UserRewardGrant::query()
-            ->with(['order.shop', 'grantedBy'])
+            ->with(['order.shop', 'offlineBill.shop', 'grantedBy'])
             ->where('user_id', $user->id)
             ->latest()
             ->paginate(20)

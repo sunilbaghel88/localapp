@@ -54,6 +54,10 @@ class ApiClient {
       }
       return path;
     }
-    return '$storageBaseUrl/${path.replaceFirst(RegExp(r'^/'), '')}';
+    var relative = path.replaceFirst(RegExp(r'^/'), '');
+    if (relative.startsWith('storage/')) {
+      relative = relative.substring('storage/'.length);
+    }
+    return '$storageBaseUrl/$relative';
   }
 }

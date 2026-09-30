@@ -9,6 +9,7 @@ import '../models/app_branding.dart';
 import '../models/brand.dart';
 import '../models/category.dart';
 import '../models/order.dart';
+import '../models/offline_bill.dart';
 import '../models/product.dart';
 import '../models/shop.dart';
 import '../models/user.dart';
@@ -945,5 +946,68 @@ class ApiService {
       throw StateError('Invalid create order response');
     }
     return Order.fromJson(data['order'] as Map<String, dynamic>);
+  }
+
+  Future<Map<String, dynamic>> getOfflineBills({
+    int page = 1,
+    int perPage = 15,
+  }) async {
+    final r = await _dio.get(
+      '/shop/offline-bills',
+      queryParameters: {'page': page, 'per_page': perPage},
+    );
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<OfflineBill> getOfflineBill(int id) async {
+    final r = await _dio.get('/shop/offline-bills/$id');
+    return OfflineBill.fromJson(r.data['bill'] as Map<String, dynamic>);
+  }
+
+  Future<OfflineBill> createOfflineBill({
+    required int shopId,
+    String type = 'debit',
+    required int customerId,
+    int? partnerId,
+    required int rewardPoints,
+    required double amount,
+    String? remarks,
+    String? paymentMode,
+    Uint8List? imageBytes,
+    String? imageFilename,
+  }) async {
+    final map = <String, dynamic>{
+      'shop_id': shopId,
+      'type': type,
+      'customer_id': customerId,
+      'amount': amount,
+      'partner_id': ?partnerId,
+      'payment_mode': ?paymentMode,
+      if (type == 'debit') 'reward_points': rewardPoints,
+      if (remarks != null && remarks.trim().isNotEmpty) 'remarks': remarks.trim(),
+    };
+    if (imageBytes != null && (imageFilename ?? '').isNotEmpty) {
+      final lower = imageFilename!.toLowerCase();
+      final mediaType = lower.endsWith('.png')
+          ? MediaType('image', 'png')
+          : lower.endsWith('.webp')
+              ? MediaType('image', 'webp')
+              : MediaType('image', 'jpeg');
+      map['image'] = MultipartFile.fromBytes(
+        imageBytes,
+        filename: imageFilename,
+        contentType: mediaType,
+      );
+    }
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/offline-bills',
+      data: FormData.fromMap(map),
+      options: Options(receiveTimeout: const Duration(seconds: 60)),
+    );
+    final data = r.data;
+    if (data == null || data['bill'] == null) {
+      throw StateError('Invalid create offline bill response');
+    }
+    return OfflineBill.fromJson(data['bill'] as Map<String, dynamic>);
   }
 }

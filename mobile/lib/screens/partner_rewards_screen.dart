@@ -394,14 +394,21 @@ class _PartnerRewardsScreenState extends State<PartnerRewardsScreen> {
 
   Widget _grantTile(BuildContext context, Map<String, dynamic> r) {
     final order = r['order'] as Map<String, dynamic>?;
-    final shop = order != null ? order['shop'] as Map<String, dynamic>? : null;
+    final offlineBill = r['offline_bill'] as Map<String, dynamic>?;
+    final shop = (order != null ? order['shop'] : null) as Map<String, dynamic>? ??
+        (offlineBill != null ? offlineBill['shop'] : null) as Map<String, dynamic>?;
     final grantedBy = r['granted_by'] as Map<String, dynamic>?;
     final createdRaw = r['created_at'];
     final when = _formatDate(createdRaw);
+    final source = order != null
+        ? 'Order #${r['order_id'] ?? '—'}'
+        : (offlineBill != null || r['offline_bill_id'] != null)
+            ? 'Offline bill #${r['offline_bill_id'] ?? offlineBill?['id'] ?? '—'}'
+            : 'Reward grant';
 
     return Card(
       child: ListTile(
-        title: Text('+${r['points'] ?? 0} pts · Order #${r['order_id'] ?? '—'}'),
+        title: Text('+${r['points'] ?? 0} pts · $source'),
         subtitle: Text(
           [
             if (shop != null && (shop['name']?.toString().isNotEmpty ?? false)) shop['name'].toString(),

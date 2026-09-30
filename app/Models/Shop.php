@@ -74,6 +74,11 @@ class Shop extends Model
         return $this->hasMany(RewardRedemptionRequest::class);
     }
 
+    public function offlineBills(): HasMany
+    {
+        return $this->hasMany(OfflineBill::class);
+    }
+
     public function scopeOn(Builder $query): Builder
     {
         return $query->where('status', 'on');

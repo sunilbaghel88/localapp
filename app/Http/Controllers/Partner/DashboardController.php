@@ -13,7 +13,7 @@ class DashboardController extends Controller
         $user = $request->user();
 
         $recentGrants = UserRewardGrant::query()
-            ->with(['order.shop'])
+            ->with(['order.shop', 'offlineBill.shop'])
             ->where('user_id', $user->id)
             ->latest()
             ->limit(10)

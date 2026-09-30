@@ -24,6 +24,9 @@ import 'screens/shop_owner_purchase_detail_screen.dart';
 import 'screens/shop_owner_orders_screen.dart';
 import 'screens/shop_owner_order_detail_screen.dart';
 import 'screens/shop_owner_create_order_screen.dart';
+import 'screens/shop_owner_offline_bills_screen.dart';
+import 'screens/shop_owner_offline_bill_form_screen.dart';
+import 'screens/shop_owner_offline_bill_detail_screen.dart';
 import 'screens/shop_owner_reward_redemptions_screen.dart';
 import 'screens/shop_owner_user_types_screen.dart';
 import 'screens/shop_owner_shops_screen.dart';
@@ -70,6 +73,7 @@ GoRouter createRouter(BuildContext context) {
         final canAccessOwner =
             permissions.contains('view_any_product') ||
             permissions.contains('view_any_order') ||
+            permissions.contains('create_order') ||
             permissions.contains('view_any_shop') ||
             permissions.contains('create_shop') ||
             (auth.user?.canAssignUserTypes ?? false);
@@ -91,6 +95,16 @@ GoRouter createRouter(BuildContext context) {
         if (state.matchedLocation == '/owner/orders/create' &&
             !permissions.contains('create_order')) {
           return '/owner/orders';
+        }
+        if (state.matchedLocation.startsWith('/owner/offline-bills')) {
+          if (!permissions.contains('view_any_order') &&
+              !permissions.contains('create_order')) {
+            return '/home';
+          }
+          if (state.matchedLocation == '/owner/offline-bills/create' &&
+              !permissions.contains('create_order')) {
+            return '/owner/offline-bills';
+          }
         }
       }
 
@@ -205,6 +219,21 @@ GoRouter createRouter(BuildContext context) {
       GoRoute(
         path: '/owner/orders/create',
         builder: (context, state) => const ShopOwnerCreateOrderScreen(),
+      ),
+      GoRoute(
+        path: '/owner/offline-bills',
+        builder: (context, state) => const ShopOwnerOfflineBillsScreen(),
+      ),
+      GoRoute(
+        path: '/owner/offline-bills/create',
+        builder: (context, state) => const ShopOwnerOfflineBillFormScreen(),
+      ),
+      GoRoute(
+        path: '/owner/offline-bills/:id',
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
+          return ShopOwnerOfflineBillDetailScreen(billId: id);
+        },
       ),
       GoRoute(
         path: '/owner/orders/:id',

@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\Shop\ShopOrderController;
 use App\Http\Controllers\Api\Shop\ShopOrderCreateController;
 use App\Http\Controllers\Api\Shop\ShopRewardRedemptionController;
 use App\Http\Controllers\Api\Shop\ShopUserTypeAssignmentController;
+use App\Http\Controllers\Api\Shop\ShopOfflineBillController;
 use App\Http\Controllers\Api\Partner\PartnerApiController;
 
 // Public routes
@@ -116,6 +117,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/assignable-users', [ShopUserTypeAssignmentController::class, 'users']);
         Route::put('/users/{user}/user-types', [ShopUserTypeAssignmentController::class, 'update']);
+
+        Route::get('/offline-bills', [ShopOfflineBillController::class, 'index']);
+        Route::post('/offline-bills', [ShopOfflineBillController::class, 'store']);
+        Route::get('/offline-bills/{offlineBill}', [ShopOfflineBillController::class, 'show']);
     });
 
     // Partner (Sanctum + reward-eligible user types / shop-type mapping)
