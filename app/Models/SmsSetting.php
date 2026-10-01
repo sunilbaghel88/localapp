@@ -28,6 +28,7 @@ class SmsSetting extends Model
         'payment_status_sms_enabled',
         'customer_created_sms_enabled',
         'partner_created_sms_enabled',
+        'offline_bill_sms_enabled',
         'endpoint',
         'http_method',
         'payload_params',
@@ -37,6 +38,9 @@ class SmsSetting extends Model
         'payment_status_templates',
         'customer_created_message_template',
         'partner_created_message_template',
+        'offline_bill_debit_message_template',
+        'offline_bill_credit_message_template',
+        'offline_bill_partner_reward_message_template',
         'otp_ttl_minutes',
     ];
 
@@ -49,6 +53,7 @@ class SmsSetting extends Model
             'payment_status_sms_enabled' => 'boolean',
             'customer_created_sms_enabled' => 'boolean',
             'partner_created_sms_enabled' => 'boolean',
+            'offline_bill_sms_enabled' => 'boolean',
             'payload_params' => 'array',
             'order_status_templates' => 'array',
             'payment_status_templates' => 'array',
@@ -113,6 +118,21 @@ class SmsSetting extends Model
         return 'Hi {{name}}, you were added as a partner at {{shop}}. Login with mobile {{mobile}}.';
     }
 
+    public static function defaultOfflineBillDebitTemplate(): string
+    {
+        return 'Hi {{customer}}, a debit of Rs {{amount}} was added at {{shop}}. Closing balance Rs {{balance}}.';
+    }
+
+    public static function defaultOfflineBillCreditTemplate(): string
+    {
+        return 'Hi {{customer}}, a credit of Rs {{amount}} was recorded at {{shop}} via {{payment_mode}}. Closing balance Rs {{balance}}.';
+    }
+
+    public static function defaultOfflineBillPartnerRewardTemplate(): string
+    {
+        return 'Hi {{partner}}, you earned {{points}} reward points at {{shop}} for {{customer}}. Amount Rs {{amount}}.';
+    }
+
     public static function current(): self
     {
         $setting = static::query()->first();
@@ -128,6 +148,7 @@ class SmsSetting extends Model
             'payment_status_sms_enabled' => true,
             'customer_created_sms_enabled' => true,
             'partner_created_sms_enabled' => true,
+            'offline_bill_sms_enabled' => true,
             'endpoint' => 'http://sms.endmile.in/WebServiceSMS.aspx',
             'http_method' => 'GET',
             'payload_params' => [
@@ -144,6 +165,9 @@ class SmsSetting extends Model
             'payment_status_templates' => static::defaultPaymentStatusTemplates(),
             'customer_created_message_template' => static::defaultCustomerCreatedTemplate(),
             'partner_created_message_template' => static::defaultPartnerCreatedTemplate(),
+            'offline_bill_debit_message_template' => static::defaultOfflineBillDebitTemplate(),
+            'offline_bill_credit_message_template' => static::defaultOfflineBillCreditTemplate(),
+            'offline_bill_partner_reward_message_template' => static::defaultOfflineBillPartnerRewardTemplate(),
             'otp_ttl_minutes' => 10,
         ]);
     }

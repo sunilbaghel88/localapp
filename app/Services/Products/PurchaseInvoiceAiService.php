@@ -102,7 +102,7 @@ class PurchaseInvoiceAiService
             ]);
         }
 
-        $header = $this->reconcileInvoiceTax($this->normalizeInvoiceHeader($parsed, $products), $products);
+        $header = $this->normalizeInvoiceHeader($parsed);
 
         return [
             'supplier' => $header['supplier_name'],
@@ -110,9 +110,6 @@ class PurchaseInvoiceAiService
             'supplier_gstin' => $header['supplier_gstin'],
             'invoice_number' => $header['invoice_number'],
             'invoice_date' => $header['invoice_date'],
-            'cgst_amount' => $header['cgst_amount'],
-            'sgst_amount' => $header['sgst_amount'],
-            'igst_amount' => $header['igst_amount'],
             'products' => $products,
             'items' => $products,
         ];
@@ -306,12 +303,7 @@ class PurchaseInvoiceAiService
             }
 
             if ($invoiceItems !== []) {
-                $header = $this->normalizeInvoiceHeader($invoiceMeta, []);
-                if ($header['cgst_amount'] <= 0 && $header['sgst_amount'] <= 0 && $header['igst_amount'] <= 0) {
-                    $header['cgst_amount'] = $this->sumMoney(array_column($invoiceItems, 'cgst_amount'));
-                    $header['sgst_amount'] = $this->sumMoney(array_column($invoiceItems, 'sgst_amount'));
-                    $header['igst_amount'] = $this->sumMoney(array_column($invoiceItems, 'igst_amount'));
-                }
+                $header = $this->normalizeInvoiceHeader($invoiceMeta);
 
                 $invoice = PurchaseInvoice::create([
                     'shop_id' => $shop->id,
@@ -320,9 +312,6 @@ class PurchaseInvoiceAiService
                     'supplier_gstin' => $header['supplier_gstin'],
                     'invoice_number' => $header['invoice_number'],
                     'invoice_date' => $header['invoice_date'],
-                    'cgst_amount' => $header['cgst_amount'],
-                    'sgst_amount' => $header['sgst_amount'],
-                    'igst_amount' => $header['igst_amount'],
                     'source_filename' => $this->nullableString($invoiceMeta['source_filename'] ?? null),
                     'status' => 'imported',
                 ]);
@@ -511,34 +500,6 @@ class PurchaseInvoiceAiService
         }
 
         return $rows;
-    }
-
-    /**
-     * @param  array{supplier_name:?string, supplier_gstin:?string, invoice_number:?string, invoice_date:?string, cgst_amount:float, sgst_amount:float, igst_amount:float}  $header
-     * @param  array<int, array<string, mixed>>  $products
-     * @return array{supplier_name:?string, supplier_gstin:?string, invoice_number:?string, invoice_date:?string, cgst_amount:float, sgst_amount:float, igst_amount:float}
-     */
-    protected function reconcileInvoiceTax(array $header, array $products): array
-    {
-        $cgst = 0.0;
-        $sgst = 0.0;
-        $igst = 0.0;
-        foreach ($products as $product) {
-            foreach ($product['variants'] ?? [] as $variant) {
-                if (! is_array($variant)) {
-                    continue;
-                }
-                $cgst += $this->toMoney($variant['cgst_amount'] ?? 0);
-                $sgst += $this->toMoney($variant['sgst_amount'] ?? 0);
-                $igst += $this->toMoney($variant['igst_amount'] ?? 0);
-            }
-        }
-
-        $header['cgst_amount'] = max($header['cgst_amount'], round($cgst, 2));
-        $header['sgst_amount'] = max($header['sgst_amount'], round($sgst, 2));
-        $header['igst_amount'] = max($header['igst_amount'], round($igst, 2));
-
-        return $header;
     }
 
     protected function cleanPdfText(string $text): string
@@ -1109,39 +1070,15 @@ class PurchaseInvoiceAiService
 
     /**
      * @param  array<string, mixed>  $parsed
-     * @param  array<int, array<string, mixed>>  $products
-     * @return array{supplier_name:?string, supplier_gstin:?string, invoice_number:?string, invoice_date:?string, cgst_amount:float, sgst_amount:float, igst_amount:float}
+     * @return array{supplier_name:?string, supplier_gstin:?string, invoice_number:?string, invoice_date:?string}
      */
-    protected function normalizeInvoiceHeader(array $parsed, array $products): array
+    protected function normalizeInvoiceHeader(array $parsed): array
     {
-        $cgst = $this->toMoney($parsed['cgst_amount'] ?? $parsed['cgst'] ?? 0);
-        $sgst = $this->toMoney($parsed['sgst_amount'] ?? $parsed['sgst'] ?? 0);
-        $igst = $this->toMoney($parsed['igst_amount'] ?? $parsed['igst'] ?? 0);
-
-        if ($cgst <= 0 && $sgst <= 0 && $igst <= 0 && $products !== []) {
-            foreach ($products as $product) {
-                foreach ($product['variants'] ?? [] as $variant) {
-                    if (! is_array($variant)) {
-                        continue;
-                    }
-                    $cgst += $this->toMoney($variant['cgst_amount'] ?? 0);
-                    $sgst += $this->toMoney($variant['sgst_amount'] ?? 0);
-                    $igst += $this->toMoney($variant['igst_amount'] ?? 0);
-                }
-            }
-            $cgst = round($cgst, 2);
-            $sgst = round($sgst, 2);
-            $igst = round($igst, 2);
-        }
-
         return [
             'supplier_name' => $this->nullableString($parsed['supplier_name'] ?? $parsed['supplier'] ?? null),
             'supplier_gstin' => $this->normalizeGstin($parsed['supplier_gstin'] ?? $parsed['gstin'] ?? $parsed['gst_no'] ?? null),
             'invoice_number' => $this->nullableString($parsed['invoice_number'] ?? null),
             'invoice_date' => $this->toDate($parsed['invoice_date'] ?? null),
-            'cgst_amount' => $cgst,
-            'sgst_amount' => $sgst,
-            'igst_amount' => $igst,
         ];
     }
 
@@ -1209,19 +1146,6 @@ class PurchaseInvoiceAiService
         } catch (\Throwable) {
             return null;
         }
-    }
-
-    /**
-     * @param  array<int, mixed>  $values
-     */
-    protected function sumMoney(array $values): float
-    {
-        $total = 0.0;
-        foreach ($values as $value) {
-            $total += $this->toMoney($value);
-        }
-
-        return round($total, 2);
     }
 
     /**

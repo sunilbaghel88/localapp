@@ -5,9 +5,6 @@ class PurchaseInvoice {
   final String? supplierGstin;
   final String? invoiceNumber;
   final DateTime? invoiceDate;
-  final double cgstAmount;
-  final double sgstAmount;
-  final double igstAmount;
   final String? sourceFilename;
   final String status;
   final int? itemsCount;
@@ -21,9 +18,6 @@ class PurchaseInvoice {
     this.supplierGstin,
     this.invoiceNumber,
     this.invoiceDate,
-    this.cgstAmount = 0,
-    this.sgstAmount = 0,
-    this.igstAmount = 0,
     this.sourceFilename,
     this.status = 'imported',
     this.itemsCount,
@@ -41,9 +35,6 @@ class PurchaseInvoice {
       invoiceDate: json['invoice_date'] == null
           ? null
           : DateTime.tryParse(json['invoice_date'].toString()),
-      cgstAmount: _toDouble(json['cgst_amount']),
-      sgstAmount: _toDouble(json['sgst_amount']),
-      igstAmount: _toDouble(json['igst_amount']),
       sourceFilename: json['source_filename'] as String?,
       status: json['status'] as String? ?? 'imported',
       itemsCount: json['items_count'] as int?,

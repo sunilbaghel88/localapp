@@ -51,9 +51,6 @@ class _ShopOwnerImportInvoiceScreenState
   final TextEditingController _gstinController = TextEditingController();
   final TextEditingController _invoiceNumberController = TextEditingController();
   final TextEditingController _invoiceDateController = TextEditingController();
-  final TextEditingController _cgstTotalController = TextEditingController();
-  final TextEditingController _sgstTotalController = TextEditingController();
-  final TextEditingController _igstTotalController = TextEditingController();
 
   List<Category> get _subcategories {
     final parentId = _parentCategoryId;
@@ -91,9 +88,6 @@ class _ShopOwnerImportInvoiceScreenState
     _gstinController.dispose();
     _invoiceNumberController.dispose();
     _invoiceDateController.dispose();
-    _cgstTotalController.dispose();
-    _sgstTotalController.dispose();
-    _igstTotalController.dispose();
     for (final line in _lines) {
       line.dispose();
     }
@@ -263,24 +257,6 @@ class _ShopOwnerImportInvoiceScreenState
         }
       }
     }
-    _syncTaxTotals();
-  }
-
-  void _syncTaxTotals() {
-    var cgst = 0.0;
-    var sgst = 0.0;
-    var igst = 0.0;
-    for (final line in _lines) {
-      if (!line.include) continue;
-      for (final variant in line.selectedVariants) {
-        cgst += double.tryParse(variant.cgstController.text.trim()) ?? 0;
-        sgst += double.tryParse(variant.sgstController.text.trim()) ?? 0;
-        igst += double.tryParse(variant.igstController.text.trim()) ?? 0;
-      }
-    }
-    _cgstTotalController.text = cgst.toStringAsFixed(2);
-    _sgstTotalController.text = sgst.toStringAsFixed(2);
-    _igstTotalController.text = igst.toStringAsFixed(2);
   }
 
   Future<void> _createProducts() async {
@@ -323,9 +299,6 @@ class _ShopOwnerImportInvoiceScreenState
           'supplier_gstin': _nullable(_gstinController.text),
           'invoice_number': _nullable(_invoiceNumberController.text),
           'invoice_date': _nullable(_invoiceDateController.text),
-          'cgst_amount': double.tryParse(_cgstTotalController.text.trim()) ?? 0,
-          'sgst_amount': double.tryParse(_sgstTotalController.text.trim()) ?? 0,
-          'igst_amount': double.tryParse(_igstTotalController.text.trim()) ?? 0,
           'source_filename': _fileName,
         },
       );
@@ -384,17 +357,6 @@ class _ShopOwnerImportInvoiceScreenState
     _gstinController.text = (data['supplier_gstin'] ?? '').toString();
     _invoiceNumberController.text = (data['invoice_number'] ?? '').toString();
     _invoiceDateController.text = (data['invoice_date'] ?? '').toString();
-    _cgstTotalController.text =
-        _moneyText(data['cgst_amount']);
-    _sgstTotalController.text =
-        _moneyText(data['sgst_amount']);
-    _igstTotalController.text =
-        _moneyText(data['igst_amount']);
-  }
-
-  static String _moneyText(dynamic value) {
-    if (value is num) return value.toStringAsFixed(2);
-    return double.tryParse(value?.toString() ?? '')?.toStringAsFixed(2) ?? '0.00';
   }
 
   static String? _nullable(String value) {
@@ -532,49 +494,6 @@ class _ShopOwnerImportInvoiceScreenState
                       suffixIcon: Icon(Icons.calendar_today_outlined),
                     ),
                     onTap: _pickInvoiceDate,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _cgstTotalController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          decoration: const InputDecoration(
-                            labelText: 'CGST total',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _sgstTotalController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          decoration: const InputDecoration(
-                            labelText: 'SGST total',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _igstTotalController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          decoration: const InputDecoration(
-                            labelText: 'IGST total',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
@@ -783,7 +702,6 @@ class _ShopOwnerImportInvoiceScreenState
                     for (final variant in line.variants) {
                       variant.include = line.include;
                     }
-                    _syncTaxTotals();
                   }),
                 ),
                 Expanded(
@@ -892,10 +810,7 @@ class _ShopOwnerImportInvoiceScreenState
               Checkbox(
                 value: variant.include,
                 onChanged: product.include
-                    ? (v) => setState(() {
-                          variant.include = v ?? false;
-                          _syncTaxTotals();
-                        })
+                    ? (v) => setState(() => variant.include = v ?? false)
                     : null,
               ),
               Expanded(
@@ -1126,7 +1041,6 @@ class _ShopOwnerImportInvoiceScreenState
       sgstPercent: _sgstPercent,
       igstPercent: _igstPercent,
     );
-    _syncTaxTotals();
     setState(() {});
   }
 }

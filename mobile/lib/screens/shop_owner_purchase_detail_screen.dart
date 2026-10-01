@@ -28,9 +28,6 @@ class _ShopOwnerPurchaseDetailScreenState
   final _gstinController = TextEditingController();
   final _numberController = TextEditingController();
   final _dateController = TextEditingController();
-  final _cgstController = TextEditingController();
-  final _sgstController = TextEditingController();
-  final _igstController = TextEditingController();
   final List<_EditableItem> _items = [];
 
   @override
@@ -45,9 +42,6 @@ class _ShopOwnerPurchaseDetailScreenState
     _gstinController.dispose();
     _numberController.dispose();
     _dateController.dispose();
-    _cgstController.dispose();
-    _sgstController.dispose();
-    _igstController.dispose();
     for (final item in _items) {
       item.dispose();
     }
@@ -88,9 +82,6 @@ class _ShopOwnerPurchaseDetailScreenState
     _dateController.text = invoice.invoiceDate == null
         ? ''
         : DateFormat('yyyy-MM-dd').format(invoice.invoiceDate!);
-    _cgstController.text = invoice.cgstAmount.toStringAsFixed(2);
-    _sgstController.text = invoice.sgstAmount.toStringAsFixed(2);
-    _igstController.text = invoice.igstAmount.toStringAsFixed(2);
     for (final item in _items) {
       item.dispose();
     }
@@ -110,9 +101,6 @@ class _ShopOwnerPurchaseDetailScreenState
         'supplier_gstin': _nullable(_gstinController.text),
         'invoice_number': _nullable(_numberController.text),
         'invoice_date': _nullable(_dateController.text),
-        'cgst_amount': double.tryParse(_cgstController.text.trim()) ?? 0,
-        'sgst_amount': double.tryParse(_sgstController.text.trim()) ?? 0,
-        'igst_amount': double.tryParse(_igstController.text.trim()) ?? 0,
         'items': _items.map((item) => item.toPayload()).toList(),
       });
       final raw = data['invoice'];
@@ -223,52 +211,6 @@ class _ShopOwnerPurchaseDetailScreenState
                             labelText: 'Invoice date (YYYY-MM-DD)',
                             border: OutlineInputBorder(),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _cgstController,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
-                                decoration: const InputDecoration(
-                                  labelText: 'CGST total',
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: TextField(
-                                controller: _sgstController,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
-                                decoration: const InputDecoration(
-                                  labelText: 'SGST total',
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: TextField(
-                                controller: _igstController,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
-                                decoration: const InputDecoration(
-                                  labelText: 'IGST total',
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                          ],
                         ),
                         const SizedBox(height: 24),
                         Text(

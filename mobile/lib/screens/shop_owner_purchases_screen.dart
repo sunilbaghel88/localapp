@@ -76,7 +76,6 @@ class _ShopOwnerPurchasesScreenState extends State<ShopOwnerPurchasesScreen> {
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('dd MMM yyyy');
-    final money = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
     late final Widget body;
     if (_loading && _invoices.isEmpty) {
@@ -112,9 +111,6 @@ class _ShopOwnerPurchasesScreenState extends State<ShopOwnerPurchasesScreen> {
                   }
 
                   final invoice = _invoices[i];
-                  final tax = invoice.cgstAmount +
-                      invoice.sgstAmount +
-                      invoice.igstAmount;
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
                     child: ListTile(
@@ -127,10 +123,6 @@ class _ShopOwnerPurchasesScreenState extends State<ShopOwnerPurchasesScreen> {
                             dateFormat.format(invoice.invoiceDate!),
                           '${invoice.itemsCount ?? invoice.items.length} items',
                         ].join(' • '),
-                      ),
-                      trailing: Text(
-                        money.format(tax),
-                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       onTap: () =>
                           context.push('/owner/purchases/${invoice.id}'),

@@ -1,4 +1,5 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -18,6 +19,8 @@ class ShopOwnerOfflineBillsScreen extends StatefulWidget {
 
 class _ShopOwnerOfflineBillsScreenState extends State<ShopOwnerOfflineBillsScreen> {
   final ApiService _api = ApiService();
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
   List<OfflineBill> _bills = [];
   bool _loading = true;
   String? _error;
@@ -42,7 +45,11 @@ class _ShopOwnerOfflineBillsScreenState extends State<ShopOwnerOfflineBillsScree
     });
 
     try {
-      final data = await _api.getOfflineBills(page: _page, perPage: 15);
+      final data = await _api.getOfflineBills(
+        page: _page,
+        perPage: 15,
+        q: _searchController.text,
+      );
       final paginator = data['bills'] as Map<String, dynamic>?;
       final list = (paginator?['data'] ?? data['bills']) as List<dynamic>?;
       final currentPage = (paginator?['current_page'] ?? 1) as int;
@@ -77,6 +84,21 @@ class _ShopOwnerOfflineBillsScreenState extends State<ShopOwnerOfflineBillsScree
   }
 
   @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String _) {
+    setState(() {});
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+      _load();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('dd MMM yyyy, hh:mm a');
     final money = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
@@ -101,9 +123,15 @@ class _ShopOwnerOfflineBillsScreenState extends State<ShopOwnerOfflineBillsScree
         child: _bills.isEmpty
             ? ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 120),
-                  Center(child: Text('No offline bills yet')),
+                children: [
+                  const SizedBox(height: 120),
+                  Center(
+                    child: Text(
+                      _searchController.text.trim().isEmpty
+                          ? 'No offline bills yet'
+                          : 'No customers match your search',
+                    ),
+                  ),
                 ],
               )
             : ListView.builder(
@@ -121,36 +149,38 @@ class _ShopOwnerOfflineBillsScreenState extends State<ShopOwnerOfflineBillsScree
                   }
 
                   final bill = _bills[i];
-                  final imageUrl = bill.fullImageUrl;
+                  final remarks = (bill.remarks ?? '').trim();
+                  final name = bill.customerName ?? 'Customer #${bill.customerId}';
+                  final title = bill.closingBalance == null
+                      ? name
+                      : '$name (${money.format(bill.closingBalance)})';
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
-                    child: ListTile(
-                      leading: imageUrl != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: CachedNetworkImage(
-                                imageUrl: imageUrl,
-                                width: 52,
-                                height: 52,
-                                fit: BoxFit.cover,
-                                errorWidget: (_, _, _) => const Icon(Icons.receipt_long),
-                              ),
-                            )
-                          : const CircleAvatar(child: Icon(Icons.receipt_long)),
-                      title: Text(bill.customerName ?? 'Customer #${bill.customerId}'),
-                      subtitle: Text(
-                        [
-                          bill.typeLabel,
-                          if (bill.paymentModeLabel != null) bill.paymentModeLabel,
-                          if (bill.partnerName != null) bill.partnerName,
-                          if (bill.createdAt != null) dateFormat.format(bill.createdAt!.toLocal()),
-                        ].join(' • '),
-                      ),
-                      trailing: Text(
-                        money.format(bill.amount),
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
+                    child: InkWell(
                       onTap: () => context.push('/owner/offline-bills/${bill.id}'),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                            ),
+                            const SizedBox(height: 10),
+                            _line('Type', bill.typeLabel),
+                            _line('Amount', money.format(bill.amount)),
+                            _line('Remarks', remarks.isEmpty ? '—' : remarks),
+                            _line(
+                              'Date',
+                              bill.createdAt == null
+                                  ? '—'
+                                  : dateFormat.format(bill.createdAt!.toLocal()),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   );
                 },
@@ -162,7 +192,40 @@ class _ShopOwnerOfflineBillsScreenState extends State<ShopOwnerOfflineBillsScree
 
     return Scaffold(
       appBar: AppBar(title: const Text('Offline bills ledger')),
-      body: body,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              onSubmitted: (_) {
+                _searchDebounce?.cancel();
+                _load();
+              },
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Search by customer name or phone',
+                prefixIcon: const Icon(Icons.search),
+                border: const OutlineInputBorder(),
+                isDense: true,
+                suffixIcon: _searchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {});
+                          _searchDebounce?.cancel();
+                          _load();
+                        },
+                      ),
+              ),
+            ),
+          ),
+          Expanded(child: body),
+        ],
+      ),
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
               onPressed: () async {
@@ -173,6 +236,30 @@ class _ShopOwnerOfflineBillsScreenState extends State<ShopOwnerOfflineBillsScree
               label: const Text('Add bill'),
             )
           : null,
+    );
+  }
+
+  Widget _line(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 130,
+            child: Text(
+              label,
+              style: TextStyle(color: Theme.of(context).colorScheme.outline),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -7,6 +7,7 @@ use App\Models\OfflineBill;
 use App\Models\Shop;
 use App\Models\User;
 use App\Models\UserRewardGrant;
+use App\Services\Sms\SmsSender;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,13 +22,31 @@ class ShopOfflineBillController extends Controller
         $this->authorize('viewAny', \App\Models\Order::class);
 
         $perPage = min((int) $request->get('per_page', 15), 50);
-        $bills = OfflineBill::query()
+        $query = OfflineBill::query()
             ->whereHas('shop', fn ($q) => $q->where('user_id', Auth::id()))
-            ->with(['shop:id,name,user_id', 'customer:id,first_name,last_name,email,phone', 'partner:id,first_name,last_name,email,phone'])
-            ->latest()
-            ->paginate($perPage);
+            ->with(['shop:id,name,user_id', 'customer:id,first_name,last_name,email,phone', 'partner:id,first_name,last_name,email,phone']);
 
-        $bills->getCollection()->transform(fn (OfflineBill $bill) => $this->serialize($bill));
+        $q = trim((string) $request->query('q', ''));
+        if ($q !== '') {
+            $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $q).'%';
+            $query->whereHas('customer', function ($customer) use ($needle) {
+                $customer->where(function ($inner) use ($needle) {
+                    $inner->whereNameLike($needle)
+                        ->orWhere('email', 'like', $needle)
+                        ->orWhere('phone', 'like', $needle);
+                });
+            });
+        }
+
+        $bills = $query->latest()->paginate($perPage);
+
+        $balances = $this->customerClosingBalancesFor($bills->getCollection());
+
+        $bills->getCollection()->transform(function (OfflineBill $bill) use ($balances) {
+            $key = $bill->shop_id.':'.$bill->customer_id;
+
+            return $this->serialize($bill, $balances[$key] ?? 0.0);
+        });
 
         return response()->json([
             'bills' => $bills,
@@ -42,7 +61,7 @@ class ShopOfflineBillController extends Controller
         $offlineBill->load(['shop:id,name,user_id', 'customer:id,first_name,last_name,email,phone', 'partner:id,first_name,last_name,email,phone']);
 
         return response()->json([
-            'bill' => $this->serialize($offlineBill),
+            'bill' => $this->serialize($offlineBill, $this->customerClosingBalanceFor($offlineBill)),
         ]);
     }
 
@@ -146,9 +165,11 @@ class ShopOfflineBillController extends Controller
         });
 
         $bill->load(['shop:id,name,user_id', 'customer:id,first_name,last_name,email,phone', 'partner:id,first_name,last_name,email,phone']);
+        $closingBalance = $this->customerClosingBalanceFor($bill);
+        app(SmsSender::class)->notifyOfflineBillCreated($bill, $closingBalance);
 
         return response()->json([
-            'bill' => $this->serialize($bill),
+            'bill' => $this->serialize($bill, $closingBalance),
         ], 201);
     }
 
@@ -201,7 +222,59 @@ class ShopOfflineBillController extends Controller
         ];
     }
 
-    protected function serialize(OfflineBill $bill): array
+    protected function signedAmount(OfflineBill $bill): float
+    {
+        $amount = (float) $bill->amount;
+
+        return $bill->type === 'credit' ? -$amount : $amount;
+    }
+
+    /**
+     * Current customer balance (debit adds, credit subtracts). Same value for every
+     * entry of that customer in the shop.
+     *
+     * @param  \Illuminate\Support\Collection<int, OfflineBill>  $bills
+     * @return array<string, float>
+     */
+    protected function customerClosingBalancesFor($bills): array
+    {
+        if ($bills->isEmpty()) {
+            return [];
+        }
+
+        $pairs = $bills->map(fn (OfflineBill $bill) => [
+            'shop_id' => (int) $bill->shop_id,
+            'customer_id' => (int) $bill->customer_id,
+        ])->unique(fn (array $row) => $row['shop_id'].':'.$row['customer_id']);
+
+        $history = OfflineBill::query()
+            ->where(function ($query) use ($pairs) {
+                foreach ($pairs as $pair) {
+                    $query->orWhere(function ($inner) use ($pair) {
+                        $inner->where('shop_id', $pair['shop_id'])
+                            ->where('customer_id', $pair['customer_id']);
+                    });
+                }
+            })
+            ->get(['shop_id', 'customer_id', 'type', 'amount']);
+
+        $balances = [];
+        foreach ($history as $row) {
+            $key = $row->shop_id.':'.$row->customer_id;
+            $balances[$key] = ($balances[$key] ?? 0) + $this->signedAmount($row);
+        }
+
+        return array_map(fn ($value) => round((float) $value, 2), $balances);
+    }
+
+    protected function customerClosingBalanceFor(OfflineBill $bill): float
+    {
+        $balances = $this->customerClosingBalancesFor(collect([$bill]));
+
+        return $balances[$bill->shop_id.':'.$bill->customer_id] ?? round($this->signedAmount($bill), 2);
+    }
+
+    protected function serialize(OfflineBill $bill, ?float $closingBalance = null): array
     {
         return [
             'id' => $bill->id,
@@ -215,6 +288,7 @@ class ShopOfflineBillController extends Controller
             'partner' => $this->serializeUser($bill->partner),
             'reward_points' => (int) $bill->reward_points,
             'amount' => (float) $bill->amount,
+            'closing_balance' => $closingBalance,
             'remarks' => $bill->remarks,
             'image_path' => $bill->image_path,
             'image_url' => $bill->image_url,

@@ -15,18 +15,12 @@ class PurchaseInvoice extends Model
         'supplier_gstin',
         'invoice_number',
         'invoice_date',
-        'cgst_amount',
-        'sgst_amount',
-        'igst_amount',
         'source_filename',
         'status',
     ];
 
     protected $casts = [
         'invoice_date' => 'date',
-        'cgst_amount' => 'decimal:2',
-        'sgst_amount' => 'decimal:2',
-        'igst_amount' => 'decimal:2',
     ];
 
     public function shop(): BelongsTo

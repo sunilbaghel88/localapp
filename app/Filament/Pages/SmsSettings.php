@@ -41,6 +41,7 @@ class SmsSettings extends Page implements HasForms
             'payment_status_sms_enabled' => $setting->payment_status_sms_enabled ?? true,
             'customer_created_sms_enabled' => $setting->customer_created_sms_enabled ?? true,
             'partner_created_sms_enabled' => $setting->partner_created_sms_enabled ?? true,
+            'offline_bill_sms_enabled' => $setting->offline_bill_sms_enabled ?? true,
             'endpoint' => $setting->endpoint,
             'http_method' => $setting->http_method,
             'payload_params' => $setting->payload_params ?? [],
@@ -50,6 +51,12 @@ class SmsSettings extends Page implements HasForms
                 ?: SmsSetting::defaultCustomerCreatedTemplate(),
             'partner_created_message_template' => $setting->partner_created_message_template
                 ?: SmsSetting::defaultPartnerCreatedTemplate(),
+            'offline_bill_debit_message_template' => $setting->offline_bill_debit_message_template
+                ?: SmsSetting::defaultOfflineBillDebitTemplate(),
+            'offline_bill_credit_message_template' => $setting->offline_bill_credit_message_template
+                ?: SmsSetting::defaultOfflineBillCreditTemplate(),
+            'offline_bill_partner_reward_message_template' => $setting->offline_bill_partner_reward_message_template
+                ?: SmsSetting::defaultOfflineBillPartnerRewardTemplate(),
             'order_status_templates' => array_merge(
                 SmsSetting::defaultOrderStatusTemplates(),
                 $setting->order_status_templates ?? [],
@@ -174,7 +181,7 @@ class SmsSettings extends Page implements HasForms
                             ->maxLength(500),
                     ]),
                 Forms\Components\Section::make('New customer SMS')
-                    ->description('Sent to the customer when they are created from the Create Order popup. Placeholders: {{name}}, {{mobile}}, {{shop}}.')
+                    ->description('Sent when a customer is created from Create Order or Offline bills. Placeholders: {{name}}, {{mobile}}, {{shop}}.')
                     ->schema([
                         Forms\Components\Toggle::make('customer_created_sms_enabled')
                             ->label('Send SMS when a new customer is created'),
@@ -185,7 +192,7 @@ class SmsSettings extends Page implements HasForms
                             ->default(SmsSetting::defaultCustomerCreatedTemplate()),
                     ]),
                 Forms\Components\Section::make('New partner SMS')
-                    ->description('Sent to the partner when they are created from the Create Order popup. Placeholders: {{name}}, {{mobile}}, {{shop}}.')
+                    ->description('Sent when a partner is created from Create Order or Offline bills. Placeholders: {{name}}, {{mobile}}, {{shop}}.')
                     ->schema([
                         Forms\Components\Toggle::make('partner_created_sms_enabled')
                             ->label('Send SMS when a new partner is created'),
@@ -194,6 +201,29 @@ class SmsSettings extends Page implements HasForms
                             ->rows(3)
                             ->maxLength(500)
                             ->default(SmsSetting::defaultPartnerCreatedTemplate()),
+                    ]),
+                Forms\Components\Section::make('Offline bill ledger SMS')
+                    ->description('Customer is notified on debit and credit entries. Partner is notified only when reward points are granted. Placeholders: {{bill_id}}, {{shop}}, {{customer}}, {{partner}}, {{amount}}, {{balance}}, {{type}}, {{points}}, {{payment_mode}}, {{remarks}}, {{mobile}}.')
+                    ->schema([
+                        Forms\Components\Toggle::make('offline_bill_sms_enabled')
+                            ->label('Send SMS for offline bill ledger entries')
+                            ->helperText('Ledger save still succeeds if SMS fails.'),
+                        Forms\Components\Textarea::make('offline_bill_debit_message_template')
+                            ->label('Debit (customer) template')
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->default(SmsSetting::defaultOfflineBillDebitTemplate()),
+                        Forms\Components\Textarea::make('offline_bill_credit_message_template')
+                            ->label('Credit (customer) template')
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->default(SmsSetting::defaultOfflineBillCreditTemplate()),
+                        Forms\Components\Textarea::make('offline_bill_partner_reward_message_template')
+                            ->label('Partner reward-points template')
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->helperText('Leave empty to skip partner SMS even when points are granted.')
+                            ->default(SmsSetting::defaultOfflineBillPartnerRewardTemplate()),
                     ]),
             ])
             ->statePath('data');
@@ -211,6 +241,7 @@ class SmsSettings extends Page implements HasForms
             'payment_status_sms_enabled' => (bool) ($data['payment_status_sms_enabled'] ?? true),
             'customer_created_sms_enabled' => (bool) ($data['customer_created_sms_enabled'] ?? true),
             'partner_created_sms_enabled' => (bool) ($data['partner_created_sms_enabled'] ?? true),
+            'offline_bill_sms_enabled' => (bool) ($data['offline_bill_sms_enabled'] ?? true),
             'endpoint' => $data['endpoint'] ?? null,
             'http_method' => strtoupper((string) ($data['http_method'] ?? 'GET')),
             'payload_params' => $data['payload_params'] ?? [],
@@ -218,6 +249,9 @@ class SmsSettings extends Page implements HasForms
             'order_message_template' => $data['order_message_template'] ?? 'Your order #{{order_id}} at {{shop}} is placed. Amount Rs {{total}}. Thank you.',
             'customer_created_message_template' => $data['customer_created_message_template'] ?? SmsSetting::defaultCustomerCreatedTemplate(),
             'partner_created_message_template' => $data['partner_created_message_template'] ?? SmsSetting::defaultPartnerCreatedTemplate(),
+            'offline_bill_debit_message_template' => $data['offline_bill_debit_message_template'] ?? SmsSetting::defaultOfflineBillDebitTemplate(),
+            'offline_bill_credit_message_template' => $data['offline_bill_credit_message_template'] ?? SmsSetting::defaultOfflineBillCreditTemplate(),
+            'offline_bill_partner_reward_message_template' => $data['offline_bill_partner_reward_message_template'] ?? SmsSetting::defaultOfflineBillPartnerRewardTemplate(),
             'order_status_templates' => array_merge(
                 SmsSetting::defaultOrderStatusTemplates(),
                 $data['order_status_templates'] ?? [],

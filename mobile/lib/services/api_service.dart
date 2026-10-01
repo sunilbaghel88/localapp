@@ -951,10 +951,15 @@ class ApiService {
   Future<Map<String, dynamic>> getOfflineBills({
     int page = 1,
     int perPage = 15,
+    String q = '',
   }) async {
     final r = await _dio.get(
       '/shop/offline-bills',
-      queryParameters: {'page': page, 'per_page': perPage},
+      queryParameters: {
+        'page': page,
+        'per_page': perPage,
+        if (q.trim().isNotEmpty) 'q': q.trim(),
+      },
     );
     return r.data as Map<String, dynamic>;
   }

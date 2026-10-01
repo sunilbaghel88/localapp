@@ -55,9 +55,6 @@ class ShopPurchaseInvoiceController extends Controller
             'supplier_gstin' => ['nullable', 'string', 'max:15'],
             'invoice_number' => ['nullable', 'string', 'max:255'],
             'invoice_date' => ['nullable', 'date'],
-            'cgst_amount' => ['nullable', 'numeric', 'min:0'],
-            'sgst_amount' => ['nullable', 'numeric', 'min:0'],
-            'igst_amount' => ['nullable', 'numeric', 'min:0'],
             'items' => ['nullable', 'array'],
             'items.*.id' => ['required', 'integer', Rule::exists('purchase_invoice_items', 'id')],
             'items.*.hsn_code' => ['nullable', 'string', 'max:16'],
@@ -76,9 +73,6 @@ class ShopPurchaseInvoiceController extends Controller
             'supplier_gstin' => array_key_exists('supplier_gstin', $data) ? $data['supplier_gstin'] : $purchaseInvoice->supplier_gstin,
             'invoice_number' => array_key_exists('invoice_number', $data) ? $data['invoice_number'] : $purchaseInvoice->invoice_number,
             'invoice_date' => array_key_exists('invoice_date', $data) ? $data['invoice_date'] : $purchaseInvoice->invoice_date,
-            'cgst_amount' => array_key_exists('cgst_amount', $data) ? $data['cgst_amount'] : $purchaseInvoice->cgst_amount,
-            'sgst_amount' => array_key_exists('sgst_amount', $data) ? $data['sgst_amount'] : $purchaseInvoice->sgst_amount,
-            'igst_amount' => array_key_exists('igst_amount', $data) ? $data['igst_amount'] : $purchaseInvoice->igst_amount,
         ]);
 
         foreach ($data['items'] ?? [] as $row) {
@@ -186,9 +180,6 @@ class ShopPurchaseInvoiceController extends Controller
             'invoice.supplier_gstin' => ['nullable', 'string', 'max:15'],
             'invoice.invoice_number' => ['nullable', 'string', 'max:255'],
             'invoice.invoice_date' => ['nullable', 'date'],
-            'invoice.cgst_amount' => ['nullable', 'numeric', 'min:0'],
-            'invoice.sgst_amount' => ['nullable', 'numeric', 'min:0'],
-            'invoice.igst_amount' => ['nullable', 'numeric', 'min:0'],
             'invoice.source_filename' => ['nullable', 'string', 'max:255'],
             'items' => ['required', 'array', 'min:1', 'max:200'],
             'items.*.name' => ['required', 'string', 'max:255'],

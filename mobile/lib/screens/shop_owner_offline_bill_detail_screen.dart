@@ -110,6 +110,8 @@ class _ShopOwnerOfflineBillDetailScreenState
                                 if (bill.type == 'debit')
                                   _row('Reward points', '${bill.rewardPoints}'),
                                 _row('Amount', money.format(bill.amount)),
+                                if (bill.closingBalance != null)
+                                  _row('Closing balance', money.format(bill.closingBalance)),
                                 if ((bill.remarks ?? '').trim().isNotEmpty)
                                   _row('Remarks', bill.remarks!.trim()),
                                 if (bill.createdAt != null)

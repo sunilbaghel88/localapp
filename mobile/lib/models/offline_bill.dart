@@ -13,6 +13,7 @@ class OfflineBill {
   final String? partnerName;
   final int rewardPoints;
   final double amount;
+  final double? closingBalance;
   final String? remarks;
   final String? imagePath;
   final String? imageUrl;
@@ -31,6 +32,7 @@ class OfflineBill {
     this.partnerName,
     this.rewardPoints = 0,
     required this.amount,
+    this.closingBalance,
     this.remarks,
     this.imagePath,
     this.imageUrl,
@@ -54,6 +56,9 @@ class OfflineBill {
       partnerName: partner is Map ? partner['name'] as String? : null,
       rewardPoints: (json['reward_points'] as num?)?.toInt() ?? 0,
       amount: _toDouble(json['amount']),
+      closingBalance: json['closing_balance'] == null
+          ? null
+          : _toDouble(json['closing_balance']),
       remarks: json['remarks'] as String?,
       imagePath: json['image_path'] as String?,
       imageUrl: json['image_url'] as String?,

@@ -2,6 +2,7 @@
 
 namespace App\Services\Sms;
 
+use App\Models\OfflineBill;
 use App\Models\Order;
 use App\Models\Shop;
 use App\Models\SmsSetting;
@@ -84,6 +85,48 @@ class SmsSender
                 ?: SmsSetting::defaultPartnerCreatedTemplate(),
             kind: 'partner_created',
         );
+    }
+
+    public function notifyOfflineBillCreated(OfflineBill $bill, float $closingBalance): void
+    {
+        try {
+            $settings = SmsSetting::current();
+            if (! $settings->is_enabled || ! $settings->offline_bill_sms_enabled) {
+                return;
+            }
+
+            $bill->loadMissing(['shop', 'customer', 'partner']);
+
+            $placeholders = $this->offlineBillPlaceholders($bill, $closingBalance, '');
+
+            $customerTemplate = $bill->type === 'credit'
+                ? ($settings->offline_bill_credit_message_template ?: SmsSetting::defaultOfflineBillCreditTemplate())
+                : ($settings->offline_bill_debit_message_template ?: SmsSetting::defaultOfflineBillDebitTemplate());
+
+            $customerMobile = $this->normalizeMobile($bill->customer?->phone);
+            $this->sendTemplated($settings, $customerMobile, $customerTemplate, $placeholders, [
+                'kind' => 'offline_bill_customer',
+                'bill_id' => $bill->id,
+                'user_id' => $bill->customer_id,
+            ]);
+
+            $points = (int) $bill->reward_points;
+            if ($points > 0 && $bill->partner_id) {
+                $partnerTemplate = $settings->offline_bill_partner_reward_message_template
+                    ?: SmsSetting::defaultOfflineBillPartnerRewardTemplate();
+                $partnerMobile = $this->normalizeMobile($bill->partner?->phone);
+                $this->sendTemplated($settings, $partnerMobile, $partnerTemplate, $placeholders, [
+                    'kind' => 'offline_bill_partner',
+                    'bill_id' => $bill->id,
+                    'user_id' => $bill->partner_id,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Offline bill SMS failed', [
+                'bill_id' => $bill->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -235,6 +278,75 @@ class SmsSender
             '{{items_count}}' => (string) $order->items->count(),
             '{{status}}' => ucfirst((string) $order->status),
             '{{payment_status}}' => ucfirst((string) $order->payment_status),
+        ];
+    }
+
+    /**
+     * @param  array<string, string>  $placeholders
+     * @param  array<string, mixed>  $context
+     */
+    protected function sendTemplated(
+        SmsSetting $settings,
+        ?string $mobile,
+        ?string $template,
+        array $placeholders,
+        array $context,
+    ): void {
+        $body = trim((string) $template);
+        if ($body === '') {
+            return;
+        }
+
+        if ($mobile === null) {
+            Log::info('SMS skipped: no mobile', $context);
+
+            return;
+        }
+
+        $placeholders['{{mobile}}'] = $mobile;
+        $message = strtr($body, $placeholders);
+
+        try {
+            $this->dispatch($settings, $mobile, $message, $placeholders);
+        } catch (\Throwable $e) {
+            Log::warning('SMS dispatch failed', array_merge($context, [
+                'mobile' => $mobile,
+                'message' => $e->getMessage(),
+            ]));
+        }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function offlineBillPlaceholders(OfflineBill $bill, float $closingBalance, string $mobile): array
+    {
+        $customerName = trim((string) ($bill->customer?->name ?: 'Customer'));
+        $partnerName = trim((string) ($bill->partner?->name ?: ''));
+        if ($partnerName === '') {
+            $partnerName = 'Partner';
+        }
+
+        $paymentMode = match ((string) $bill->payment_mode) {
+            'cash' => 'Cash',
+            'upi' => 'UPI',
+            'online' => 'Online',
+            'cheque' => 'Cheque',
+            default => $bill->payment_mode ?: '-',
+        };
+
+        return [
+            '{{bill_id}}' => (string) $bill->id,
+            '{{shop}}' => $bill->shop?->name ?: 'shop',
+            '{{customer}}' => $customerName,
+            '{{partner}}' => $partnerName,
+            '{{amount}}' => number_format((float) $bill->amount, 2, '.', ''),
+            '{{balance}}' => number_format($closingBalance, 2, '.', ''),
+            '{{type}}' => $bill->type === 'credit' ? 'Credit' : 'Debit',
+            '{{points}}' => (string) ((int) $bill->reward_points),
+            '{{payment_mode}}' => $paymentMode,
+            '{{remarks}}' => trim((string) ($bill->remarks ?: '-')),
+            '{{mobile}}' => $mobile,
         ];
     }
 
