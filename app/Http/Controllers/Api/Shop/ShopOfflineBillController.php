@@ -65,6 +65,92 @@ class ShopOfflineBillController extends Controller
         ]);
     }
 
+    public function dues(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', \App\Models\Order::class);
+
+        return response()->json([
+            'dues' => $this->dueCustomers($request)->map(fn (array $row) => $this->serializeDue($row))->values(),
+        ]);
+    }
+
+    public function remindDues(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', \App\Models\Order::class);
+
+        $data = $request->validate([
+            'shop_id' => ['nullable', 'integer', 'exists:shops,id'],
+            'customer_id' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
+
+        $customerId = isset($data['customer_id']) ? (int) $data['customer_id'] : null;
+        if ($customerId !== null && empty($data['shop_id'])) {
+            throw ValidationException::withMessages([
+                'shop_id' => [__('Select the shop for this customer.')],
+            ]);
+        }
+
+        $targets = $this->dueCustomers($request);
+        if ($targets->isEmpty()) {
+            throw ValidationException::withMessages([
+                'customer_id' => [$customerId !== null
+                    ? __('This customer has no pending dues.')
+                    : __('No customers have pending dues.')],
+            ]);
+        }
+
+        $sms = app(SmsSender::class);
+        $sent = 0;
+        $failed = 0;
+        $skipped = 0;
+        $lastError = null;
+
+        foreach ($targets as $row) {
+            /** @var User $customer */
+            $customer = $row['customer'];
+            /** @var Shop $shop */
+            $shop = $row['shop'];
+            if (! $this->customerHasMobile($customer)) {
+                $skipped++;
+                $lastError = __('Customer has no mobile number.');
+
+                continue;
+            }
+
+            try {
+                $sms->sendOfflineBillDuesReminder($customer, $shop, (float) $row['balance']);
+                $sent++;
+            } catch (\Throwable $e) {
+                $failed++;
+                $lastError = $e->getMessage();
+            }
+        }
+
+        if ($sent === 0) {
+            throw ValidationException::withMessages([
+                'sms' => [$lastError ?: __('Could not send the reminder SMS.')],
+            ]);
+        }
+
+        $parts = [];
+        if ($sent > 0) {
+            $parts[] = $sent === 1 ? '1 reminder SMS sent' : $sent.' reminder SMS sent';
+        }
+        if ($failed > 0) {
+            $parts[] = $failed.' failed';
+        }
+        if ($skipped > 0) {
+            $parts[] = $skipped.' skipped (no mobile)';
+        }
+
+        return response()->json([
+            'sent' => $sent,
+            'failed' => $failed,
+            'skipped' => $skipped,
+            'message' => $parts === [] ? 'No reminders sent.' : implode('. ', $parts).'.',
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $this->authorize('create', \App\Models\Order::class);
@@ -220,6 +306,98 @@ class ShopOfflineBillController extends Controller
             'email' => $user->email,
             'phone' => $user->phone ?? null,
         ];
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, array{shop: Shop, customer: User, balance: float}>
+     */
+    protected function dueCustomers(Request $request)
+    {
+        $shopQuery = Shop::query()->where('user_id', Auth::id());
+        $shopId = (int) $request->input('shop_id', $request->query('shop_id', 0));
+        if ($shopId > 0) {
+            $shopQuery->where('id', $shopId);
+        }
+        $shopIds = $shopQuery->pluck('id');
+        if ($shopIds->isEmpty()) {
+            return collect();
+        }
+
+        $query = OfflineBill::query()
+            ->whereIn('shop_id', $shopIds)
+            ->select('shop_id', 'customer_id')
+            ->selectRaw("ROUND(SUM(CASE WHEN type = 'credit' THEN -amount ELSE amount END), 2) as balance")
+            ->groupBy('shop_id', 'customer_id')
+            ->havingRaw('ROUND(SUM(CASE WHEN type = \'credit\' THEN -amount ELSE amount END), 2) > 0');
+
+        $q = trim((string) $request->query('q', $request->input('q', '')));
+        if ($q !== '') {
+            $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $q).'%';
+            $query->whereHas('customer', function ($customer) use ($needle) {
+                $customer->where(function ($inner) use ($needle) {
+                    $inner->whereNameLike($needle)
+                        ->orWhere('email', 'like', $needle)
+                        ->orWhere('phone', 'like', $needle);
+                });
+            });
+        }
+
+        $customerId = (int) $request->input('customer_id', $request->query('customer_id', 0));
+        if ($customerId > 0) {
+            $query->where('customer_id', $customerId);
+        }
+
+        $rows = $query->orderByDesc('balance')->limit(200)->get();
+        if ($rows->isEmpty()) {
+            return collect();
+        }
+
+        $shops = Shop::query()
+            ->whereIn('id', $rows->pluck('shop_id')->unique())
+            ->get(['id', 'name'])
+            ->keyBy('id');
+        $customers = User::query()
+            ->whereIn('id', $rows->pluck('customer_id')->unique())
+            ->get(['id', 'first_name', 'last_name', 'email', 'phone'])
+            ->keyBy('id');
+
+        return $rows->map(function ($row) use ($shops, $customers) {
+            $shop = $shops->get((int) $row->shop_id);
+            $customer = $customers->get((int) $row->customer_id);
+            if (! $shop || ! $customer) {
+                return null;
+            }
+
+            return [
+                'shop' => $shop,
+                'customer' => $customer,
+                'balance' => round((float) $row->balance, 2),
+            ];
+        })->filter()->values();
+    }
+
+    /**
+     * @param  array{shop: Shop, customer: User, balance: float}  $row
+     */
+    protected function serializeDue(array $row): array
+    {
+        $customer = $row['customer'];
+
+        return [
+            'shop_id' => $row['shop']->id,
+            'shop' => ['id' => $row['shop']->id, 'name' => $row['shop']->name],
+            'customer_id' => $customer->id,
+            'customer' => $this->serializeUser($customer),
+            'balance' => $row['balance'],
+            'has_mobile' => $this->customerHasMobile($customer),
+        ];
+    }
+
+    protected function customerHasMobile(User $user): bool
+    {
+        $digits = preg_replace('/\D+/', '', (string) $user->phone) ?? '';
+
+        return strlen($digits) >= 10;
     }
 
     protected function signedAmount(OfflineBill $bill): float

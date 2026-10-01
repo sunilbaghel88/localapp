@@ -129,6 +129,39 @@ class SmsSender
         }
     }
 
+    public function sendOfflineBillDuesReminder(User $customer, Shop $shop, float $balance): void
+    {
+        $settings = SmsSetting::current();
+        if (! $settings->is_enabled) {
+            throw new RuntimeException('SMS sending is disabled. Enable it in admin SMS settings.');
+        }
+        if (! $settings->offline_bill_sms_enabled) {
+            throw new RuntimeException('Offline bill SMS is disabled. Enable it in admin SMS settings.');
+        }
+
+        $template = trim((string) ($settings->offline_bill_dues_reminder_message_template
+            ?: SmsSetting::defaultOfflineBillDuesReminderTemplate()));
+        if ($template === '') {
+            throw new RuntimeException('Dues reminder SMS template is empty.');
+        }
+
+        $mobile = $this->normalizeMobile($customer->phone);
+        if ($mobile === null) {
+            throw new RuntimeException('Customer has no mobile number.');
+        }
+
+        $amount = number_format($balance, 2, '.', '');
+        $placeholders = [
+            '{{customer}}' => trim((string) ($customer->name ?: 'Customer')),
+            '{{shop}}' => $shop->name ?: 'shop',
+            '{{balance}}' => $amount,
+            '{{amount}}' => $amount,
+            '{{mobile}}' => $mobile,
+        ];
+
+        $this->dispatch($settings, $mobile, strtr($template, $placeholders), $placeholders);
+    }
+
     /**
      * @param  callable(SmsSetting): bool  $enabled
      * @param  callable(SmsSetting): ?string  $template

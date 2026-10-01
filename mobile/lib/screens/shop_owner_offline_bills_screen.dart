@@ -191,7 +191,16 @@ class _ShopOwnerOfflineBillsScreenState extends State<ShopOwnerOfflineBillsScree
     final canCreate = context.watch<AuthProvider>().user?.permissions?.contains('create_order') ?? false;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Offline bills ledger')),
+      appBar: AppBar(
+        title: const Text('Offline bills ledger'),
+        actions: [
+          IconButton(
+            tooltip: 'Due reminders',
+            onPressed: () => context.push('/owner/offline-bills/dues'),
+            icon: const Icon(Icons.sms_outlined),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(

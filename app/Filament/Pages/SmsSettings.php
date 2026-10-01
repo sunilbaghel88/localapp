@@ -57,6 +57,8 @@ class SmsSettings extends Page implements HasForms
                 ?: SmsSetting::defaultOfflineBillCreditTemplate(),
             'offline_bill_partner_reward_message_template' => $setting->offline_bill_partner_reward_message_template
                 ?: SmsSetting::defaultOfflineBillPartnerRewardTemplate(),
+            'offline_bill_dues_reminder_message_template' => $setting->offline_bill_dues_reminder_message_template
+                ?: SmsSetting::defaultOfflineBillDuesReminderTemplate(),
             'order_status_templates' => array_merge(
                 SmsSetting::defaultOrderStatusTemplates(),
                 $setting->order_status_templates ?? [],
@@ -203,11 +205,11 @@ class SmsSettings extends Page implements HasForms
                             ->default(SmsSetting::defaultPartnerCreatedTemplate()),
                     ]),
                 Forms\Components\Section::make('Offline bill ledger SMS')
-                    ->description('Customer is notified on debit and credit entries. Partner is notified only when reward points are granted. Placeholders: {{bill_id}}, {{shop}}, {{customer}}, {{partner}}, {{amount}}, {{balance}}, {{type}}, {{points}}, {{payment_mode}}, {{remarks}}, {{mobile}}.')
+                    ->description('Customer is notified on debit and credit entries. Partner is notified only when reward points are granted. Dues reminders are sent only when the shop owner taps Send. Placeholders: {{bill_id}}, {{shop}}, {{customer}}, {{partner}}, {{amount}}, {{balance}}, {{type}}, {{points}}, {{payment_mode}}, {{remarks}}, {{mobile}}.')
                     ->schema([
                         Forms\Components\Toggle::make('offline_bill_sms_enabled')
                             ->label('Send SMS for offline bill ledger entries')
-                            ->helperText('Ledger save still succeeds if SMS fails.'),
+                            ->helperText('Ledger save still succeeds if SMS fails. Manual dues reminders show an error if SMS fails.'),
                         Forms\Components\Textarea::make('offline_bill_debit_message_template')
                             ->label('Debit (customer) template')
                             ->rows(3)
@@ -224,6 +226,12 @@ class SmsSettings extends Page implements HasForms
                             ->maxLength(500)
                             ->helperText('Leave empty to skip partner SMS even when points are granted.')
                             ->default(SmsSetting::defaultOfflineBillPartnerRewardTemplate()),
+                        Forms\Components\Textarea::make('offline_bill_dues_reminder_message_template')
+                            ->label('Pending dues reminder template')
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->helperText('Sent when the shop owner taps Send reminder. Placeholders: {{customer}}, {{shop}}, {{balance}}, {{amount}}, {{mobile}}.')
+                            ->default(SmsSetting::defaultOfflineBillDuesReminderTemplate()),
                     ]),
             ])
             ->statePath('data');
@@ -252,6 +260,7 @@ class SmsSettings extends Page implements HasForms
             'offline_bill_debit_message_template' => $data['offline_bill_debit_message_template'] ?? SmsSetting::defaultOfflineBillDebitTemplate(),
             'offline_bill_credit_message_template' => $data['offline_bill_credit_message_template'] ?? SmsSetting::defaultOfflineBillCreditTemplate(),
             'offline_bill_partner_reward_message_template' => $data['offline_bill_partner_reward_message_template'] ?? SmsSetting::defaultOfflineBillPartnerRewardTemplate(),
+            'offline_bill_dues_reminder_message_template' => $data['offline_bill_dues_reminder_message_template'] ?? SmsSetting::defaultOfflineBillDuesReminderTemplate(),
             'order_status_templates' => array_merge(
                 SmsSetting::defaultOrderStatusTemplates(),
                 $data['order_status_templates'] ?? [],

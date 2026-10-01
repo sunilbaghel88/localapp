@@ -120,6 +120,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/offline-bills', [ShopOfflineBillController::class, 'index']);
         Route::post('/offline-bills', [ShopOfflineBillController::class, 'store']);
+        Route::get('/offline-bills/dues', [ShopOfflineBillController::class, 'dues']);
+        Route::post('/offline-bills/dues/remind', [ShopOfflineBillController::class, 'remindDues']);
         Route::get('/offline-bills/{offlineBill}', [ShopOfflineBillController::class, 'show']);
     });
 

@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -20,6 +21,7 @@ class _ShopOwnerOfflineBillDetailScreenState
   final ApiService _api = ApiService();
   OfflineBill? _bill;
   bool _loading = true;
+  bool _sendingReminder = false;
   String? _error;
 
   Future<void> _load() async {
@@ -47,6 +49,69 @@ class _ShopOwnerOfflineBillDetailScreenState
   void initState() {
     super.initState();
     _load();
+  }
+
+  Future<void> _sendReminder() async {
+    final bill = _bill;
+    if (bill == null) return;
+    final due = bill.closingBalance ?? 0;
+    if (due <= 0) return;
+
+    final money = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
+    final name = bill.customerName ?? 'this customer';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Send reminder SMS?'),
+        content: Text('Send a dues reminder to $name for ${money.format(due)}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Send SMS'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _sendingReminder = true);
+    try {
+      final result = await _api.remindOfflineBillDues(
+        shopId: bill.shopId,
+        customerId: bill.customerId,
+      );
+      if (!mounted) return;
+      final message = result['message']?.toString().trim();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text((message != null && message.isNotEmpty) ? message : 'Reminder SMS sent.')),
+      );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_apiError(e))));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _sendingReminder = false);
+    }
+  }
+
+  String _apiError(DioException e) {
+    final data = e.response?.data;
+    if (data is Map && data['errors'] is Map) {
+      final errs = data['errors'] as Map;
+      for (final v in errs.values) {
+        if (v is List && v.isNotEmpty) return v.first.toString();
+        if (v != null) return v.toString();
+      }
+      if (data['message'] != null) return data['message'].toString();
+    }
+    if (data is Map && data['message'] != null) return data['message'].toString();
+    return e.message ?? 'Request failed';
   }
 
   @override
@@ -116,6 +181,23 @@ class _ShopOwnerOfflineBillDetailScreenState
                                   _row('Remarks', bill.remarks!.trim()),
                                 if (bill.createdAt != null)
                                   _row('Date', dateFormat.format(bill.createdAt!.toLocal())),
+                                if ((bill.closingBalance ?? 0) > 0) ...[
+                                  const SizedBox(height: 8),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: FilledButton.icon(
+                                      onPressed: _sendingReminder ? null : _sendReminder,
+                                      icon: _sendingReminder
+                                          ? const SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(strokeWidth: 2),
+                                            )
+                                          : const Icon(Icons.sms_outlined),
+                                      label: const Text('Send dues reminder'),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),

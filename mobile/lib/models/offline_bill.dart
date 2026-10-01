@@ -91,3 +91,39 @@ class OfflineBill {
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 }
+
+class OfflineBillDue {
+  final int shopId;
+  final String? shopName;
+  final int customerId;
+  final String? customerName;
+  final String? customerPhone;
+  final double balance;
+  final bool hasMobile;
+
+  OfflineBillDue({
+    required this.shopId,
+    this.shopName,
+    required this.customerId,
+    this.customerName,
+    this.customerPhone,
+    required this.balance,
+    this.hasMobile = false,
+  });
+
+  factory OfflineBillDue.fromJson(Map<String, dynamic> json) {
+    final shop = json['shop'];
+    final customer = json['customer'];
+    return OfflineBillDue(
+      shopId: json['shop_id'] as int,
+      shopName: shop is Map ? shop['name'] as String? : null,
+      customerId: json['customer_id'] as int,
+      customerName: customer is Map ? customer['name'] as String? : null,
+      customerPhone: customer is Map ? customer['phone'] as String? : null,
+      balance: OfflineBill._toDouble(json['balance']),
+      hasMobile: json['has_mobile'] == true,
+    );
+  }
+
+  String get key => '$shopId:$customerId';
+}

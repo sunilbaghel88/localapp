@@ -1015,4 +1015,34 @@ class ApiService {
     }
     return OfflineBill.fromJson(data['bill'] as Map<String, dynamic>);
   }
+
+  Future<List<OfflineBillDue>> getOfflineBillDues({String q = ''}) async {
+    final r = await _dio.get(
+      '/shop/offline-bills/dues',
+      queryParameters: {
+        if (q.trim().isNotEmpty) 'q': q.trim(),
+      },
+    );
+    final list = r.data['dues'] as List<dynamic>? ?? [];
+    return list
+        .whereType<Map>()
+        .map((e) => OfflineBillDue.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> remindOfflineBillDues({
+    int? shopId,
+    int? customerId,
+    String q = '',
+  }) async {
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/offline-bills/dues/remind',
+      data: {
+        'shop_id': ?shopId,
+        'customer_id': ?customerId,
+        if (q.trim().isNotEmpty) 'q': q.trim(),
+      },
+    );
+    return r.data ?? <String, dynamic>{};
+  }
 }

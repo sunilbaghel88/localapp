@@ -27,6 +27,7 @@ import 'screens/shop_owner_create_order_screen.dart';
 import 'screens/shop_owner_offline_bills_screen.dart';
 import 'screens/shop_owner_offline_bill_form_screen.dart';
 import 'screens/shop_owner_offline_bill_detail_screen.dart';
+import 'screens/shop_owner_offline_bill_dues_screen.dart';
 import 'screens/shop_owner_reward_redemptions_screen.dart';
 import 'screens/shop_owner_user_types_screen.dart';
 import 'screens/shop_owner_shops_screen.dart';
@@ -227,6 +228,10 @@ GoRouter createRouter(BuildContext context) {
       GoRoute(
         path: '/owner/offline-bills/create',
         builder: (context, state) => const ShopOwnerOfflineBillFormScreen(),
+      ),
+      GoRoute(
+        path: '/owner/offline-bills/dues',
+        builder: (context, state) => const ShopOwnerOfflineBillDuesScreen(),
       ),
       GoRoute(
         path: '/owner/offline-bills/:id',

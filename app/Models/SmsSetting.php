@@ -41,6 +41,7 @@ class SmsSetting extends Model
         'offline_bill_debit_message_template',
         'offline_bill_credit_message_template',
         'offline_bill_partner_reward_message_template',
+        'offline_bill_dues_reminder_message_template',
         'otp_ttl_minutes',
     ];
 
@@ -133,6 +134,11 @@ class SmsSetting extends Model
         return 'Hi {{partner}}, you earned {{points}} reward points at {{shop}} for {{customer}}. Amount Rs {{amount}}.';
     }
 
+    public static function defaultOfflineBillDuesReminderTemplate(): string
+    {
+        return 'Hi {{customer}}, a payment of Rs {{balance}} is pending at {{shop}}. Please pay at the earliest. Thank you.';
+    }
+
     public static function current(): self
     {
         $setting = static::query()->first();
@@ -168,6 +174,7 @@ class SmsSetting extends Model
             'offline_bill_debit_message_template' => static::defaultOfflineBillDebitTemplate(),
             'offline_bill_credit_message_template' => static::defaultOfflineBillCreditTemplate(),
             'offline_bill_partner_reward_message_template' => static::defaultOfflineBillPartnerRewardTemplate(),
+            'offline_bill_dues_reminder_message_template' => static::defaultOfflineBillDuesReminderTemplate(),
             'otp_ttl_minutes' => 10,
         ]);
     }
