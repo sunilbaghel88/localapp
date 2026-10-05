@@ -592,7 +592,7 @@ class _ShopOwnerImportInvoiceScreenState
                     decoration: const InputDecoration(
                       labelText: 'Margin % for all products',
                       helperText:
-                          'Selling price = net rate + this margin. You can still edit any row.',
+                          'Selling price = net rate + this margin, rounded to the nearest rupee. You can still edit any row.',
                       border: OutlineInputBorder(),
                       suffixText: '%',
                     ),
@@ -1201,7 +1201,7 @@ class _InvoiceVariant {
       discountController: TextEditingController(text: discount.toStringAsFixed(2)),
       costController: TextEditingController(text: cost.toStringAsFixed(2)),
       priceController: TextEditingController(
-        text: _sellingFrom(cost, margin).toStringAsFixed(2),
+        text: _sellingFrom(cost, margin).toStringAsFixed(0),
       ),
       cgstController: TextEditingController(
         text: _toDouble(json['cgst_amount']).toStringAsFixed(2),
@@ -1256,7 +1256,7 @@ class _InvoiceVariant {
 
   void applyMargin(double margin) {
     final cost = double.tryParse(costController.text.trim()) ?? 0;
-    priceController.text = _sellingFrom(cost, margin).toStringAsFixed(2);
+    priceController.text = _sellingFrom(cost, margin).toStringAsFixed(0);
   }
 
   /// Line tax amount = discounted list price × GST % × quantity.
@@ -1337,7 +1337,12 @@ class _InvoiceVariant {
     return int.tryParse(value?.toString() ?? '') ?? 1;
   }
 
+  /// Net rate + margin %, then round half up to the nearest rupee.
+  /// 125.49 → 125, 125.50 → 126, 125.67 → 126, 125.00 → 125.
   static double _sellingFrom(double cost, double margin) {
-    return double.parse((cost * (1 + margin / 100)).toStringAsFixed(2));
+    final raw = cost * (1 + margin / 100);
+    if (!raw.isFinite || raw < 0) return 0;
+    final twoDp = double.parse(raw.toStringAsFixed(2));
+    return twoDp.roundToDouble();
   }
 }
