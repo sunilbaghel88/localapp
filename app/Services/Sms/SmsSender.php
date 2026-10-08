@@ -4,6 +4,7 @@ namespace App\Services\Sms;
 
 use App\Models\OfflineBill;
 use App\Models\Order;
+use App\Models\RewardRedemptionRequest;
 use App\Models\Shop;
 use App\Models\SmsSetting;
 use App\Models\User;
@@ -109,18 +110,6 @@ class SmsSender
                 'bill_id' => $bill->id,
                 'user_id' => $bill->customer_id,
             ]);
-
-            $points = (int) $bill->reward_points;
-            if ($points > 0 && $bill->partner_id) {
-                $partnerTemplate = $settings->offline_bill_partner_reward_message_template
-                    ?: SmsSetting::defaultOfflineBillPartnerRewardTemplate();
-                $partnerMobile = $this->normalizeMobile($bill->partner?->phone);
-                $this->sendTemplated($settings, $partnerMobile, $partnerTemplate, $placeholders, [
-                    'kind' => 'offline_bill_partner',
-                    'bill_id' => $bill->id,
-                    'user_id' => $bill->partner_id,
-                ]);
-            }
         } catch (\Throwable $e) {
             Log::warning('Offline bill SMS failed', [
                 'bill_id' => $bill->id,
@@ -160,6 +149,173 @@ class SmsSender
         ];
 
         $this->dispatch($settings, $mobile, strtr($template, $placeholders), $placeholders);
+    }
+
+    /**
+     * @param  array<string, string>  $extra
+     */
+    public function notifyRewardPointsGranted(User $partner, ?Shop $shop, int $points, int $balance, array $extra = []): void
+    {
+        try {
+            $settings = SmsSetting::current();
+            if (! $settings->is_enabled || ! $settings->reward_points_sms_enabled) {
+                return;
+            }
+
+            $template = $settings->reward_points_granted_message_template
+                ?: SmsSetting::defaultRewardPointsGrantedTemplate();
+            $placeholders = $this->rewardPlaceholders($partner, $shop, $points, $balance, $extra);
+
+            $this->sendTemplated($settings, $this->normalizeMobile($partner->phone), $template, $placeholders, [
+                'kind' => 'reward_points_granted',
+                'user_id' => $partner->id,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Reward points granted SMS failed', [
+                'user_id' => $partner->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function notifyRedemptionRequested(RewardRedemptionRequest $request): void
+    {
+        try {
+            $settings = SmsSetting::current();
+            if (! $settings->is_enabled || ! $settings->reward_points_sms_enabled) {
+                return;
+            }
+
+            $request->loadMissing(['user', 'shop.owner']);
+            $partner = $request->user;
+            if (! $partner) {
+                return;
+            }
+
+            $shop = $request->shop;
+            $points = (int) $request->requested_points;
+            $balance = (int) ($partner->reward_points ?? 0);
+            $extra = [
+                'type' => (string) $request->redemption_type,
+                'status' => 'pending',
+                'note' => trim((string) ($request->note ?: '-')),
+            ];
+            $placeholders = $this->rewardPlaceholders($partner, $shop, $points, $balance, $extra);
+
+            $partnerTemplate = $settings->reward_redemption_requested_message_template
+                ?: SmsSetting::defaultRewardRedemptionRequestedTemplate();
+            $partnerMobile = $this->normalizeMobile($partner->phone);
+            $this->sendTemplated($settings, $partnerMobile, $partnerTemplate, $placeholders, [
+                'kind' => 'reward_redemption_requested',
+                'user_id' => $partner->id,
+                'request_id' => $request->id,
+            ]);
+
+            $ownerTemplate = trim((string) ($settings->reward_redemption_requested_owner_message_template
+                ?: SmsSetting::defaultRewardRedemptionRequestedOwnerTemplate()));
+            if ($ownerTemplate === '') {
+                return;
+            }
+
+            $ownerMobile = $this->firstValidMobile([
+                $shop?->owner?->phone,
+                $shop?->phone,
+            ]);
+            if ($ownerMobile === null || $ownerMobile === $partnerMobile) {
+                return;
+            }
+
+            $this->sendTemplated($settings, $ownerMobile, $ownerTemplate, $placeholders, [
+                'kind' => 'reward_redemption_requested_owner',
+                'user_id' => $shop?->user_id,
+                'request_id' => $request->id,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Reward redemption request SMS failed', [
+                'request_id' => $request->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function notifyRedemptionDecision(RewardRedemptionRequest $request): void
+    {
+        try {
+            $settings = SmsSetting::current();
+            if (! $settings->is_enabled || ! $settings->reward_points_sms_enabled) {
+                return;
+            }
+
+            $request->loadMissing(['user', 'shop']);
+            $partner = $request->user;
+            if (! $partner) {
+                return;
+            }
+
+            $approved = $request->status === 'approved';
+            $template = $approved
+                ? ($settings->reward_redemption_approved_message_template
+                    ?: SmsSetting::defaultRewardRedemptionApprovedTemplate())
+                : ($settings->reward_redemption_rejected_message_template
+                    ?: SmsSetting::defaultRewardRedemptionRejectedTemplate());
+
+            $placeholders = $this->rewardPlaceholders(
+                $partner,
+                $request->shop,
+                (int) $request->requested_points,
+                (int) ($partner->fresh()?->reward_points ?? $partner->reward_points ?? 0),
+                [
+                    'type' => (string) $request->redemption_type,
+                    'status' => (string) $request->status,
+                    'reason' => trim((string) ($request->rejection_reason ?: '-')),
+                    'note' => trim((string) ($request->note ?: '-')),
+                ],
+            );
+
+            $this->sendTemplated($settings, $this->normalizeMobile($partner->phone), $template, $placeholders, [
+                'kind' => $approved ? 'reward_redemption_approved' : 'reward_redemption_rejected',
+                'user_id' => $partner->id,
+                'request_id' => $request->id,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Reward redemption decision SMS failed', [
+                'request_id' => $request->id,
+                'status' => $request->status,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<string, string>  $extra
+     * @return array<string, string>
+     */
+    protected function rewardPlaceholders(User $partner, ?Shop $shop, int $points, int $balance, array $extra = []): array
+    {
+        $type = (string) ($extra['type'] ?? '');
+        $typeLabel = match ($type) {
+            'cash' => 'Cash',
+            'gift' => 'Gift',
+            '' => '-',
+            default => ucfirst($type),
+        };
+
+        return [
+            '{{partner}}' => trim((string) ($partner->name ?: 'Partner')),
+            '{{name}}' => trim((string) ($partner->name ?: 'Partner')),
+            '{{shop}}' => $shop?->name ?: 'shop',
+            '{{points}}' => (string) $points,
+            '{{balance}}' => (string) $balance,
+            '{{type}}' => $typeLabel,
+            '{{status}}' => ucfirst((string) ($extra['status'] ?? '')),
+            '{{reason}}' => (string) ($extra['reason'] ?? '-'),
+            '{{note}}' => (string) ($extra['note'] ?? '-'),
+            '{{source}}' => (string) ($extra['source'] ?? '-'),
+            '{{customer}}' => (string) ($extra['customer'] ?? '-'),
+            '{{amount}}' => (string) ($extra['amount'] ?? '-'),
+            '{{order_id}}' => (string) ($extra['order_id'] ?? '-'),
+            '{{mobile}}' => '',
+        ];
     }
 
     /**

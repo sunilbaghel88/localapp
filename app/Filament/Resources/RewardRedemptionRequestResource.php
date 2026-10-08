@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\RewardRedemptionRequestResource\Pages;
 use App\Models\RewardRedemptionRequest;
+use App\Services\Sms\SmsSender;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -103,6 +104,10 @@ class RewardRedemptionRequestResource extends Resource
                         });
 
                         if ($result === 'approved') {
+                            $record->refresh();
+                            $record->load(['user', 'shop']);
+                            app(SmsSender::class)->notifyRedemptionDecision($record);
+
                             Notification::make()
                                 ->title('Redemption approved and points deducted.')
                                 ->success()
@@ -149,6 +154,10 @@ class RewardRedemptionRequestResource extends Resource
                             ]);
 
                         if ($updated) {
+                            $record->refresh();
+                            $record->load(['user', 'shop']);
+                            app(SmsSender::class)->notifyRedemptionDecision($record);
+
                             Notification::make()
                                 ->title('Redemption request rejected.')
                                 ->success()

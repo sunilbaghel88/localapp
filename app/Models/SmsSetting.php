@@ -29,6 +29,7 @@ class SmsSetting extends Model
         'customer_created_sms_enabled',
         'partner_created_sms_enabled',
         'offline_bill_sms_enabled',
+        'reward_points_sms_enabled',
         'endpoint',
         'http_method',
         'payload_params',
@@ -42,6 +43,11 @@ class SmsSetting extends Model
         'offline_bill_credit_message_template',
         'offline_bill_partner_reward_message_template',
         'offline_bill_dues_reminder_message_template',
+        'reward_points_granted_message_template',
+        'reward_redemption_requested_message_template',
+        'reward_redemption_requested_owner_message_template',
+        'reward_redemption_approved_message_template',
+        'reward_redemption_rejected_message_template',
         'otp_ttl_minutes',
     ];
 
@@ -55,6 +61,7 @@ class SmsSetting extends Model
             'customer_created_sms_enabled' => 'boolean',
             'partner_created_sms_enabled' => 'boolean',
             'offline_bill_sms_enabled' => 'boolean',
+            'reward_points_sms_enabled' => 'boolean',
             'payload_params' => 'array',
             'order_status_templates' => 'array',
             'payment_status_templates' => 'array',
@@ -139,6 +146,31 @@ class SmsSetting extends Model
         return 'Hi {{customer}}, a payment of Rs {{balance}} is pending at {{shop}}. Please pay at the earliest. Thank you.';
     }
 
+    public static function defaultRewardPointsGrantedTemplate(): string
+    {
+        return 'Hi {{partner}}, {{points}} reward points were added at {{shop}}. Your balance is {{balance}}.';
+    }
+
+    public static function defaultRewardRedemptionRequestedTemplate(): string
+    {
+        return 'Hi {{partner}}, your request to redeem {{points}} points ({{type}}) at {{shop}} has been submitted. Waiting for shop owner approval.';
+    }
+
+    public static function defaultRewardRedemptionRequestedOwnerTemplate(): string
+    {
+        return '{{partner}} requested to redeem {{points}} points ({{type}}) at {{shop}}.';
+    }
+
+    public static function defaultRewardRedemptionApprovedTemplate(): string
+    {
+        return 'Hi {{partner}}, your request to redeem {{points}} points at {{shop}} was approved. Your balance is {{balance}}.';
+    }
+
+    public static function defaultRewardRedemptionRejectedTemplate(): string
+    {
+        return 'Hi {{partner}}, your request to redeem {{points}} points at {{shop}} was rejected. Reason: {{reason}}. Your balance is {{balance}}.';
+    }
+
     public static function current(): self
     {
         $setting = static::query()->first();
@@ -155,6 +187,7 @@ class SmsSetting extends Model
             'customer_created_sms_enabled' => true,
             'partner_created_sms_enabled' => true,
             'offline_bill_sms_enabled' => true,
+            'reward_points_sms_enabled' => true,
             'endpoint' => 'http://sms.endmile.in/WebServiceSMS.aspx',
             'http_method' => 'GET',
             'payload_params' => [
@@ -175,6 +208,11 @@ class SmsSetting extends Model
             'offline_bill_credit_message_template' => static::defaultOfflineBillCreditTemplate(),
             'offline_bill_partner_reward_message_template' => static::defaultOfflineBillPartnerRewardTemplate(),
             'offline_bill_dues_reminder_message_template' => static::defaultOfflineBillDuesReminderTemplate(),
+            'reward_points_granted_message_template' => static::defaultRewardPointsGrantedTemplate(),
+            'reward_redemption_requested_message_template' => static::defaultRewardRedemptionRequestedTemplate(),
+            'reward_redemption_requested_owner_message_template' => static::defaultRewardRedemptionRequestedOwnerTemplate(),
+            'reward_redemption_approved_message_template' => static::defaultRewardRedemptionApprovedTemplate(),
+            'reward_redemption_rejected_message_template' => static::defaultRewardRedemptionRejectedTemplate(),
             'otp_ttl_minutes' => 10,
         ]);
     }

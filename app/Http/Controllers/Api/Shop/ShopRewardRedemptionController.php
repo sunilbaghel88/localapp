@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Shop;
 
 use App\Http\Controllers\Controller;
 use App\Models\RewardRedemptionRequest;
+use App\Services\Sms\SmsSender;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -81,6 +82,8 @@ class ShopRewardRedemptionController extends Controller
         });
 
         if ($result['status'] === 'approved') {
+            app(SmsSender::class)->notifyRedemptionDecision($result['request']);
+
             return response()->json([
                 'message' => __('Redemption approved and points deducted.'),
                 'request' => $result['request'],
@@ -127,6 +130,7 @@ class ShopRewardRedemptionController extends Controller
 
         $rewardRedemptionRequest->refresh();
         $rewardRedemptionRequest->load(['user:id,first_name,last_name,email,phone', 'shop:id,name', 'approvedBy:id,first_name,last_name']);
+        app(SmsSender::class)->notifyRedemptionDecision($rewardRedemptionRequest);
 
         return response()->json([
             'message' => __('Redemption request rejected.'),

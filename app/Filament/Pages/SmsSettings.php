@@ -42,6 +42,7 @@ class SmsSettings extends Page implements HasForms
             'customer_created_sms_enabled' => $setting->customer_created_sms_enabled ?? true,
             'partner_created_sms_enabled' => $setting->partner_created_sms_enabled ?? true,
             'offline_bill_sms_enabled' => $setting->offline_bill_sms_enabled ?? true,
+            'reward_points_sms_enabled' => $setting->reward_points_sms_enabled ?? true,
             'endpoint' => $setting->endpoint,
             'http_method' => $setting->http_method,
             'payload_params' => $setting->payload_params ?? [],
@@ -55,10 +56,18 @@ class SmsSettings extends Page implements HasForms
                 ?: SmsSetting::defaultOfflineBillDebitTemplate(),
             'offline_bill_credit_message_template' => $setting->offline_bill_credit_message_template
                 ?: SmsSetting::defaultOfflineBillCreditTemplate(),
-            'offline_bill_partner_reward_message_template' => $setting->offline_bill_partner_reward_message_template
-                ?: SmsSetting::defaultOfflineBillPartnerRewardTemplate(),
             'offline_bill_dues_reminder_message_template' => $setting->offline_bill_dues_reminder_message_template
                 ?: SmsSetting::defaultOfflineBillDuesReminderTemplate(),
+            'reward_points_granted_message_template' => $setting->reward_points_granted_message_template
+                ?: SmsSetting::defaultRewardPointsGrantedTemplate(),
+            'reward_redemption_requested_message_template' => $setting->reward_redemption_requested_message_template
+                ?: SmsSetting::defaultRewardRedemptionRequestedTemplate(),
+            'reward_redemption_requested_owner_message_template' => $setting->reward_redemption_requested_owner_message_template
+                ?: SmsSetting::defaultRewardRedemptionRequestedOwnerTemplate(),
+            'reward_redemption_approved_message_template' => $setting->reward_redemption_approved_message_template
+                ?: SmsSetting::defaultRewardRedemptionApprovedTemplate(),
+            'reward_redemption_rejected_message_template' => $setting->reward_redemption_rejected_message_template
+                ?: SmsSetting::defaultRewardRedemptionRejectedTemplate(),
             'order_status_templates' => array_merge(
                 SmsSetting::defaultOrderStatusTemplates(),
                 $setting->order_status_templates ?? [],
@@ -205,7 +214,7 @@ class SmsSettings extends Page implements HasForms
                             ->default(SmsSetting::defaultPartnerCreatedTemplate()),
                     ]),
                 Forms\Components\Section::make('Offline bill ledger SMS')
-                    ->description('Customer is notified on debit and credit entries. Partner is notified only when reward points are granted. Dues reminders are sent only when the shop owner taps Send. Placeholders: {{bill_id}}, {{shop}}, {{customer}}, {{partner}}, {{amount}}, {{balance}}, {{type}}, {{points}}, {{payment_mode}}, {{remarks}}, {{mobile}}.')
+                    ->description('Customer is notified on debit and credit entries. Partner grant SMS is sent from Reward points SMS. Dues reminders are sent only when the shop owner taps Send. Placeholders: {{bill_id}}, {{shop}}, {{customer}}, {{partner}}, {{amount}}, {{balance}}, {{type}}, {{points}}, {{payment_mode}}, {{remarks}}, {{mobile}}.')
                     ->schema([
                         Forms\Components\Toggle::make('offline_bill_sms_enabled')
                             ->label('Send SMS for offline bill ledger entries')
@@ -220,18 +229,45 @@ class SmsSettings extends Page implements HasForms
                             ->rows(3)
                             ->maxLength(500)
                             ->default(SmsSetting::defaultOfflineBillCreditTemplate()),
-                        Forms\Components\Textarea::make('offline_bill_partner_reward_message_template')
-                            ->label('Partner reward-points template')
-                            ->rows(3)
-                            ->maxLength(500)
-                            ->helperText('Leave empty to skip partner SMS even when points are granted.')
-                            ->default(SmsSetting::defaultOfflineBillPartnerRewardTemplate()),
                         Forms\Components\Textarea::make('offline_bill_dues_reminder_message_template')
                             ->label('Pending dues reminder template')
                             ->rows(3)
                             ->maxLength(500)
                             ->helperText('Sent when the shop owner taps Send reminder. Placeholders: {{customer}}, {{shop}}, {{balance}}, {{amount}}, {{mobile}}.')
                             ->default(SmsSetting::defaultOfflineBillDuesReminderTemplate()),
+                    ]),
+                Forms\Components\Section::make('Reward points SMS')
+                    ->description('Partner is notified when points are added, when they request a redemption, and when the shop owner approves or rejects it. Shop owner is notified of a new request. Placeholders: {{partner}}, {{shop}}, {{points}}, {{balance}}, {{type}}, {{status}}, {{reason}}, {{note}}, {{source}}, {{customer}}, {{amount}}, {{order_id}}, {{mobile}}.')
+                    ->schema([
+                        Forms\Components\Toggle::make('reward_points_sms_enabled')
+                            ->label('Send SMS for reward points and redemptions')
+                            ->helperText('Grant, redeem, approve, and reject still succeed if SMS fails.'),
+                        Forms\Components\Textarea::make('reward_points_granted_message_template')
+                            ->label('Points added (partner)')
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->default(SmsSetting::defaultRewardPointsGrantedTemplate()),
+                        Forms\Components\Textarea::make('reward_redemption_requested_message_template')
+                            ->label('Redeem request placed (partner)')
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->default(SmsSetting::defaultRewardRedemptionRequestedTemplate()),
+                        Forms\Components\Textarea::make('reward_redemption_requested_owner_message_template')
+                            ->label('Redeem request placed (shop owner)')
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->helperText('Leave empty to skip the shop-owner SMS. Uses the owner mobile, then the shop phone.')
+                            ->default(SmsSetting::defaultRewardRedemptionRequestedOwnerTemplate()),
+                        Forms\Components\Textarea::make('reward_redemption_approved_message_template')
+                            ->label('Redemption approved (partner)')
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->default(SmsSetting::defaultRewardRedemptionApprovedTemplate()),
+                        Forms\Components\Textarea::make('reward_redemption_rejected_message_template')
+                            ->label('Redemption rejected (partner)')
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->default(SmsSetting::defaultRewardRedemptionRejectedTemplate()),
                     ]),
             ])
             ->statePath('data');
@@ -250,6 +286,7 @@ class SmsSettings extends Page implements HasForms
             'customer_created_sms_enabled' => (bool) ($data['customer_created_sms_enabled'] ?? true),
             'partner_created_sms_enabled' => (bool) ($data['partner_created_sms_enabled'] ?? true),
             'offline_bill_sms_enabled' => (bool) ($data['offline_bill_sms_enabled'] ?? true),
+            'reward_points_sms_enabled' => (bool) ($data['reward_points_sms_enabled'] ?? true),
             'endpoint' => $data['endpoint'] ?? null,
             'http_method' => strtoupper((string) ($data['http_method'] ?? 'GET')),
             'payload_params' => $data['payload_params'] ?? [],
@@ -259,8 +296,12 @@ class SmsSettings extends Page implements HasForms
             'partner_created_message_template' => $data['partner_created_message_template'] ?? SmsSetting::defaultPartnerCreatedTemplate(),
             'offline_bill_debit_message_template' => $data['offline_bill_debit_message_template'] ?? SmsSetting::defaultOfflineBillDebitTemplate(),
             'offline_bill_credit_message_template' => $data['offline_bill_credit_message_template'] ?? SmsSetting::defaultOfflineBillCreditTemplate(),
-            'offline_bill_partner_reward_message_template' => $data['offline_bill_partner_reward_message_template'] ?? SmsSetting::defaultOfflineBillPartnerRewardTemplate(),
             'offline_bill_dues_reminder_message_template' => $data['offline_bill_dues_reminder_message_template'] ?? SmsSetting::defaultOfflineBillDuesReminderTemplate(),
+            'reward_points_granted_message_template' => $data['reward_points_granted_message_template'] ?? SmsSetting::defaultRewardPointsGrantedTemplate(),
+            'reward_redemption_requested_message_template' => $data['reward_redemption_requested_message_template'] ?? SmsSetting::defaultRewardRedemptionRequestedTemplate(),
+            'reward_redemption_requested_owner_message_template' => $data['reward_redemption_requested_owner_message_template'] ?? SmsSetting::defaultRewardRedemptionRequestedOwnerTemplate(),
+            'reward_redemption_approved_message_template' => $data['reward_redemption_approved_message_template'] ?? SmsSetting::defaultRewardRedemptionApprovedTemplate(),
+            'reward_redemption_rejected_message_template' => $data['reward_redemption_rejected_message_template'] ?? SmsSetting::defaultRewardRedemptionRejectedTemplate(),
             'order_status_templates' => array_merge(
                 SmsSetting::defaultOrderStatusTemplates(),
                 $data['order_status_templates'] ?? [],

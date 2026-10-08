@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserRewardGrant;
 use App\Services\Orders\CreateOrderWithItemsService;
 use App\Services\Orders\OrderOnBehalfAiService;
+use App\Services\Sms\SmsSender;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -112,7 +113,8 @@ class PartnerApiController extends Controller
             'note' => $validated['note'] ?? null,
         ]);
 
-        $created->load(['shop:id,name', 'approvedBy:id,first_name,last_name']);
+        $created->load(['user', 'shop:id,name,user_id,phone', 'approvedBy:id,first_name,last_name']);
+        app(SmsSender::class)->notifyRedemptionRequested($created);
 
         return response()->json([
             'message' => __('Redemption request submitted.'),

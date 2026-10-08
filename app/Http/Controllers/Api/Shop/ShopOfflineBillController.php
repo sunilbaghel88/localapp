@@ -252,7 +252,22 @@ class ShopOfflineBillController extends Controller
 
         $bill->load(['shop:id,name,user_id', 'customer:id,first_name,last_name,email,phone', 'partner:id,first_name,last_name,email,phone']);
         $closingBalance = $this->customerClosingBalanceFor($bill);
-        app(SmsSender::class)->notifyOfflineBillCreated($bill, $closingBalance);
+        $sms = app(SmsSender::class);
+        $sms->notifyOfflineBillCreated($bill, $closingBalance);
+        if ($isDebit && $points > 0 && $bill->partner) {
+            $partner = $bill->partner->fresh();
+            $sms->notifyRewardPointsGranted(
+                $partner,
+                $shop,
+                $points,
+                (int) ($partner->reward_points ?? 0),
+                [
+                    'source' => 'Offline bill #'.$bill->id,
+                    'customer' => trim((string) ($bill->customer?->name ?: '-')),
+                    'amount' => number_format((float) $bill->amount, 2, '.', ''),
+                ],
+            );
+        }
 
         return response()->json([
             'bill' => $this->serialize($bill, $closingBalance),

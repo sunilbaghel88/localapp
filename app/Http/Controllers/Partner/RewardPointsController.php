@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\RewardRedemptionRequest;
 use App\Models\Shop;
 use App\Models\UserRewardGrant;
+use App\Services\Sms\SmsSender;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -76,7 +77,7 @@ class RewardPointsController extends Controller
                 ->with('error', __('Requested points exceed your available balance.'));
         }
 
-        RewardRedemptionRequest::create([
+        $created = RewardRedemptionRequest::create([
             'user_id' => $user->id,
             'shop_id' => (int) $validated['shop_id'],
             'requested_points' => (int) $validated['requested_points'],
@@ -84,6 +85,8 @@ class RewardPointsController extends Controller
             'status' => 'pending',
             'note' => $validated['note'] ?? null,
         ]);
+        $created->load(['user', 'shop']);
+        app(SmsSender::class)->notifyRedemptionRequested($created);
 
         return redirect()
             ->route('partner.rewards.index')
