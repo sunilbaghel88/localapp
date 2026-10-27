@@ -393,9 +393,14 @@ class PurchaseInvoiceAiService
                 'message' => $e->getMessage(),
             ]);
 
+            $message = $e->getMessage();
+            if (str_contains($message, 'Undefined array key "choices"')) {
+                $message = 'OpenAI rejected the API key. Update OPENAI_API_KEY and try again.';
+            }
+
             throw ValidationException::withMessages([
                 'file' => __('Could not extract products from this invoice: :error', [
-                    'error' => Str::limit($e->getMessage(), 220, ''),
+                    'error' => Str::limit($message, 220, ''),
                 ]),
             ]);
         }
