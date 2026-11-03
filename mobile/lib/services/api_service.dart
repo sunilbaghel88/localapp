@@ -432,10 +432,16 @@ class ApiService {
   Future<Map<String, dynamic>> getShopProducts({
     int page = 1,
     int perPage = 12,
+    String? search,
   }) async {
+    final query = search?.trim() ?? '';
     final r = await _dio.get(
       '/shop/products',
-      queryParameters: {'page': page, 'per_page': perPage},
+      queryParameters: {
+        'page': page,
+        'per_page': perPage,
+        if (query.isNotEmpty) 'search': query,
+      },
     );
     return r.data as Map<String, dynamic>;
   }

@@ -14,6 +14,7 @@ class ShopOwnerProductsScreen extends StatefulWidget {
 
 class _ShopOwnerProductsScreenState extends State<ShopOwnerProductsScreen> {
   final ApiService _api = ApiService();
+  final TextEditingController _searchController = TextEditingController();
 
   List<Product> _products = [];
   bool _loading = true;
@@ -22,15 +23,21 @@ class _ShopOwnerProductsScreenState extends State<ShopOwnerProductsScreen> {
   int _page = 1;
   bool _hasMore = true;
   bool _loadingMore = false;
+  int _requestId = 0;
+  String _appliedSearch = '';
 
   Future<void> _load({bool append = false}) async {
     if (!mounted) return;
     if (_loadingMore && append) return;
     if (append && !_hasMore) return;
 
+    final requestId = append ? _requestId : ++_requestId;
+    final search = _appliedSearch;
+
     setState(() {
       if (!append) {
         _loading = true;
+        _loadingMore = false;
         _error = null;
         _page = 1;
         _products = [];
@@ -41,7 +48,12 @@ class _ShopOwnerProductsScreenState extends State<ShopOwnerProductsScreen> {
     });
 
     try {
-      final data = await _api.getShopProducts(page: _page, perPage: 12);
+      final data = await _api.getShopProducts(
+        page: _page,
+        perPage: 12,
+        search: search,
+      );
+      if (!mounted || requestId != _requestId) return;
       final paginator = data['products'] as Map<String, dynamic>?;
       final list = (paginator?['data'] ?? data['products']) as List<dynamic>?;
       final newItems = list?.map((e) => Product.fromJson(e as Map<String, dynamic>)).toList() ?? [];
@@ -58,6 +70,7 @@ class _ShopOwnerProductsScreenState extends State<ShopOwnerProductsScreen> {
         _loadingMore = false;
       });
     } catch (e) {
+      if (!mounted || requestId != _requestId) return;
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -73,43 +86,59 @@ class _ShopOwnerProductsScreenState extends State<ShopOwnerProductsScreen> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _submitSearch() {
+    FocusScope.of(context).unfocus();
+    _appliedSearch = _searchController.text.trim();
+    _load();
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _appliedSearch = '';
+    setState(() {});
+    _load();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manage Products'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/home'),
+    final searching = _appliedSearch.isNotEmpty;
+    late final Widget body;
+    if (_loading && _products.isEmpty) {
+      body = const Center(child: CircularProgressIndicator());
+    } else if (_error != null && _products.isEmpty) {
+      body = Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_error!, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            FilledButton(onPressed: () => _load(), child: const Text('Retry')),
+          ],
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Import invoice',
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            onPressed: () => context.push('/owner/products/import'),
-          ),
-          IconButton(
-            tooltip: 'Add product',
-            icon: const Icon(Icons.add),
-            onPressed: () => context.push('/owner/products/create'),
-          ),
-        ],
-      ),
-      body: _loading && _products.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null && _products.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(_error!, textAlign: TextAlign.center),
-                      const SizedBox(height: 16),
-                      FilledButton(onPressed: () => _load(), child: const Text('Retry')),
-                    ],
+      );
+    } else {
+      body = RefreshIndicator(
+        onRefresh: () => _load(),
+        child: _products.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  const SizedBox(height: 120),
+                  Center(
+                    child: Text(
+                      searching
+                          ? 'No products match your search'
+                          : 'No products yet',
+                    ),
                   ),
-                )
-              : RefreshIndicator(
-                  onRefresh: () => _load(),
-                  child: ListView.builder(
+                ],
+              )
+            : ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: _products.length + (_hasMore ? 1 : 0),
                     itemBuilder: (context, i) {
@@ -155,7 +184,68 @@ class _ShopOwnerProductsScreenState extends State<ShopOwnerProductsScreen> {
                       );
                     },
                   ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Manage Products'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/home'),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Import invoice',
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            onPressed: () => context.push('/owner/products/import'),
+          ),
+          IconButton(
+            tooltip: 'Add product',
+            icon: const Icon(Icons.add),
+            onPressed: () => context.push('/owner/products/create'),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) => _submitSearch(),
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Search name, Hindi, brand, HSN, or SKU',
+                border: const OutlineInputBorder(),
+                isDense: true,
+                suffixIconConstraints: BoxConstraints(
+                  minHeight: 48,
+                  minWidth: _searchController.text.isEmpty ? 48 : 96,
                 ),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_searchController.text.isNotEmpty)
+                      IconButton(
+                        tooltip: 'Clear search',
+                        icon: const Icon(Icons.clear),
+                        onPressed: _clearSearch,
+                      ),
+                    IconButton(
+                      tooltip: 'Search',
+                      icon: const Icon(Icons.search),
+                      onPressed: _submitSearch,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Expanded(child: body),
+        ],
+      ),
     );
   }
 }

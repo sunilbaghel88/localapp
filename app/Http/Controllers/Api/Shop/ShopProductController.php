@@ -65,9 +65,18 @@ class ShopProductController extends Controller
             ->whereHas('shop', fn ($q) => $q->where('user_id', Auth::id()));
 
         if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                    ->orWhere('description', 'like', '%' . $request->search . '%');
+            $term = '%'.mb_strtolower(trim((string) $request->search)).'%';
+            $query->where(function ($q) use ($term) {
+                $q->whereRaw('LOWER(products.name) like ?', [$term])
+                    ->orWhereRaw('LOWER(products.name_hi) like ?', [$term])
+                    ->orWhereRaw('LOWER(products.description) like ?', [$term])
+                    ->orWhereRaw('LOWER(products.hsn_code) like ?', [$term])
+                    ->orWhereHas('brand', fn ($brand) => $brand->whereRaw('LOWER(name) like ?', [$term]))
+                    ->orWhereHas('variants', function ($variant) use ($term) {
+                        $variant->whereRaw('LOWER(name) like ?', [$term])
+                            ->orWhereRaw('LOWER(sku) like ?', [$term])
+                            ->orWhereRaw('LOWER(goods_description) like ?', [$term]);
+                    });
             });
         }
 
