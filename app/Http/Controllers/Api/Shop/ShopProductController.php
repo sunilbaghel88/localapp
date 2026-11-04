@@ -132,7 +132,7 @@ class ShopProductController extends Controller
                 $q->where('is_primary', true)->orWhereNull('is_primary')->orderBy('sort_order')->limit(1);
             },
             'variants' => function ($q) {
-                $q->where('is_active', true)->orderBy('price');
+                $q->orderBy('id');
             },
             'category',
             'shop',
