@@ -21,31 +21,12 @@ class _ShopOwnerPurchaseDetailScreenState
   final ApiService _api = ApiService();
   PurchaseInvoice? _invoice;
   bool _loading = true;
-  bool _saving = false;
   String? _error;
-
-  final _supplierController = TextEditingController();
-  final _gstinController = TextEditingController();
-  final _numberController = TextEditingController();
-  final _dateController = TextEditingController();
-  final List<_EditableItem> _items = [];
 
   @override
   void initState() {
     super.initState();
     _load();
-  }
-
-  @override
-  void dispose() {
-    _supplierController.dispose();
-    _gstinController.dispose();
-    _numberController.dispose();
-    _dateController.dispose();
-    for (final item in _items) {
-      item.dispose();
-    }
-    super.dispose();
   }
 
   Future<void> _load() async {
@@ -60,7 +41,6 @@ class _ShopOwnerPurchaseDetailScreenState
         throw Exception('Invoice not found');
       }
       final invoice = PurchaseInvoice.fromJson(Map<String, dynamic>.from(raw));
-      _bind(invoice);
       if (!mounted) return;
       setState(() {
         _invoice = invoice;
@@ -73,80 +53,16 @@ class _ShopOwnerPurchaseDetailScreenState
         _loading = false;
       });
     }
-  }
-
-  void _bind(PurchaseInvoice invoice) {
-    _supplierController.text = invoice.supplierName ?? '';
-    _gstinController.text = invoice.supplierGstin ?? '';
-    _numberController.text = invoice.invoiceNumber ?? '';
-    _dateController.text = invoice.invoiceDate == null
-        ? ''
-        : DateFormat('yyyy-MM-dd').format(invoice.invoiceDate!);
-    for (final item in _items) {
-      item.dispose();
-    }
-    _items
-      ..clear()
-      ..addAll(invoice.items.map(_EditableItem.fromItem));
-  }
-
-  Future<void> _save() async {
-    setState(() {
-      _saving = true;
-      _error = null;
-    });
-    try {
-      final data = await _api.updatePurchaseInvoice(widget.invoiceId, {
-        'supplier_name': _nullable(_supplierController.text),
-        'supplier_gstin': _nullable(_gstinController.text),
-        'invoice_number': _nullable(_numberController.text),
-        'invoice_date': _nullable(_dateController.text),
-        'items': _items.map((item) => item.toPayload()).toList(),
-      });
-      final raw = data['invoice'];
-      if (raw is Map) {
-        final invoice = PurchaseInvoice.fromJson(Map<String, dynamic>.from(raw));
-        _bind(invoice);
-        _invoice = invoice;
-      }
-      if (!mounted) return;
-      setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Purchase invoice saved.')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _saving = false;
-      });
-    }
-  }
-
-  static String? _nullable(String value) {
-    final text = value.trim();
-    return text.isEmpty ? null : text;
   }
 
   @override
   Widget build(BuildContext context) {
     final invoice = _invoice;
+    final dateFormat = DateFormat('dd MMM yyyy');
+
     return Scaffold(
       appBar: AppBar(
         title: Text(invoice?.title ?? 'Purchase'),
-        actions: [
-          if (invoice != null)
-            IconButton(
-              onPressed: _saving ? null : _save,
-              icon: _saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.check),
-            ),
-        ],
       ),
       body: _loading && invoice == null
           ? const Center(child: CircularProgressIndicator())
@@ -166,50 +82,36 @@ class _ShopOwnerPurchaseDetailScreenState
                   : ListView(
                       padding: const EdgeInsets.all(16),
                       children: [
-                        if (_error != null) ...[
-                          Text(
-                            _error!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
                         Text(
-                          'Invoice details stay editable so you can fix AI mistakes. Changing HSN or net rate also updates the linked product.',
-                          style: Theme.of(context).textTheme.bodySmall,
+                          'Invoice',
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _supplierController,
-                          decoration: const InputDecoration(
-                            labelText: 'Supplier name',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _gstinController,
-                          textCapitalization: TextCapitalization.characters,
-                          decoration: const InputDecoration(
-                            labelText: 'Supplier GSTIN',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _numberController,
-                          decoration: const InputDecoration(
-                            labelText: 'Invoice no.',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _dateController,
-                          decoration: const InputDecoration(
-                            labelText: 'Invoice date (YYYY-MM-DD)',
-                            border: OutlineInputBorder(),
+                        const SizedBox(height: 8),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              children: [
+                                _DetailRow(
+                                  label: 'Supplier',
+                                  value: _text(invoice.supplierName),
+                                ),
+                                _DetailRow(
+                                  label: 'GSTIN',
+                                  value: _text(invoice.supplierGstin),
+                                ),
+                                _DetailRow(
+                                  label: 'Invoice no.',
+                                  value: _text(invoice.invoiceNumber),
+                                ),
+                                _DetailRow(
+                                  label: 'Invoice date',
+                                  value: invoice.invoiceDate == null
+                                      ? '—'
+                                      : dateFormat.format(invoice.invoiceDate!),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -218,18 +120,20 @@ class _ShopOwnerPurchaseDetailScreenState
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 8),
-                        ..._items.map(_itemCard),
-                        const SizedBox(height: 16),
-                        FilledButton(
-                          onPressed: _saving ? null : _save,
-                          child: const Text('Save purchase invoice'),
-                        ),
+                        if (invoice.items.isEmpty)
+                          const Text('No line items')
+                        else
+                          ...invoice.items.map(_itemCard),
                       ],
                     ),
     );
   }
 
-  Widget _itemCard(_EditableItem item) {
+  Widget _itemCard(PurchaseInvoiceItem item) {
+    final variant = (item.variantName ?? '').trim();
+    final unit = (item.unit ?? '').trim();
+    final qty = unit.isEmpty ? '${item.quantity}' : '${item.quantity} $unit';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -242,247 +146,67 @@ class _ShopOwnerPurchaseDetailScreenState
               hindi: item.nameHi,
               style: Theme.of(context).textTheme.titleSmall,
             ),
-            if (item.variantName.isNotEmpty)
-              Text(
-                item.variantName,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+            if (variant.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(variant, style: Theme.of(context).textTheme.bodySmall),
+            ],
+            const SizedBox(height: 8),
+            _DetailRow(label: 'HSN', value: _text(item.hsnCode)),
+            _DetailRow(label: 'Qty', value: qty),
+            _DetailRow(label: 'List price', value: _money(item.listPrice)),
+            _DetailRow(
+              label: 'Discount',
+              value: '${item.discountPercent.toStringAsFixed(2)}%',
+            ),
+            _DetailRow(label: 'Last purchase', value: _money(item.costPrice)),
+            _DetailRow(label: 'Sale', value: _money(item.sellingPrice)),
+            _DetailRow(label: 'CGST', value: _money(item.cgstAmount)),
+            _DetailRow(label: 'SGST', value: _money(item.sgstAmount)),
+            _DetailRow(label: 'IGST', value: _money(item.igstAmount)),
             if (item.productId != null)
-              TextButton(
-                onPressed: () =>
-                    context.push('/owner/products/${item.productId}'),
-                child: const Text('Open product'),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: () =>
+                      context.push('/owner/products/${item.productId}'),
+                  child: const Text('Open product'),
+                ),
               ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: item.hsnController,
-                    decoration: const InputDecoration(
-                      labelText: 'HSN',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: item.qtyController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Qty',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: item.listController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'List price',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: item.discountController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Discount %',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: item.costController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Net rate',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: item.priceController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Selling price',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: item.cgstController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'CGST',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: item.sgstController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'SGST',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: item.igstController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'IGST',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ],
         ),
       ),
     );
   }
+
+  static String _text(String? value) {
+    final text = value?.trim() ?? '';
+    return text.isEmpty ? '—' : text;
+  }
+
+  static String _money(double amount) => '₹${amount.toStringAsFixed(2)}';
 }
 
-class _EditableItem {
-  _EditableItem({
-    required this.id,
-    required this.productId,
-    required this.name,
-    this.nameHi,
-    required this.variantName,
-    required this.hsnController,
-    required this.qtyController,
-    required this.listController,
-    required this.discountController,
-    required this.costController,
-    required this.priceController,
-    required this.cgstController,
-    required this.sgstController,
-    required this.igstController,
-  });
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
 
-  factory _EditableItem.fromItem(PurchaseInvoiceItem item) {
-    final variant = (item.variantName ?? '').trim();
-    return _EditableItem(
-      id: item.id,
-      productId: item.productId,
-      name: item.name,
-      nameHi: item.nameHi,
-      variantName: variant,
-      hsnController: TextEditingController(text: item.hsnCode ?? ''),
-      qtyController: TextEditingController(text: item.quantity.toString()),
-      listController:
-          TextEditingController(text: item.listPrice.toStringAsFixed(2)),
-      discountController:
-          TextEditingController(text: item.discountPercent.toStringAsFixed(2)),
-      costController:
-          TextEditingController(text: item.costPrice.toStringAsFixed(2)),
-      priceController:
-          TextEditingController(text: item.sellingPrice.toStringAsFixed(2)),
-      cgstController:
-          TextEditingController(text: item.cgstAmount.toStringAsFixed(2)),
-      sgstController:
-          TextEditingController(text: item.sgstAmount.toStringAsFixed(2)),
-      igstController:
-          TextEditingController(text: item.igstAmount.toStringAsFixed(2)),
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodyMedium;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(label, style: style?.copyWith(fontWeight: FontWeight.w600)),
+          ),
+          Expanded(child: Text(value, style: style)),
+        ],
+      ),
     );
-  }
-
-  final int id;
-  final int? productId;
-  final String name;
-  final String? nameHi;
-  final String variantName;
-  final TextEditingController hsnController;
-  final TextEditingController qtyController;
-  final TextEditingController listController;
-  final TextEditingController discountController;
-  final TextEditingController costController;
-  final TextEditingController priceController;
-  final TextEditingController cgstController;
-  final TextEditingController sgstController;
-  final TextEditingController igstController;
-
-  Map<String, dynamic> toPayload() {
-    return {
-      'id': id,
-      'hsn_code': hsnController.text.trim().isEmpty
-          ? null
-          : hsnController.text.trim(),
-      'quantity': int.tryParse(qtyController.text.trim()) ?? 0,
-      'list_price': double.tryParse(listController.text.trim()) ?? 0,
-      'discount_percent': double.tryParse(discountController.text.trim()) ?? 0,
-      'cost_price': double.tryParse(costController.text.trim()) ?? 0,
-      'selling_price': double.tryParse(priceController.text.trim()) ?? 0,
-      'cgst_amount': double.tryParse(cgstController.text.trim()) ?? 0,
-      'sgst_amount': double.tryParse(sgstController.text.trim()) ?? 0,
-      'igst_amount': double.tryParse(igstController.text.trim()) ?? 0,
-    };
-  }
-
-  void dispose() {
-    hsnController.dispose();
-    qtyController.dispose();
-    listController.dispose();
-    discountController.dispose();
-    costController.dispose();
-    priceController.dispose();
-    cgstController.dispose();
-    sgstController.dispose();
-    igstController.dispose();
   }
 }
