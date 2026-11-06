@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\UserTypeController;
 use App\Http\Controllers\Api\Shop\ShopMetaController;
+use App\Http\Controllers\Api\Shop\ShopOwnerPeopleController;
 use App\Http\Controllers\Api\Shop\ShopOwnerShopController;
 use App\Http\Controllers\Api\Shop\ShopProductController;
 use App\Http\Controllers\Api\Shop\ShopProductImageController;
@@ -117,6 +118,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/assignable-users', [ShopUserTypeAssignmentController::class, 'users']);
         Route::put('/users/{user}/user-types', [ShopUserTypeAssignmentController::class, 'update']);
+        Route::get('/people/meta', [ShopOwnerPeopleController::class, 'meta']);
+        Route::get('/people', [ShopOwnerPeopleController::class, 'index']);
+        Route::post('/people/customers', [ShopOwnerPeopleController::class, 'storeCustomer']);
+        Route::post('/people/partners', [ShopOwnerPeopleController::class, 'storePartner']);
+        Route::get('/people/{user}', [ShopOwnerPeopleController::class, 'show']);
+        Route::patch('/people/{user}', [ShopOwnerPeopleController::class, 'update']);
 
         Route::get('/offline-bills', [ShopOfflineBillController::class, 'index']);
         Route::post('/offline-bills', [ShopOfflineBillController::class, 'store']);

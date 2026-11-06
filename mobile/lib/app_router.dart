@@ -30,6 +30,8 @@ import 'screens/shop_owner_offline_bill_detail_screen.dart';
 import 'screens/shop_owner_offline_bill_dues_screen.dart';
 import 'screens/shop_owner_reward_redemptions_screen.dart';
 import 'screens/shop_owner_user_types_screen.dart';
+import 'screens/shop_owner_people_screen.dart';
+import 'screens/shop_owner_person_form_screen.dart';
 import 'screens/shop_owner_shops_screen.dart';
 import 'screens/shop_owner_shop_form_screen.dart';
 import 'screens/partner_rewards_screen.dart';
@@ -79,7 +81,8 @@ GoRouter createRouter(BuildContext context) {
             permissions.contains('create_shop') ||
             (auth.user?.canAssignUserTypes ?? false);
         if (!canAccessOwner) return '/home';
-        if (state.matchedLocation == '/owner/user-types' &&
+        if ((state.matchedLocation == '/owner/user-types' ||
+                state.matchedLocation.startsWith('/owner/people')) &&
             !(auth.user?.canAssignUserTypes ?? false)) {
           return '/home';
         }
@@ -216,6 +219,24 @@ GoRouter createRouter(BuildContext context) {
       GoRoute(
         path: '/owner/user-types',
         builder: (context, state) => const ShopOwnerUserTypesScreen(),
+      ),
+      GoRoute(
+        path: '/owner/people',
+        builder: (context, state) => const ShopOwnerPeopleScreen(),
+      ),
+      GoRoute(
+        path: '/owner/people/create',
+        builder: (context, state) => ShopOwnerPersonFormScreen(
+          kind: state.uri.queryParameters['kind'] ?? 'customer',
+          userId: null,
+        ),
+      ),
+      GoRoute(
+        path: '/owner/people/:id/edit',
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
+          return ShopOwnerPersonFormScreen(kind: 'customer', userId: id);
+        },
       ),
       GoRoute(
         path: '/owner/orders/create',

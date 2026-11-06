@@ -163,6 +163,32 @@ class User extends Authenticatable implements FilamentUser, HasName
         return $this->isPartner();
     }
 
+    public function scopeCustomers(Builder $query): Builder
+    {
+        $ids = ShopType::rewardEligibleUserTypeIds();
+        if ($ids === []) {
+            return $query;
+        }
+
+        return $query->whereDoesntHave(
+            'userTypes',
+            fn (Builder $q) => $q->whereIn('user_types.id', $ids)
+        );
+    }
+
+    public function scopePartners(Builder $query): Builder
+    {
+        return $query->withAnyUserTypeIds(ShopType::rewardEligibleUserTypeIds());
+    }
+
+    public function scopeWithoutSuperAdmins(Builder $query): Builder
+    {
+        return $query->whereDoesntHave(
+            'roles',
+            fn (Builder $q) => $q->where('name', 'super_admin')
+        );
+    }
+
     public function scopeWithAnyUserTypeIds(Builder $query, array $userTypeIds): Builder
     {
         $userTypeIds = array_values(array_filter(array_map('intval', $userTypeIds)));

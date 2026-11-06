@@ -159,6 +159,14 @@ class AppDrawer extends StatelessWidget {
                   if (canAssignUserTypes)
                     _item(
                       context,
+                        icon: Icons.people_outline,
+                        label: 'Customers & Partners',
+                      route: '/owner/people',
+                      currentPath: currentPath,
+                    ),
+                  if (canAssignUserTypes)
+                    _item(
+                      context,
                       icon: Icons.manage_accounts_outlined,
                       label: 'Assign user types',
                       route: '/owner/user-types',

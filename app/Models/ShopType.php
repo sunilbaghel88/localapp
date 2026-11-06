@@ -58,4 +58,19 @@ class ShopType extends Model
 
         return $this->rewardUserTypes()->pluck('user_types.id')->all();
     }
+
+    /**
+     * @return list<int>
+     */
+    public static function rewardEligibleUserTypeIds(): array
+    {
+        return static::query()
+            ->where('supports_partner_rewards', true)
+            ->with('rewardUserTypes')
+            ->get()
+            ->flatMap(fn (self $type) => $type->rewardUserTypeIds())
+            ->unique()
+            ->values()
+            ->all();
+    }
 }

@@ -135,6 +135,89 @@ class ApiService {
     return r.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> getShopPeopleMeta() async {
+    final r = await _dio.get('/shop/people/meta');
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getShopPeople({
+    required String kind,
+    String? q,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final r = await _dio.get(
+      '/shop/people',
+      queryParameters: {
+        'kind': kind,
+        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+        'page': page,
+        'per_page': perPage,
+      },
+    );
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getShopPerson(int id) async {
+    final r = await _dio.get('/shop/people/$id');
+    return r.data['user'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createShopCustomer({
+    required String name,
+    required String phone,
+    int? shopId,
+  }) async {
+    final r = await _dio.post(
+      '/shop/people/customers',
+      data: {
+        'name': name.trim(),
+        'phone': phone.trim(),
+        'shop_id': ?shopId,
+      },
+    );
+    return r.data['user'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createShopPartner({
+    required String name,
+    required String phone,
+    required int shopId,
+    int? userTypeId,
+  }) async {
+    final r = await _dio.post(
+      '/shop/people/partners',
+      data: {
+        'name': name.trim(),
+        'phone': phone.trim(),
+        'shop_id': shopId,
+        'user_type_id': ?userTypeId,
+      },
+    );
+    return r.data['user'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> updateShopPerson({
+    required int id,
+    required String name,
+    required String phone,
+    bool? isActive,
+    List<int>? userTypeIds,
+    List<int>? shopIds,
+  }) async {
+    final r = await _dio.patch(
+      '/shop/people/$id',
+      data: {
+        'name': name.trim(),
+        'phone': phone.trim(),
+        'is_active': ?isActive,
+        'user_type_ids': ?userTypeIds,
+        'shop_ids': ?shopIds,
+      },
+    );
+    return r.data['user'] as Map<String, dynamic>;
+  }
+
   Future<void> logout() async {
     await _dio.post('/logout');
   }

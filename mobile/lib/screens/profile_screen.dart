@@ -320,6 +320,7 @@ class ProfileScreen extends StatelessWidget {
     final canManageOrders = permissions.contains('view_any_order');
     final canManageShops = permissions.contains('view_any_shop') ||
         permissions.contains('create_shop');
+    final canAssignUserTypes = user.canAssignUserTypes;
     final subtitle = _subtitle(user);
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
@@ -363,6 +364,13 @@ class ProfileScreen extends StatelessWidget {
               title: const Text('Manage Shops'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/owner/shops'),
+            ),
+          if (canAssignUserTypes)
+            ListTile(
+              leading: const Icon(Icons.people_outline),
+              title: const Text('Customers & Partners'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/owner/people'),
             ),
           if (canManageProducts) ...[
             const SizedBox(height: 16),
