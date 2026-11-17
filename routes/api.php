@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\Shop\ShopOrderCreateController;
 use App\Http\Controllers\Api\Shop\ShopRewardRedemptionController;
 use App\Http\Controllers\Api\Shop\ShopUserTypeAssignmentController;
 use App\Http\Controllers\Api\Shop\ShopOfflineBillController;
+use App\Http\Controllers\Api\Shop\ShopMeetingController;
 use App\Http\Controllers\Api\Partner\PartnerApiController;
 
 // Public routes
@@ -130,6 +131,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/offline-bills/dues', [ShopOfflineBillController::class, 'dues']);
         Route::post('/offline-bills/dues/remind', [ShopOfflineBillController::class, 'remindDues']);
         Route::get('/offline-bills/{offlineBill}', [ShopOfflineBillController::class, 'show']);
+
+        Route::get('/meetings', [ShopMeetingController::class, 'index']);
+        Route::post('/meetings', [ShopMeetingController::class, 'store']);
+        Route::get('/meetings/{meeting}', [ShopMeetingController::class, 'show']);
+        Route::post('/meetings/{meeting}/photos', [ShopMeetingController::class, 'storePhotos']);
+        Route::delete('/meetings/{meeting}/photos/{photo}', [ShopMeetingController::class, 'destroyPhoto']);
     });
 
     // Partner (Sanctum + reward-eligible user types / shop-type mapping)
@@ -138,6 +145,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reward-grants', [PartnerApiController::class, 'rewardGrants']);
         Route::get('/reward-redemptions', [PartnerApiController::class, 'rewardRedemptions']);
         Route::post('/reward-redemptions', [PartnerApiController::class, 'createRewardRedemption']);
+        Route::get('/meetings', [PartnerApiController::class, 'meetings']);
+        Route::get('/meetings/{meeting}', [PartnerApiController::class, 'showMeeting']);
         Route::get('/order-create/search-customers', [PartnerApiController::class, 'searchCustomers']);
         Route::get('/order-create/search-products', [PartnerApiController::class, 'searchProducts']);
         Route::get('/order-create/customers/{customerId}/addresses', [PartnerApiController::class, 'customerAddresses']);

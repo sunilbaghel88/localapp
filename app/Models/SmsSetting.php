@@ -30,6 +30,7 @@ class SmsSetting extends Model
         'partner_created_sms_enabled',
         'offline_bill_sms_enabled',
         'reward_points_sms_enabled',
+        'meeting_sms_enabled',
         'endpoint',
         'http_method',
         'payload_params',
@@ -48,6 +49,7 @@ class SmsSetting extends Model
         'reward_redemption_requested_owner_message_template',
         'reward_redemption_approved_message_template',
         'reward_redemption_rejected_message_template',
+        'meeting_created_message_template',
         'otp_ttl_minutes',
     ];
 
@@ -62,6 +64,7 @@ class SmsSetting extends Model
             'partner_created_sms_enabled' => 'boolean',
             'offline_bill_sms_enabled' => 'boolean',
             'reward_points_sms_enabled' => 'boolean',
+            'meeting_sms_enabled' => 'boolean',
             'payload_params' => 'array',
             'order_status_templates' => 'array',
             'payment_status_templates' => 'array',
@@ -171,6 +174,11 @@ class SmsSetting extends Model
         return 'Hi {{partner}}, your request to redeem {{points}} points at {{shop}} was rejected. Reason: {{reason}}. Your balance is {{balance}}.';
     }
 
+    public static function defaultMeetingCreatedTemplate(): string
+    {
+        return 'Hi {{partner}}, meeting "{{title}}" at {{shop}} on {{date}} at {{time}}. {{details}}';
+    }
+
     public static function current(): self
     {
         $setting = static::query()->first();
@@ -188,6 +196,7 @@ class SmsSetting extends Model
             'partner_created_sms_enabled' => true,
             'offline_bill_sms_enabled' => true,
             'reward_points_sms_enabled' => true,
+            'meeting_sms_enabled' => true,
             'endpoint' => 'http://sms.endmile.in/WebServiceSMS.aspx',
             'http_method' => 'GET',
             'payload_params' => [
@@ -213,6 +222,7 @@ class SmsSetting extends Model
             'reward_redemption_requested_owner_message_template' => static::defaultRewardRedemptionRequestedOwnerTemplate(),
             'reward_redemption_approved_message_template' => static::defaultRewardRedemptionApprovedTemplate(),
             'reward_redemption_rejected_message_template' => static::defaultRewardRedemptionRejectedTemplate(),
+            'meeting_created_message_template' => static::defaultMeetingCreatedTemplate(),
             'otp_ttl_minutes' => 10,
         ]);
     }

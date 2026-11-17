@@ -10,6 +10,7 @@ import '../models/brand.dart';
 import '../models/category.dart';
 import '../models/order.dart';
 import '../models/offline_bill.dart';
+import '../models/meeting.dart';
 import '../models/product.dart';
 import '../models/shop.dart';
 import '../models/user.dart';
@@ -1133,5 +1134,88 @@ class ApiService {
       },
     );
     return r.data ?? <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> getMeetings({
+    required bool isOwner,
+    int page = 1,
+    int perPage = 15,
+  }) async {
+    final r = await _dio.get(
+      isOwner ? '/shop/meetings' : '/partner/meetings',
+      queryParameters: {'page': page, 'per_page': perPage},
+    );
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Meeting> getMeeting(int id, {required bool isOwner}) async {
+    final r = await _dio.get(
+      isOwner ? '/shop/meetings/$id' : '/partner/meetings/$id',
+    );
+    return Meeting.fromJson(r.data['meeting'] as Map<String, dynamic>);
+  }
+
+  Future<Meeting> createMeeting({
+    required int shopId,
+    required String title,
+    required String details,
+    String? location,
+    required DateTime startsAt,
+  }) async {
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/meetings',
+      data: {
+        'shop_id': shopId,
+        'title': title,
+        'details': details,
+        if (location != null && location.trim().isNotEmpty) 'location': location.trim(),
+        'starts_at':
+            '${startsAt.year.toString().padLeft(4, '0')}-'
+            '${startsAt.month.toString().padLeft(2, '0')}-'
+            '${startsAt.day.toString().padLeft(2, '0')} '
+            '${startsAt.hour.toString().padLeft(2, '0')}:'
+            '${startsAt.minute.toString().padLeft(2, '0')}:00',
+      },
+    );
+    final data = r.data;
+    if (data == null || data['meeting'] == null) {
+      throw StateError('Invalid create meeting response');
+    }
+    return Meeting.fromJson(data['meeting'] as Map<String, dynamic>);
+  }
+
+  Future<Meeting> uploadMeetingPhotos({
+    required int meetingId,
+    required List<({Uint8List bytes, String filename})> photos,
+  }) async {
+    final form = FormData();
+    for (final photo in photos) {
+      final lower = photo.filename.toLowerCase();
+      final mediaType = lower.endsWith('.png')
+          ? MediaType('image', 'png')
+          : lower.endsWith('.webp')
+              ? MediaType('image', 'webp')
+              : MediaType('image', 'jpeg');
+      form.files.add(
+        MapEntry(
+          'photos[]',
+          MultipartFile.fromBytes(
+            photo.bytes,
+            filename: photo.filename,
+            contentType: mediaType,
+          ),
+        ),
+      );
+    }
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/meetings/$meetingId/photos',
+      data: form,
+      options: Options(receiveTimeout: const Duration(seconds: 60)),
+    );
+    final data = r.data;
+    if (data == null || data['meeting'] == null) {
+      throw StateError('Invalid upload meeting photos response');
+    }
+    return Meeting.fromJson(data['meeting'] as Map<String, dynamic>);
   }
 }

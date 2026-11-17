@@ -538,7 +538,15 @@ class _ActionGrid extends StatelessWidget {
           icon: Icons.workspace_premium_outlined,
           route: '/partner/rewards',
         ),
-      const _HomeAction(label: 'EVENT', icon: Icons.event_outlined),
+      _HomeAction(
+        label: 'EVENT',
+        icon: Icons.event_outlined,
+        route: canCreateOrder
+            ? '/owner/meetings'
+            : isPartner
+                ? '/partner/meetings'
+                : null,
+      ),
       const _HomeAction(label: 'CONTACT US', icon: Icons.phone_outlined),
       const _HomeAction(label: 'GALLERY', icon: Icons.badge_outlined),
     ];

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Partner;
 
 use App\Http\Controllers\Controller;
 use App\Models\Address;
+use App\Models\Meeting;
 use App\Models\Product;
 use App\Models\RewardRedemptionRequest;
 use App\Models\Shop;
@@ -120,6 +121,42 @@ class PartnerApiController extends Controller
             'message' => __('Redemption request submitted.'),
             'request' => $created,
         ], 201);
+    }
+
+    public function meetings(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $shopTable = (new Shop)->getTable();
+        $shopIds = $user->partnerShops()->pluck($shopTable.'.id');
+        $perPage = min((int) $request->get('per_page', 20), 50);
+
+        $meetings = Meeting::query()
+            ->whereIn('shop_id', $shopIds)
+            ->with(['shop:id,name', 'photos'])
+            ->latest('starts_at')
+            ->paginate($perPage);
+
+        $meetings->getCollection()->transform(fn (Meeting $meeting) => $meeting->toApiArray());
+
+        return response()->json([
+            'meetings' => $meetings,
+        ]);
+    }
+
+    public function showMeeting(Request $request, Meeting $meeting): JsonResponse
+    {
+        $user = $request->user();
+        $shopTable = (new Shop)->getTable();
+        $allowed = $user->partnerShops()->pluck($shopTable.'.id')->contains((int) $meeting->shop_id);
+        if (! $allowed) {
+            abort(403);
+        }
+
+        $meeting->load(['shop:id,name', 'photos']);
+
+        return response()->json([
+            'meeting' => $meeting->toApiArray(),
+        ]);
     }
 
     public function searchCustomers(Request $request): JsonResponse

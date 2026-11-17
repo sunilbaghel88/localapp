@@ -43,6 +43,7 @@ class SmsSettings extends Page implements HasForms
             'partner_created_sms_enabled' => $setting->partner_created_sms_enabled ?? true,
             'offline_bill_sms_enabled' => $setting->offline_bill_sms_enabled ?? true,
             'reward_points_sms_enabled' => $setting->reward_points_sms_enabled ?? true,
+            'meeting_sms_enabled' => $setting->meeting_sms_enabled ?? true,
             'endpoint' => $setting->endpoint,
             'http_method' => $setting->http_method,
             'payload_params' => $setting->payload_params ?? [],
@@ -68,6 +69,8 @@ class SmsSettings extends Page implements HasForms
                 ?: SmsSetting::defaultRewardRedemptionApprovedTemplate(),
             'reward_redemption_rejected_message_template' => $setting->reward_redemption_rejected_message_template
                 ?: SmsSetting::defaultRewardRedemptionRejectedTemplate(),
+            'meeting_created_message_template' => $setting->meeting_created_message_template
+                ?: SmsSetting::defaultMeetingCreatedTemplate(),
             'order_status_templates' => array_merge(
                 SmsSetting::defaultOrderStatusTemplates(),
                 $setting->order_status_templates ?? [],
@@ -269,6 +272,18 @@ class SmsSettings extends Page implements HasForms
                             ->maxLength(500)
                             ->default(SmsSetting::defaultRewardRedemptionRejectedTemplate()),
                     ]),
+                Forms\Components\Section::make('Meeting SMS')
+                    ->description('Sent to all partners of the shop when a meeting is created. Placeholders: {{partner}}, {{shop}}, {{title}}, {{details}}, {{location}}, {{date}}, {{time}}, {{datetime}}, {{mobile}}.')
+                    ->schema([
+                        Forms\Components\Toggle::make('meeting_sms_enabled')
+                            ->label('Send SMS when a meeting is created')
+                            ->helperText('Meeting save still succeeds if SMS fails.'),
+                        Forms\Components\Textarea::make('meeting_created_message_template')
+                            ->label('Meeting created (partners)')
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->default(SmsSetting::defaultMeetingCreatedTemplate()),
+                    ]),
             ])
             ->statePath('data');
     }
@@ -287,6 +302,7 @@ class SmsSettings extends Page implements HasForms
             'partner_created_sms_enabled' => (bool) ($data['partner_created_sms_enabled'] ?? true),
             'offline_bill_sms_enabled' => (bool) ($data['offline_bill_sms_enabled'] ?? true),
             'reward_points_sms_enabled' => (bool) ($data['reward_points_sms_enabled'] ?? true),
+            'meeting_sms_enabled' => (bool) ($data['meeting_sms_enabled'] ?? true),
             'endpoint' => $data['endpoint'] ?? null,
             'http_method' => strtoupper((string) ($data['http_method'] ?? 'GET')),
             'payload_params' => $data['payload_params'] ?? [],
@@ -302,6 +318,7 @@ class SmsSettings extends Page implements HasForms
             'reward_redemption_requested_owner_message_template' => $data['reward_redemption_requested_owner_message_template'] ?? SmsSetting::defaultRewardRedemptionRequestedOwnerTemplate(),
             'reward_redemption_approved_message_template' => $data['reward_redemption_approved_message_template'] ?? SmsSetting::defaultRewardRedemptionApprovedTemplate(),
             'reward_redemption_rejected_message_template' => $data['reward_redemption_rejected_message_template'] ?? SmsSetting::defaultRewardRedemptionRejectedTemplate(),
+            'meeting_created_message_template' => $data['meeting_created_message_template'] ?? SmsSetting::defaultMeetingCreatedTemplate(),
             'order_status_templates' => array_merge(
                 SmsSetting::defaultOrderStatusTemplates(),
                 $data['order_status_templates'] ?? [],

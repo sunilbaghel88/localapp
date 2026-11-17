@@ -79,6 +79,11 @@ class Shop extends Model
         return $this->hasMany(OfflineBill::class);
     }
 
+    public function meetings(): HasMany
+    {
+        return $this->hasMany(Meeting::class);
+    }
+
     public function scopeOn(Builder $query): Builder
     {
         return $query->where('status', 'on');

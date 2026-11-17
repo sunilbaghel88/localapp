@@ -172,12 +172,16 @@ class AppDrawer extends StatelessWidget {
                       route: '/owner/user-types',
                       currentPath: currentPath,
                     ),
-                  _item(
-                    context,
-                    icon: Icons.groups_outlined,
-                    label: 'Meetings',
-                    currentPath: currentPath,
-                  ),
+                  if (canCreateOrder || canManageOrders || isPartner)
+                    _item(
+                      context,
+                      icon: Icons.groups_outlined,
+                      label: 'Meetings',
+                      route: (canCreateOrder || canManageOrders)
+                          ? '/owner/meetings'
+                          : '/partner/meetings',
+                      currentPath: currentPath,
+                    ),
                   _item(
                     context,
                     icon: Icons.photo_outlined,

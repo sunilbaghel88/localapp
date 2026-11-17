@@ -36,6 +36,9 @@ import 'screens/shop_owner_shops_screen.dart';
 import 'screens/shop_owner_shop_form_screen.dart';
 import 'screens/partner_rewards_screen.dart';
 import 'screens/partner_create_order_screen.dart';
+import 'screens/meetings_screen.dart';
+import 'screens/meeting_form_screen.dart';
+import 'screens/meeting_detail_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -108,6 +111,16 @@ GoRouter createRouter(BuildContext context) {
           if (state.matchedLocation == '/owner/offline-bills/create' &&
               !permissions.contains('create_order')) {
             return '/owner/offline-bills';
+          }
+        }
+        if (state.matchedLocation.startsWith('/owner/meetings')) {
+          if (!permissions.contains('view_any_order') &&
+              !permissions.contains('create_order')) {
+            return '/home';
+          }
+          if (state.matchedLocation == '/owner/meetings/create' &&
+              !permissions.contains('create_order')) {
+            return '/owner/meetings';
           }
         }
       }
@@ -269,8 +282,38 @@ GoRouter createRouter(BuildContext context) {
         },
       ),
       GoRoute(
+        path: '/owner/meetings',
+        builder: (context, state) => const MeetingsScreen(isOwner: true),
+      ),
+      GoRoute(
+        path: '/owner/meetings/create',
+        builder: (context, state) => const MeetingFormScreen(),
+      ),
+      GoRoute(
+        path: '/owner/meetings/:id',
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
+          return MeetingDetailScreen(meetingId: id, isOwner: true);
+        },
+      ),
+      GoRoute(
         path: '/partner/rewards',
         builder: (context, state) => const PartnerRewardsScreen(),
+      ),
+      GoRoute(
+        path: '/partner/meetings',
+        builder: (context, state) => const MeetingsScreen(isOwner: false),
+      ),
+      GoRoute(
+        path: '/partner/meetings/:id',
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
+          return MeetingDetailScreen(meetingId: id, isOwner: false);
+        },
+      ),
+      GoRoute(
+        path: '/electrician/meetings',
+        redirect: (context, state) => '/partner/meetings',
       ),
       GoRoute(
         path: '/partner/orders/create',

@@ -2,6 +2,7 @@
 
 namespace App\Services\Sms;
 
+use App\Models\Meeting;
 use App\Models\OfflineBill;
 use App\Models\Order;
 use App\Models\RewardRedemptionRequest;
@@ -149,6 +150,65 @@ class SmsSender
         ];
 
         $this->dispatch($settings, $mobile, strtr($template, $placeholders), $placeholders);
+    }
+
+    public function notifyMeetingCreated(Meeting $meeting): void
+    {
+        try {
+            $settings = SmsSetting::current();
+            if (! $settings->is_enabled || ! $settings->meeting_sms_enabled) {
+                return;
+            }
+
+            $template = trim((string) ($settings->meeting_created_message_template
+                ?: SmsSetting::defaultMeetingCreatedTemplate()));
+            if ($template === '') {
+                return;
+            }
+
+            $meeting->loadMissing(['shop.partners']);
+            $shop = $meeting->shop;
+            if (! $shop) {
+                return;
+            }
+
+            $starts = $meeting->starts_at;
+            $base = [
+                '{{shop}}' => $shop->name ?: 'shop',
+                '{{title}}' => trim((string) ($meeting->title ?: 'Meeting')),
+                '{{details}}' => trim((string) ($meeting->details ?: '')),
+                '{{location}}' => trim((string) ($meeting->location ?: '-')),
+                '{{date}}' => $starts ? $starts->format('d M Y') : '-',
+                '{{time}}' => $starts ? $starts->format('h:i A') : '-',
+                '{{datetime}}' => $starts ? $starts->format('d M Y, h:i A') : '-',
+            ];
+
+            $sent = [];
+            foreach ($shop->partners()->where('users.is_active', true)->get(['users.id', 'users.first_name', 'users.last_name', 'users.phone']) as $partner) {
+                $mobile = $this->normalizeMobile($partner->phone);
+                if ($mobile === null || isset($sent[$mobile])) {
+                    continue;
+                }
+
+                $placeholders = array_merge($base, [
+                    '{{partner}}' => trim((string) ($partner->name ?: 'Partner')),
+                    '{{name}}' => trim((string) ($partner->name ?: 'Partner')),
+                    '{{mobile}}' => $mobile,
+                ]);
+
+                $this->sendTemplated($settings, $mobile, $template, $placeholders, [
+                    'kind' => 'meeting_created',
+                    'meeting_id' => $meeting->id,
+                    'user_id' => $partner->id,
+                ]);
+                $sent[$mobile] = true;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Meeting SMS failed', [
+                'meeting_id' => $meeting->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
