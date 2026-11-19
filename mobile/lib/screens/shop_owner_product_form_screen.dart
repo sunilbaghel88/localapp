@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -34,6 +35,7 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
   bool _loading = true;
   bool _saving = false;
   bool _hindiBusy = false;
+  bool _imageBusy = false;
   String? _error;
 
   List<Shop> _shops = [];
@@ -178,6 +180,87 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
     } finally {
       if (mounted) setState(() => _hindiBusy = false);
     }
+  }
+
+  String? get _brandLabel {
+    if (_selectedBrandId != null) {
+      return _brands.where((b) => b.id == _selectedBrandId).firstOrNull?.name;
+    }
+    final typed = _brandNameController.text.trim();
+    return typed.isEmpty ? null : typed;
+  }
+
+  Future<void> _generateImage() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter the product name first')),
+      );
+      return;
+    }
+    if (_imageBusy) return;
+
+    setState(() => _imageBusy = true);
+    try {
+      final url = await _api.generateShopProductImage(
+        name: name,
+        brand: _brandLabel,
+      );
+      if (!mounted) return;
+
+      _ImageRow? empty;
+      for (final img in _images) {
+        if (!img.hasServerUrl && img.localPreviewBytes == null && !img.uploading) {
+          empty = img;
+          break;
+        }
+      }
+      final hasPrimary = _images.any((img) => img.isPrimary && img.hasServerUrl);
+
+      setState(() {
+        if (empty != null) {
+          empty.serverUrl = url;
+          if (!hasPrimary) empty.isPrimary = true;
+        } else {
+          var nextSort = 0;
+          for (final img in _images) {
+            final sort = int.tryParse(img.sortOrderController.text.trim()) ?? 0;
+            if (sort >= nextSort) nextSort = sort + 1;
+          }
+          _images.add(
+            _ImageRow(
+              serverUrl: url,
+              sortOrderController: TextEditingController(text: '$nextSort'),
+              isPrimary: !hasPrimary,
+            ),
+          );
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_generateImageError(e))),
+      );
+    } finally {
+      if (mounted) setState(() => _imageBusy = false);
+    }
+  }
+
+  String _generateImageError(Object e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map) {
+        final errors = data['errors'];
+        if (errors is Map && errors['name'] is List && (errors['name'] as List).isNotEmpty) {
+          return (errors['name'] as List).first.toString();
+        }
+        final message = data['message'];
+        if (message is String && message.trim().isNotEmpty) {
+          return message;
+        }
+      }
+    }
+    return 'Could not generate an image. Try again.';
   }
 
   Future<void> _submit() async {
@@ -468,12 +551,34 @@ class _ShopOwnerProductFormScreenState extends State<ShopOwnerProductFormScreen>
 
                 const Divider(height: 32),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Text('Images', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(
+                  'Generate uses the product name and brand. You can replace it with a real photo later.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    Text('Images', style: Theme.of(context).textTheme.titleMedium),
+                    FilledButton.tonalIcon(
+                      onPressed: _imageBusy ? null : _generateImage,
+                      icon: _imageBusy
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.auto_awesome, size: 18),
+                      label: Text(_imageBusy ? 'Generating...' : 'Generate image'),
+                    ),
                     FilledButton.tonal(
-                      onPressed: () => setState(() => _images.add(_ImageRow.empty())),
+                      onPressed: _imageBusy
+                          ? null
+                          : () => setState(() => _images.add(_ImageRow.empty())),
                       child: const Text('Add Image'),
                     ),
                   ],

@@ -581,6 +581,26 @@ class ApiService {
     return data['url'] as String;
   }
 
+  /// Generates a catalog image from the easy name (and optional brand).
+  Future<String> generateShopProductImage({
+    required String name,
+    String? brand,
+  }) async {
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/shop/product-images/generate',
+      data: {
+        'name': name,
+        if (brand != null && brand.trim().isNotEmpty) 'brand': brand.trim(),
+      },
+      options: Options(receiveTimeout: const Duration(seconds: 90)),
+    );
+    final url = (r.data?['url'] ?? '').toString().trim();
+    if (url.isEmpty) {
+      throw StateError('No image returned');
+    }
+    return url;
+  }
+
   Future<Map<String, dynamic>> extractPurchaseInvoice({
     required int shopId,
     required Uint8List bytes,
